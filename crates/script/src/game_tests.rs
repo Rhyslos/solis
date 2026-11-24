@@ -767,9 +767,9 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
         \n\
         component Speaker {\n\
             method update(float dt) {\n\
-                Audio:playAt(Sound.Sfx.Step, position());\n\
+                Audio:playAt(Sound.Step, position());\n\
                 playSound(Sound.Engine);\n\
-                Audio:play(Sound.Music.Theme);\n\
+                Audio:play(Sound.Theme);\n\
             }\n\
         }\n\
         component Hush {\n\

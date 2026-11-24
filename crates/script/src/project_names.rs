@@ -692,26 +692,36 @@ mod tests {
             notes.is_empty(),
             "a picture holding crops is no mistake: {notes:?}"
         );
+        assert!(text.contains("state Level = [Cave, Town];"), "{text}");
         assert!(
-            text.contains("state Level = [Forest [Cave], Town];"),
+            text.contains("state Picture = [GuardFace, Tools, ToolsAxe];"),
             "{text}"
         );
-        assert!(
-            text.contains("state Picture = [Portraits [GuardFace], Sprites [Tools [Axe]]];"),
-            "{text}"
+        // Each name's file is written for Solis to read back.
+        let paths = paths_in(&[("solis/project.lst".into(), text.clone())]);
+        assert_eq!(
+            path_in(&paths, "Picture", "ToolsAxe").as_deref(),
+            Some("sprites/tools/Axe")
         );
+        assert_eq!(
+            path_in(&paths, "Level", "Cave").as_deref(),
+            Some("forest/cave")
+        );
+        assert_eq!(
+            option_in(&paths, "Level", "FOREST/cave").as_deref(),
+            Some("Cave")
+        );
+        assert_eq!(path_in(&paths, "Level", NO_OPTION), None);
         // Fonts too (stage 1, text layout), and none is Font.None.
         assert!(text.contains("state Font = [None];"), "{text}");
         let mut with_fonts = Names::standard();
         with_fonts.fonts = vec!["fonts/Lora".into(), "Pixel".into()];
         let (text, _) = project_file("Test 1.0", &with_fonts);
-        assert!(
-            text.contains("state Font = [Fonts [Lora], Pixel];"),
-            "{text}"
-        );
-        // A module both a file and a folder is still said.
-        let (_, notes) = project_file("Test 1.0", &modules(&["ships", "ships/fighter"]));
-        assert_eq!(notes.len(), 1, "{notes:?}");
+        assert!(text.contains("state Font = [Lora, Pixel];"), "{text}");
+        // A module and a folder of the same name are no clash any more.
+        let (text, notes) = project_file("Test 1.0", &modules(&["ships", "ships/fighter"]));
+        assert!(notes.is_empty(), "{notes:?}");
+        assert!(text.contains("state Module = [Fighter, Ships];"), "{text}");
     }
 
     #[test]
@@ -722,10 +732,7 @@ mod tests {
         let (text, _) = project_file("Test 1.0", &names);
         let files = vec![("solis/project.lst".to_string(), text)];
         let states = states_in(&files);
-        assert_eq!(
-            states["Sound"],
-            ["Music", "Music.Farm", "Sfx", "Sfx.Footstep", "Sfx.Hoe"]
-        );
+        assert_eq!(states["Sound"], ["Farm", "Footstep", "Hoe"]);
         assert_eq!(states["Tag"], ["Enemy"]);
         assert_eq!(states["Level"], ["None"]);
         assert!(states_in(&[("main.lst".into(), "state X = [A];".into())]).is_empty());
@@ -869,13 +876,15 @@ mod tests {
     fn cropped_pictures_are_options_under_their_pictures() {
         let mut names = Names::standard();
         names.pictures = vec![
+            "sprites/tools".into(),
             "sprites/tools/Axe".into(),
             "sprites/tools/Hoe".into(),
+            "hero".into(),
             "hero/Face".into(),
         ];
         let (text, notes) = project_file("Test 1.0", &names);
         assert!(
-            text.contains("state Picture = [Hero [Face], Sprites [Tools [Axe, Hoe]]];"),
+            text.contains("state Picture = [Hero, HeroFace, Tools, ToolsAxe, ToolsHoe];"),
             "{text}"
         );
         assert!(notes.is_empty(), "{notes:?}");
@@ -897,7 +906,7 @@ mod tests {
         );
         assert!(notes.is_empty(), "{notes:?}");
         assert!(
-            text.contains("state Module = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
+            text.contains("state Module = [Crate, Fighter, Freighter, Wheat];"),
             "{text}"
         );
         assert!(text.ends_with(
@@ -934,22 +943,15 @@ mod tests {
             ]),
         );
         assert!(
-            text.contains("state Module = [Dock [Crane], Fighter, Ok, Ships [A, B], Ufo];"),
+            text.contains("state Module = [A, B, Crane, Dock, Ok, Ufo];"),
             "{text}"
         );
+        // Each that can't be named is said once: a digit first, a dash, one
+        // of Lust's own objects, and two that would be called the same.
         assert_eq!(notes.len(), 5, "{notes:?}");
-        assert!(notes.iter().any(|n| n.contains("2fast")));
-        assert!(notes.iter().any(|n| n.contains("big-ship")));
-        assert!(
-            notes
-                .iter()
-                .any(|n| n.contains("Fighter and fighter") && n.contains("capitals"))
-        );
-        assert!(
-            notes
-                .iter()
-                .any(|n| n.contains("Dock") && n.contains("folder"))
-        );
+        for said in ["2fast", "big-ship", "time", " fighter ", " Fighter "] {
+            assert!(notes.iter().any(|n| n.contains(said)), "{said}: {notes:?}");
+        }
     }
 
     #[test]
@@ -973,8 +975,7 @@ mod tests {
             ("solis/project.lst".to_string(), text),
             (
                 "main.lst".to_string(),
-                "fetch \"solis/project\":Module;\nModule a = Module.Ships.Fighter;\nend\n"
-                    .to_string(),
+                "fetch \"solis/project\":Module;\nModule a = Module.Fighter;\nend\n".to_string(),
             ),
         ];
         lust::check("main.lst", &files).unwrap();
