@@ -84,6 +84,11 @@ Each is planned in detail when it starts, as the game stages are.
 
 **Tests:** the naming rule (clashes, names Lust can't take, every kind), the table written and read back (and fuzzed), each native finding its file by a one-dot name, a renamed file followed, the manual's examples compiling, and the samples playing (`--smoke`).
 
+**Progress (2026-11-24, branch `uniformity/u4-one-dot`):** done: the rule (`project_names::one_dot`), the project file written flat with each name's file under it (`-- @Module.Fighter = ships/fighter`, read back by `paths_in` into `Compiled::name_paths` and given to Luau, where `project_names::path_for` finds it), and the natives moved onto it (spawning, sounds, `animate`, `World:text`); the script crate's tests, the manual's examples and prose, the guidelines and the samples moved over. Left:
+- the editor: `LibraryFiles` keeps the latest compiled code's `name_paths` and finds a name's file with `path_in` (a clip's sheet and a crop's picture by the file the table names, not by dots), and a file's name with `option_in`; `play.rs`'s `CueReached` and `ClipFinished` give options from the table; `name_follow` follows a renamed file by the table before and after; `icon_picture` and `screen_pictures` look `[icon=Picture.Coin]` up there; `game_code.rs` and `app/game_code.rs`'s first names;
+- `ui`'s markup tests, `translations`' check (which finds `Text.` names in code: map them through the table to keys), `level::lust_fields` tests, `reflect` docs;
+- `old_names.rs` and `describe::RENAMED`'s examples; the interface file; the user guide; CHANGELOG (under Breaking), the crates' READMEs; then the whole suite, the samples played with `--smoke`.
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.
