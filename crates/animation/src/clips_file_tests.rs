@@ -184,3 +184,95 @@ fn a_newer_or_broken_file_is_refused_and_names_are_checked() {
     assert!(!good_name(&"w".repeat(MAX_NAME + 1)));
     assert_eq!(file_for("sprites/knight.png"), "sprites/knight.clips.lst");
 }
+
+fn cells_of(clip: &Clip, facing: Facing) -> Vec<u32> {
+    clip.ways
+        .iter()
+        .find(|w| w.facing == facing)
+        .map(|w| w.cells.clone())
+        .unwrap_or_default()
+}
+
+#[test]
+fn from_eight_to_four_keeps_the_four_straight_rows_and_back_copies() {
+    let mut walk = knight().clips[0].clone();
+    walk.set_directions(4);
+    let facings: Vec<Facing> = walk.ways.iter().map(|w| w.facing).collect();
+    assert_eq!(
+        facings,
+        [Facing::South, Facing::East, Facing::North],
+        "mirrored: no West row"
+    );
+    assert_eq!(cells_of(&walk, Facing::East), [21, 22]);
+    walk.set_directions(8);
+    assert_eq!(
+        cells_of(&walk, Facing::SouthEast),
+        [3, 4],
+        "a new row copies the south one"
+    );
+    assert_eq!(cells_of(&walk, Facing::North), [39, 40], "kept");
+    walk.set_directions(1);
+    assert_eq!(walk.ways.len(), 1);
+    assert_eq!(
+        (walk.ways[0].facing, cells_of(&walk, Facing::Any)),
+        (Facing::Any, vec![3, 4])
+    );
+    walk.set_directions(4);
+    assert_eq!(
+        cells_of(&walk, Facing::North),
+        [3, 4],
+        "every new row from the one"
+    );
+}
+
+#[test]
+fn a_mirrored_west_side_is_drawn_from_the_east_flipped() {
+    let knight = knight();
+    let (walk, attack) = (&knight.clips[0], &knight.clips[1]);
+    assert_eq!(
+        walk.drawn_from(Facing::NorthWest),
+        (Facing::NorthEast, true)
+    );
+    assert_eq!(walk.drawn_from(Facing::North), (Facing::North, false));
+    assert_eq!(
+        attack.drawn_from(Facing::West),
+        (Facing::West, false),
+        "not mirrored"
+    );
+    assert_eq!(walk.facings().len(), 8);
+    assert_eq!(
+        Facing::of_directions(4),
+        [Facing::South, Facing::East, Facing::North, Facing::West]
+    );
+}
+
+#[test]
+fn each_row_s_frames_are_its_own_with_shared_or_own_times() {
+    let knight = knight();
+    let walk = &knight.clips[0];
+    let east = walk.frames_of(Facing::East, |_| 1);
+    assert_eq!(
+        east.iter().map(|f| (f.frame, f.ms)).collect::<Vec<_>>(),
+        [(21, 120), (22, 120)]
+    );
+    assert_eq!(east[0].events, ["footstep"], "the shared times and events");
+    let attack = &knight.clips[1];
+    let west = attack.frames_of(Facing::West, |_| 1);
+    assert_eq!(
+        west.iter().map(|f| (f.frame, f.ms)).collect::<Vec<_>>(),
+        [(51, 80), (52, 90)]
+    );
+    assert!(
+        attack.frames_of(Facing::South, |_| 1).is_empty(),
+        "no such row"
+    );
+    let mut attack = attack.clone();
+    attack.edit_frames_of(Facing::South, |frames| {
+        frames.push(ClipFrame {
+            frame: 7,
+            ms: 50,
+            events: Vec::new(),
+        })
+    });
+    assert_eq!(cells_of(&attack, Facing::South), [7], "made when edited");
+}

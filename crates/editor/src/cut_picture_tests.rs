@@ -68,7 +68,7 @@ fn find_grid_finds_see_through_gaps() {
 
 /// A 306 × 170 picture of 9 × 5 coloured 32-pixel cells, 2 apart and 1
 /// from the edge, each a little figure on see-through ground.
-fn knight_sheet() -> SpriteSheet {
+pub(crate) fn knight_sheet() -> SpriteSheet {
     let size = [306u32, 170];
     let mut rgba = vec![0u8; (size[0] * size[1] * 4) as usize];
     for n in 0..45u32 {

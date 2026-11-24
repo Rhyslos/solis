@@ -12,9 +12,9 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 ## How to use it
 1. **Tag your frames in Aseprite** and save. In Solis, click the file in the Library: Properties lists its tags.
 2. **Play a clip on a sprite:** select a sprite and pick a **Clip** in its Sprite component. Press **Play**: it plays at its frame times. To see it move while you edit, open the viewport's **≡** menu and tick **Preview animation**.
-3. **Open the clips:** in the Aseprite file's Properties, press **Edit clips…**. Solis makes `walker.clips.lst` beside `walker.aseprite` (or opens the one there) and opens two tabs:
-   - **Frames**, the timeline: a tab of the bottom panel on the **Animate** tab (the clips file opens there; an × after the Frames or Clip tab closes the file). In the left slot, **Clips**: every clip, with how long it is and where it comes from (*Aseprite* or *made here*). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.
-   - **Clip**, the next tab of the bottom panel: the chosen clip's **Speed**, **Direction**, how many times it **Plays**, and **Plays first**. A clip's settings have a tab of their own so the frames keep the panel's whole width.
+3. **Open the clips:** in the Aseprite file's Properties, press **Edit clips…**. Solis makes `walker.clips.lst` beside `walker.aseprite` (or opens the one there) and shows its clips on the **Animate** tab:
+   - **Frames**, the timeline: a tab of the bottom panel on the **Animate** tab (the clips file opens there; the × after it closes the file). In the left slot, **Clips**: every clip, with how long it is and where it comes from (*Aseprite* or *made here*). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.
+   - **Clip**, the right slot: the chosen clip's **Speed**, **Direction**, how many times it **Plays**, **Plays first**, and for a clip of your own, its **Directions**.
 
    While a clips file is open, Animate's [ribbon](concepts.md#the-window) is the clips file's: **Clip** (New, Copy, Delete), **Frames** (Take out), and how the clip plays (Plays, Speed, and a **Direction** list for a clip of your own). The design's cutscene controls after them (Keys, Step, Linear, Smooth, Tracks) are [unfinished parts](unfinished-parts.md).
 4. **Watch it:** press **▶** (or **Space** over the Frames tab). **⏮** goes back to the start, **■** stops, **⏭** goes to the last frame. **−** and **+** zoom the ruler.
@@ -24,7 +24,16 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
    Events typed in Aseprite (a cel's user data) work the same way.
 6. **Make a clip of your own:** the ribbon's **New** makes an empty one; **Copy** copies the chosen clip (a tag's copy can then be changed here). In the Frames tab, **＋ Add frames ▾** shows the sheet's frames: click one to add it after the picked frame. Double-click a clip of your own to rename it.
 7. **Change frames of your own clips:** click a frame to pick it (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out.
-8. **Close the file:** the **×** on either tab closes both.
+8. **Close the file:** the **×** after the Frames tab closes it.
+
+### Directions
+
+A character walking in a top-down game faces different ways, and each needs its own frames. Pick a clip of your own and choose its **Directions** in the Clip slot: **One** (it looks the same whatever way it faces), **Four** (south, east, north and west) or **Eight** (the diagonals too). The Frames tab then shows a row for each, south first, round by east to north:
+- each frame is a tile as wide as it lasts, with its cell's number;
+- click a frame to pick it and its row, then set its **time** and **event**, or add frames after it with **＋ Add frames**;
+- click a row's name to pick the row.
+
+Going from eight to four keeps the four straight rows. A new row starts as a copy of the first, so you only change what differs. A clip that mirrors its west side shows those rows faded, as the east rows they're flipped from (◈ NorthEast).
 
 ### A plain picture's clips
 
@@ -37,11 +46,11 @@ A PNG or JPEG with every frame laid out on it, a *sprite sheet*, gets clips too.
   - press the arrow keys to move the picked cell a pixel at a time, for lining frames up exactly;
   - press **Back to the grid's box** to forget a cell's own box: a grid cell goes back to the grid's, and an added one is gone.
 - The wheel zooms the picture and the middle mouse button moves it.
-- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** in the Clip tab.
+- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** in the Clip slot.
 
 Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.
 
-Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over either tab undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
+Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### In game code
 Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.Sprites.Farmer.Walk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
@@ -194,7 +203,7 @@ The Sprite component's clip settings:
 | Clip time | How far into the clip it is, in seconds. Give a crowd of copies different times so they don't all step in step. |
 | Frame | The frame shown when no clip plays. |
 
-A clip's settings in the Clip tab:
+A clip's settings in the Clip slot:
 
 | Setting | What it does |
 |---|---|
@@ -202,6 +211,7 @@ A clip's settings in the Clip tab:
 | Direction | Forward, reverse, ping-pong (there and back) or ping-pong reversed. A tag's is Aseprite's. |
 | Plays | Over and over, once, or a number of times; it then stays on its last frame and game code hears `ClipFinished`. A tag's is Aseprite's (its Repeat field). |
 | Plays first | The clip a sprite plays when its Clip is empty. |
+| Directions | For a clip of your own: **One**, **Four** or **Eight**, the ways it faces. Each has a row of frames in the Frames tab. |
 
 ## Shortcuts
 | Action | Shortcut |
@@ -212,7 +222,7 @@ A clip's settings in the Clip tab:
 | Move picked frames (your own clips) | Drag them |
 | Take picked frames out (your own clips) | `Delete` over the Frames tab |
 | Play or stop the clip | `Space` over the Frames tab |
-| Undo or redo a change to the clips file | `Ctrl + Z`, `Ctrl + Y` over either tab |
+| Undo or redo a change to the clips file | `Ctrl + Z`, `Ctrl + Y` over the clips |
 
 ## Tips and common problems
 - **Problem:** sprites don't move in the viewport. **Why:** the editor rests unless something changes. **Fix:** tick **Preview animation** in the viewport's **≡** menu, or press **Play**.

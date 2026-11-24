@@ -162,6 +162,36 @@ impl Facing {
     pub fn is_west(self) -> bool {
         matches!(self, Facing::SouthWest | Facing::West | Facing::NorthWest)
     }
+
+    /// The east side's facing a west one is the mirror of (itself for
+    /// any other).
+    pub fn mirrored(self) -> Facing {
+        match self {
+            Facing::SouthWest => Facing::SouthEast,
+            Facing::West => Facing::East,
+            Facing::NorthWest => Facing::NorthEast,
+            other => other,
+        }
+    }
+
+    /// The rows a clip of `directions` has, in the order the Frames tab
+    /// lists them: south first, round by east to north and back by west.
+    pub fn of_directions(directions: u8) -> &'static [Facing] {
+        match directions {
+            1 => &[Facing::Any],
+            4 => &[Facing::South, Facing::East, Facing::North, Facing::West],
+            _ => &[
+                Facing::South,
+                Facing::SouthEast,
+                Facing::East,
+                Facing::NorthEast,
+                Facing::North,
+                Facing::NorthWest,
+                Facing::West,
+                Facing::SouthWest,
+            ],
+        }
+    }
 }
 
 /// How a picture is cut into numbered cells.
@@ -386,19 +416,46 @@ impl Clip {
         clip
     }
 
-    /// Where the row it shows with no facing asked for is: the one for
-    /// any facing, then south, then its first.
-    fn shown(&self) -> Option<usize> {
-        let at = |f: Facing| self.ways.iter().position(|w| w.facing == f);
-        at(Facing::Any)
-            .or_else(|| at(Facing::South))
-            .or((!self.ways.is_empty()).then_some(0))
+    /// The rows it has, in the Frames tab's order.
+    pub fn facings(&self) -> &'static [Facing] {
+        Facing::of_directions(self.directions)
+    }
+
+    /// The row `facing` shows, and whether flipped: a mirrored clip's
+    /// west side shows its east side's row, flipped.
+    pub fn drawn_from(&self, facing: Facing) -> (Facing, bool) {
+        if self.mirror && self.directions > 1 && facing.is_west() {
+            (facing.mirrored(), true)
+        } else {
+            (facing, false)
+        }
+    }
+
+    /// The facing of the row it shows with no facing asked for: the one
+    /// for any facing, then south, then its first.
+    pub fn shown_facing(&self) -> Facing {
+        let has = |f: Facing| self.ways.iter().any(|w| w.facing == f);
+        [Facing::Any, Facing::South]
+            .into_iter()
+            .find(|&f| has(f))
+            .or_else(|| self.ways.first().map(|w| w.facing))
+            .unwrap_or(if self.directions == 1 {
+                Facing::Any
+            } else {
+                Facing::South
+            })
     }
 
     /// The frames of the row it shows with no facing asked for, each
     /// cell's time from `ms_of` where the file gives none.
     pub fn frames_with(&self, ms_of: impl Fn(u32) -> u32) -> Vec<ClipFrame> {
-        let Some(way) = self.shown().map(|i| &self.ways[i]) else {
+        self.frames_of(self.shown_facing(), ms_of)
+    }
+
+    /// The frames of its own row for `facing` (none when it has no such
+    /// row), each cell's time from `ms_of` where the file gives none.
+    pub fn frames_of(&self, facing: Facing, ms_of: impl Fn(u32) -> u32) -> Vec<ClipFrame> {
+        let Some(way) = self.ways.iter().find(|w| w.facing == facing) else {
             return Vec::new();
         };
         let timings = if self.same_frames {
@@ -430,12 +487,14 @@ impl Clip {
     /// Makes the row it shows with no facing asked for (made if it has
     /// none) show `frames`, with their times and first events.
     pub fn set_frames(&mut self, frames: &[ClipFrame]) {
-        let at = self.shown().unwrap_or_else(|| {
-            let facing = if self.directions == 1 {
-                Facing::Any
-            } else {
-                Facing::South
-            };
+        self.set_frames_of(self.shown_facing(), frames);
+    }
+
+    /// Makes its row for `facing` (made if it has none) show `frames`,
+    /// with their times and first events. With the same frames in every
+    /// direction, the times and events are every row's.
+    pub fn set_frames_of(&mut self, facing: Facing, frames: &[ClipFrame]) {
+        let at = (self.ways.iter().position(|w| w.facing == facing)).unwrap_or_else(|| {
             self.ways.push(Way {
                 facing,
                 cells: Vec::new(),
@@ -459,9 +518,40 @@ impl Clip {
 
     /// Changes the frames of the row it shows with no facing asked for.
     pub fn edit_frames(&mut self, change: impl FnOnce(&mut Vec<ClipFrame>)) {
-        let mut frames = self.frames();
+        self.edit_frames_of(self.shown_facing(), change);
+    }
+
+    /// Changes the frames of its row for `facing`.
+    pub fn edit_frames_of(&mut self, facing: Facing, change: impl FnOnce(&mut Vec<ClipFrame>)) {
+        let mut frames = self.frames_of(facing, |_| DEFAULT_MS);
         change(&mut frames);
-        self.set_frames(&frames);
+        self.set_frames_of(facing, &frames);
+    }
+
+    /// Gives it one, four or eight directions. Rows it keeps stay as they
+    /// are (from eight to four, the four straight ones); a new row starts
+    /// as a copy of the row it showed with no facing asked for; with one,
+    /// that row is the one left. A mirrored clip keeps no west rows.
+    pub fn set_directions(&mut self, directions: u8) {
+        let directions = match directions {
+            1 | 4 => directions,
+            _ => 8,
+        };
+        if directions == self.directions {
+            return;
+        }
+        let shown = self.shown_facing();
+        let source = self.ways.iter().find(|w| w.facing == shown).cloned();
+        let old = std::mem::take(&mut self.ways);
+        self.directions = directions;
+        for &facing in Facing::of_directions(directions) {
+            if self.drawn_from(facing).1 {
+                continue;
+            }
+            let kept = old.iter().find(|w| w.facing == facing).cloned();
+            let made = kept.or_else(|| source.clone().map(|w| Way { facing, ..w }));
+            self.ways.extend(made);
+        }
     }
 }
 

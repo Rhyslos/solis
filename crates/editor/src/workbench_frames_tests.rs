@@ -206,8 +206,9 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
 fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     let (mut w, _, _) = with_clips();
     w.open_frames("walker.clips.lst");
-    // A clip's settings are its own Clip shelf tab (round 3).
-    w.show_panel(Panel::Clip);
+    // A clip's settings are in Properties while its frames are in front
+    // (Fixes 3).
+    w.show_panel(Panel::Frames);
     let mut h = harness(w);
     h.run();
     h.run();
@@ -504,4 +505,141 @@ fn cells_drawn_by_hand_are_kept_and_come_back_next_time() {
         w.open.cut_picture.as_ref().unwrap().drawn,
         [(0, [0, 1, 16, 16])]
     );
+}
+
+/// The sample project with `knight.png` (9 × 5 cells of 32, 2 apart, 1
+/// from the edge) and its clips file, open: "walk" has eight directions,
+/// mirrored, each row two cells.
+pub(crate) fn with_knight_open() -> Workbench {
+    use animation::clips_file::Facing;
+    let mut w = crate::picture_support::sample_project();
+    let knight = AssetId::random();
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.by_path.insert(
+        "knight.png".into(),
+        SheetState::Read(Arc::new(crate::cut_picture::tests::knight_sheet())),
+    );
+    sheets.paths.insert(knight, "knight.png".into());
+    w.set_sprite_sheets(sheets);
+    w.library_request(
+        LibraryRequest::MakeClipsFile("knight.png".into()),
+        &mut Vec::new(),
+    );
+    w.open.cut_picture = None;
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    editor.change(|f| {
+        f.grid = animation::clips_file::Grid {
+            cell: [32, 32],
+            between: [2, 2],
+            edge: [1, 1],
+        };
+        let frame = |n: u32| animation::ClipFrame {
+            frame: n,
+            ms: 120,
+            events: Vec::new(),
+        };
+        let mut walk = animation::clips_file::Clip::one_way(
+            "walk".into(),
+            1.0,
+            animation::Direction::Forward,
+            0,
+            &[frame(0), frame(1)],
+        );
+        walk.mirror = true;
+        walk.set_directions(8);
+        for (row, facing) in [
+            Facing::South,
+            Facing::SouthEast,
+            Facing::East,
+            Facing::NorthEast,
+            Facing::North,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let n = row as u32 * 9;
+            walk.set_frames_of(
+                facing,
+                &[frame(n), frame(n + 1), frame(n + 2), frame(n + 3)],
+            );
+        }
+        f.first = "walk".into();
+        f.clips.push(walk);
+    });
+    w.save_frames();
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    editor.choose("walk");
+    w.open.outbox.clear();
+    w
+}
+
+#[test]
+fn directions_change_the_rows_and_edits_go_to_the_picked_row() {
+    use animation::clips_file::Facing;
+    let mut w = with_knight_open();
+    let cells_sheet = Arc::clone(
+        w.viewport
+            .sheets
+            .cut_sheet("knight.clips.lst")
+            .expect("cut"),
+    );
+    assert_eq!(cells_sheet.frames.len(), 45);
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    assert_eq!(editor.facing, Facing::South, "a clip's first row is picked");
+    editor.pick_row(Some(Facing::East));
+    editor.pick(0, false, false);
+    assert!(editor.add_frames(&cells_sheet, &[44]));
+    let walk = |e: &crate::frames_editor::FramesEditor| {
+        e.file
+            .clips
+            .iter()
+            .find(|c| c.name == "walk")
+            .unwrap()
+            .clone()
+    };
+    let cells = |e: &crate::frames_editor::FramesEditor, f: Facing| {
+        walk(e)
+            .frames_of(f, |_| 1)
+            .iter()
+            .map(|fr| fr.frame)
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        cells(editor, Facing::East),
+        [18, 44, 19, 20, 21],
+        "added after the picked frame, in East"
+    );
+    assert_eq!(
+        cells(editor, Facing::South),
+        [0, 1, 2, 3],
+        "South as it was"
+    );
+    assert!(editor.set_directions(4));
+    assert_eq!(
+        walk(editor).ways.len(),
+        3,
+        "South, East, North: West is mirrored"
+    );
+    assert!(editor.undo(), "one step back");
+    assert_eq!(walk(editor).ways.len(), 5);
+}
+
+#[test]
+fn the_clips_page_with_eight_directions() {
+    use crate::picture_support::{drawn, editor_window, matches_approved};
+    let mut w = with_knight_open();
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    editor.pick_row(Some(animation::clips_file::Facing::NorthEast));
+    editor.pick(1, false, false);
+    let Some(mut h) = editor_window(
+        w,
+        crate::interface_look::InterfaceLook::default(),
+        [1440.0, 900.0],
+    ) else {
+        return;
+    };
+    for _ in 0..4 {
+        h.run();
+    }
+    matches_approved("clips-directions", &drawn(&mut h));
 }

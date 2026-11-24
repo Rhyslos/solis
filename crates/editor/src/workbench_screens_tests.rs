@@ -365,12 +365,12 @@ fn the_x_on_the_canvas_closes_the_screen_and_not_the_clips_file() {
     }
 }
 
-/// The × on Frames or Clip closes the clips file and its tabs (and the
-/// Clips slot), and leaves the screen open with its undo steps. (Clips is
-/// the Animate tab's left slot now, with no × of its own.)
+/// The × on Frames closes the clips file and its tab (and the Clips
+/// slot), and leaves the screen open with its undo steps. (Clips is the
+/// Animate tab's left slot, with no × of its own.)
 #[test]
-fn the_x_on_frames_or_clip_closes_the_clips_file_and_not_the_screen() {
-    for closed in [Panel::Frames, Panel::Clip] {
+fn the_x_on_frames_closes_the_clips_file_and_not_the_screen() {
+    for closed in [Panel::Frames] {
         let mut w = with_clips_and_a_screen();
         let doc = w.open.screen_doc.as_mut().unwrap();
         doc.picked = vec![vec![0, 0, 0]];

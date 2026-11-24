@@ -7259,10 +7259,10 @@ Shop-Apples = { $count -&gt;
 </li>
 <li><p><strong>Play a clip on a sprite:</strong> select a sprite and pick a <strong>Clip</strong> in its Sprite component. Press <strong>Play</strong>: it plays at its frame times. To see it move while you edit, open the viewport's <strong>≡</strong> menu and tick <strong>Preview animation</strong>.</p>
 </li>
-<li><p><strong>Open the clips:</strong> in the Aseprite file's Properties, press <strong>Edit clips…</strong>. Solis makes <code>walker.clips.lst</code> beside <code>walker.aseprite</code> (or opens the one there) and opens two tabs:</p>
+<li><p><strong>Open the clips:</strong> in the Aseprite file's Properties, press <strong>Edit clips…</strong>. Solis makes <code>walker.clips.lst</code> beside <code>walker.aseprite</code> (or opens the one there) and shows its clips on the <strong>Animate</strong> tab:</p>
 <ul>
-<li><strong>Frames</strong>, the timeline: a tab of the bottom panel on the <strong>Animate</strong> tab (the clips file opens there; an × after the Frames or Clip tab closes the file). In the left slot, <strong>Clips</strong>: every clip, with how long it is and where it comes from (<em>Aseprite</em> or <em>made here</em>). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.</li>
-<li><strong>Clip</strong>, the next tab of the bottom panel: the chosen clip's <strong>Speed</strong>, <strong>Direction</strong>, how many times it <strong>Plays</strong>, and <strong>Plays first</strong>. A clip's settings have a tab of their own so the frames keep the panel's whole width.</li>
+<li><strong>Frames</strong>, the timeline: a tab of the bottom panel on the <strong>Animate</strong> tab (the clips file opens there; the × after it closes the file). In the left slot, <strong>Clips</strong>: every clip, with how long it is and where it comes from (<em>Aseprite</em> or <em>made here</em>). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.</li>
+<li><strong>Clip</strong>, the right slot: the chosen clip's <strong>Speed</strong>, <strong>Direction</strong>, how many times it <strong>Plays</strong>, <strong>Plays first</strong>, and for a clip of your own, its <strong>Directions</strong>.</li>
 </ul>
 <p>While a clips file is open, Animate's <a href="#concepts--the-window">ribbon</a> is the clips file's: <strong>Clip</strong> (New, Copy, Delete), <strong>Frames</strong> (Take out), and how the clip plays (Plays, Speed, and a <strong>Direction</strong> list for a clip of your own). The design's cutscene controls after them (Keys, Step, Linear, Smooth, Tracks) are <a href="#unfinished-parts">unfinished parts</a>.</p>
 </li>
@@ -7279,9 +7279,17 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 </li>
 <li><p><strong>Change frames of your own clips:</strong> click a frame to pick it (Ctrl+click or Shift+click for several), then set its <strong>time</strong>, drag it to a new place, or press <strong>Delete</strong> to take it out.</p>
 </li>
-<li><p><strong>Close the file:</strong> the <strong>×</strong> on either tab closes both.</p>
+<li><p><strong>Close the file:</strong> the <strong>×</strong> after the Frames tab closes it.</p>
 </li>
 </ol>
+<h4 id="sprite-animation--directions">Directions<a class="anchor" href="#sprite-animation--directions" aria-label="Link to this section">#</a></h4>
+<p>A character walking in a top-down game faces different ways, and each needs its own frames. Pick a clip of your own and choose its <strong>Directions</strong> in the Clip slot: <strong>One</strong> (it looks the same whatever way it faces), <strong>Four</strong> (south, east, north and west) or <strong>Eight</strong> (the diagonals too). The Frames tab then shows a row for each, south first, round by east to north:</p>
+<ul>
+<li>each frame is a tile as wide as it lasts, with its cell's number;</li>
+<li>click a frame to pick it and its row, then set its <strong>time</strong> and <strong>event</strong>, or add frames after it with <strong>＋ Add frames</strong>;</li>
+<li>click a row's name to pick the row.</li>
+</ul>
+<p>Going from eight to four keeps the four straight rows. A new row starts as a copy of the first, so you only change what differs. A clip that mirrors its west side shows those rows faded, as the east rows they're flipped from (◈ NorthEast).</p>
 <h4 id="sprite-animation--a-plain-pictures-clips">A plain picture's clips<a class="anchor" href="#sprite-animation--a-plain-pictures-clips" aria-label="Link to this section">#</a></h4>
 <p>A PNG or JPEG with every frame laid out on it, a <em>sprite sheet</em>, gets clips too. Right-click it in the Library and choose <strong>Make clips…</strong>: Solis makes <code>knight.clips.lst</code> beside <code>knight.png</code>, opens its tabs, and opens <strong>Cut knight.png into cells</strong> over them. That pop-up cuts the picture into <a href="#concepts--cell">cells</a>, the pieces its clips show, numbered from 0 across and then down, as Aseprite numbers frames:</p>
 <ul>
@@ -7296,10 +7304,10 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 </ul>
 </li>
 <li>The wheel zooms the picture and the middle mouse button moves it.</li>
-<li><strong>Use these cells</strong> keeps the grid in the clips file, as one step <strong>Ctrl+Z</strong> undoes; <strong>Cancel</strong> (or <strong>Esc</strong>) leaves it as it was. To change it later, press <strong>Cut picture…</strong> in the Clip tab.</li>
+<li><strong>Use these cells</strong> keeps the grid in the clips file, as one step <strong>Ctrl+Z</strong> undoes; <strong>Cancel</strong> (or <strong>Esc</strong>) leaves it as it was. To change it later, press <strong>Cut picture…</strong> in the Clip slot.</li>
 </ul>
 <p>Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.</p>
-<p>Every change is saved at once and shows at once on every sprite playing the file. <strong>Ctrl+Z</strong> and <strong>Ctrl+Y</strong> over either tab undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step <strong>Ctrl+Z</strong> undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>
+<p>Every change is saved at once and shows at once on every sprite playing the file. <strong>Ctrl+Z</strong> and <strong>Ctrl+Y</strong> over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step <strong>Ctrl+Z</strong> undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>
 <h4 id="sprite-animation--in-game-code">In game code<a class="anchor" href="#sprite-animation--in-game-code" aria-label="Link to this section">#</a></h4>
 <p>Clips and their events are names Lust checks. Solis writes them into <code>solis/project.lst</code> whenever the sheets change: each clip as <code>state Clip</code>, under its sheet's path (<code>sprites/farmer.aseprite</code>'s walk is <code>Clip.Sprites.Farmer.Walk</code>), and each frame event as <code>state Cue</code> (<code>Cue.Footstep</code>). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:</p>
 <div class="example">
@@ -7445,7 +7453,7 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <tr><td>Frame</td><td>The frame shown when no clip plays.</td></tr>
 </tbody>
 </table></div>
-<p>A clip's settings in the Clip tab:</p>
+<p>A clip's settings in the Clip slot:</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Setting</th><th>What it does</th></tr></thead>
 <tbody>
@@ -7453,6 +7461,7 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <tr><td>Direction</td><td>Forward, reverse, ping-pong (there and back) or ping-pong reversed. A tag's is Aseprite's.</td></tr>
 <tr><td>Plays</td><td>Over and over, once, or a number of times; it then stays on its last frame and game code hears <code>ClipFinished</code>. A tag's is Aseprite's (its Repeat field).</td></tr>
 <tr><td>Plays first</td><td>The clip a sprite plays when its Clip is empty.</td></tr>
+<tr><td>Directions</td><td>For a clip of your own: <strong>One</strong>, <strong>Four</strong> or <strong>Eight</strong>, the ways it faces. Each has a row of frames in the Frames tab.</td></tr>
 </tbody>
 </table></div>
 </section>
@@ -7467,7 +7476,7 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <tr><td>Move picked frames (your own clips)</td><td>Drag them</td></tr>
 <tr><td>Take picked frames out (your own clips)</td><td><span class="keys"><kbd>Delete</kbd></span> over the Frames tab</td></tr>
 <tr><td>Play or stop the clip</td><td><span class="keys"><kbd>Space</kbd></span> over the Frames tab</td></tr>
-<tr><td>Undo or redo a change to the clips file</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span> over either tab</td></tr>
+<tr><td>Undo or redo a change to the clips file</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Z</kbd></span>, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Y</kbd></span> over the clips</td></tr>
 </tbody>
 </table></div>
 </section>
@@ -11146,7 +11155,7 @@ event MoodChanged(Mood from, Mood to);</code></pre>
 </section>
 <section id="keyboard-shortcuts--the-frames-tab-a-clips-file-open">
 <h3>The Frames tab (a clips file open)<a class="anchor" href="#keyboard-shortcuts--the-frames-tab-a-clips-file-open" aria-label="Link to this section">#</a></h3>
-<p>The keys work while the pointer is over the Frames tab (undo and redo over the Clip tab too); see <a href="#sprite-animation">Animating sprites</a>.</p>
+<p>The keys work while the pointer is over the Frames tab (undo and redo over the clips list too); see <a href="#sprite-animation">Animating sprites</a>.</p>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>Action</th><th>Shortcut</th></tr></thead>
 <tbody>
@@ -11477,7 +11486,7 @@ event MoodChanged(Mood from, Mood to);</code></pre>
 <tr><td>Put a dragged tab back</td><td><span class="keys"><kbd>Esc</kbd></span>, while dragging</td></tr>
 <tr><td>Bring a bottom tab to the front (opening a folded panel at its last height)</td><td>Click its name</td></tr>
 <tr><td>Fold the bottom panel to one line, or open it again</td><td><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Space</kbd></span> (while typing too), <strong>▾</strong>, or a click on the tab in front</td></tr>
-<tr><td>Close a clips file</td><td>The <strong>×</strong> after the Frames or Clip tab</td></tr>
+<tr><td>Close a clips file</td><td>The <strong>×</strong> after the Frames tab</td></tr>
 <tr><td>Choose a layout</td><td>Click its card in <strong>File › Preferences › Layout</strong>; <strong>Undo</strong> on the note puts the one before back</td></tr>
 </tbody>
 </table></div>

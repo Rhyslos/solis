@@ -11,7 +11,7 @@
 //! tab undo and redo the file's changes.
 
 use crate::file_history::FileHistory;
-use animation::clips_file::{self, Clip as OwnClip, ClipsFile, TagChange};
+use animation::clips_file::{self, Clip as OwnClip, ClipsFile, Facing, TagChange};
 use animation::frames_file;
 use animation::{Clip, ClipFrame, ClipSet, Direction};
 use assets::sprite_sheet::SpriteSheet;
@@ -49,6 +49,8 @@ pub struct FramesEditor {
     pub search: String,
     /// Cut picture… was pressed: the workbench opens the pop-up.
     pub cut_asked: bool,
+    /// The chosen clip's row the Frames tab picks frames in.
+    pub facing: Facing,
     history: FileHistory<ClipsFile>,
 }
 
@@ -70,7 +72,7 @@ impl FramesEditor {
         // The picture's own name comes once the sheet is known (see
         // `Workbench::open_frames`); until then, the file's.
         let picture = path.rsplit('/').next().unwrap_or_default().to_owned();
-        Self {
+        let mut editor = Self {
             path,
             file,
             picture,
@@ -83,8 +85,11 @@ impl FramesEditor {
             renaming: None,
             search: String::new(),
             cut_asked: false,
+            facing: Facing::Any,
             history: FileHistory::new(UNDO_LIMIT),
-        }
+        };
+        editor.pick_row(None);
+        editor
     }
 
     /// The clips of the file over `sheet`, as they are now.
@@ -128,9 +133,8 @@ impl FramesEditor {
     pub fn choose(&mut self, name: &str) {
         if self.clip != name {
             self.clip = name.to_owned();
-            self.selected.clear();
-            self.anchor = None;
             self.time = 0.0;
+            self.pick_row(None);
         }
     }
 
@@ -293,6 +297,32 @@ impl FramesEditor {
         })
     }
 
+    /// Gives the chosen clip (made here) one, four or eight directions,
+    /// and picks the row it shows first.
+    pub fn set_directions(&mut self, directions: u8) -> bool {
+        let name = self.clip.clone();
+        let changed = self.change(|f| {
+            if let Some(c) = f.clip_mut(&name) {
+                c.set_directions(directions);
+            }
+        });
+        if changed {
+            self.pick_row(None);
+        }
+        changed
+    }
+
+    /// Picks the chosen clip's row for `facing` (its first, for none),
+    /// with nothing picked in it.
+    pub fn pick_row(&mut self, facing: Option<Facing>) {
+        let clip = self.file.clips.iter().find(|c| c.name == self.clip);
+        self.facing = facing
+            .or_else(|| clip.map(|c| c.facings()[0]))
+            .unwrap_or(Facing::Any);
+        self.selected.clear();
+        self.anchor = None;
+    }
+
     /// Sets how many times the chosen clip plays (clips made here; 0 over
     /// and over).
     pub fn set_repeats(&mut self, repeats: u32) -> bool {
@@ -309,11 +339,12 @@ impl FramesEditor {
     /// here).
     pub fn set_ms(&mut self, ms: u32) -> bool {
         let name = self.clip.clone();
+        let facing = self.facing;
         let picked = self.selected.clone();
         let ms = ms.clamp(1, clips_file::MAX_MS);
         self.change(|f| {
             if let Some(c) = f.clip_mut(&name) {
-                c.edit_frames(|frames| {
+                c.edit_frames_of(facing, |frames| {
                     for &i in &picked {
                         if let Some(frame) = frames.get_mut(i) {
                             frame.ms = ms;
@@ -334,6 +365,7 @@ impl FramesEditor {
             return false;
         };
         let name = self.clip.clone();
+        let facing = self.facing;
         let picked: Vec<(usize, u32)> = self
             .selected
             .iter()
@@ -343,7 +375,7 @@ impl FramesEditor {
         self.change(|f| {
             if own {
                 if let Some(c) = f.clip_mut(&name) {
-                    c.edit_frames(|frames| {
+                    c.edit_frames_of(facing, |frames| {
                         for &(i, _) in &picked {
                             if let Some(frame) = frames.get_mut(i) {
                                 frame.events = if event.is_empty() {
@@ -374,12 +406,13 @@ impl FramesEditor {
     /// time Aseprite gives it, and picks them.
     pub fn add_frames(&mut self, sheet: &SpriteSheet, frames: &[u32]) -> bool {
         let name = self.clip.clone();
+        let facing = self.facing;
         let Some(len) = self
             .file
             .clips
             .iter()
             .find(|c| c.name == name)
-            .map(|c| c.frames().len())
+            .map(|c| c.frames_of(self.facing, |_| 1).len())
         else {
             return false;
         };
@@ -400,7 +433,7 @@ impl FramesEditor {
         let count = adding.len();
         let changed = self.change(|f| {
             if let Some(c) = f.clip_mut(&name) {
-                c.edit_frames(|frames| {
+                c.edit_frames_of(facing, |frames| {
                     frames.splice(at..at, adding);
                 });
             }
@@ -415,10 +448,11 @@ impl FramesEditor {
     /// Takes the picked frames out of the chosen clip (made here).
     pub fn delete_frames(&mut self) -> bool {
         let name = self.clip.clone();
+        let facing = self.facing;
         let picked = self.selected.clone();
         let changed = self.change(|f| {
             if let Some(c) = f.clip_mut(&name) {
-                c.edit_frames(|frames| {
+                c.edit_frames_of(facing, |frames| {
                     let mut i = 0;
                     frames.retain(|_| {
                         let keep = !picked.contains(&i);
@@ -440,13 +474,14 @@ impl FramesEditor {
     /// their order, and keeps them picked.
     pub fn move_frames(&mut self, to: usize) -> bool {
         let name = self.clip.clone();
+        let facing = self.facing;
         let picked = self.selected.clone();
         let mut placed = Vec::new();
         let changed = self.change(|f| {
             let Some(c) = f.clip_mut(&name) else {
                 return;
             };
-            let mut frames = c.frames();
+            let mut frames = c.frames_of(facing, |_| clips_file::DEFAULT_MS);
             let to = to.min(frames.len());
             let mut moving = Vec::new();
             let mut rest = Vec::new();
@@ -461,7 +496,7 @@ impl FramesEditor {
             let at = to - picked.iter().filter(|&&i| i < to).count();
             let n = moving.len();
             rest.splice(at..at, moving);
-            c.set_frames(&rest);
+            c.set_frames_of(facing, &rest);
             placed = (at..at + n).collect();
         });
         if changed {

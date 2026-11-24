@@ -520,4 +520,4 @@ fn picked_part(ui: &mut Ui, cut: &mut CutPicture, size: Option<[u32; 2]>) {
 
 #[cfg(test)]
 #[path = "cut_picture_tests.rs"]
-mod tests;
+pub(crate) mod tests;

@@ -46,10 +46,7 @@ impl Workbench {
     /// animator's while one is open.
     pub(crate) fn animate_form(&self) -> Option<AnimateForm> {
         let open = self.open_now();
-        let clips_in_front = matches!(
-            self.bottom_tab(),
-            Some(crate::shell::BottomTab::Frames | crate::shell::BottomTab::Clip)
-        );
+        let clips_in_front = matches!(self.bottom_tab(), Some(crate::shell::BottomTab::Frames));
         if open.clips && (clips_in_front || !open.animator) {
             Some(AnimateForm::Clips)
         } else if open.animator {
