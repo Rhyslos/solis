@@ -301,6 +301,11 @@ impl Workbench {
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.open.library = items.into();
+        if let Some(program) = &self.open.program {
+            self.open
+                .library
+                .set_name_paths(std::sync::Arc::clone(&program.name_paths));
+        }
         self.open.cue_sounds = cue_sounds(&self.open.library);
         self.sources += 1;
     }

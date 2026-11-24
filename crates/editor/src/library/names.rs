@@ -28,16 +28,19 @@ fn kind_of(item: &LibraryItem) -> Option<(NameKind, usize)> {
     }
 }
 
-/// The name `item` stands for, as its kind and the option (`Sfx.Alert`),
-/// if it stands for one game code can name.
-pub(crate) fn name_of(item: &LibraryItem) -> Option<(NameKind, String)> {
+/// The path `item` stands for as one of the project's names (without its
+/// ending: `sfx/alert` for `sfx/alert.solsound`), and its kind, if it is
+/// one; a screen's is [`screen_of`]'s.
+pub(crate) fn stem_of(item: &LibraryItem) -> Option<(NameKind, String)> {
     let (kind, ending) = kind_of(item)?;
-    if kind == NameKind::Screen {
-        let inside = item.path.strip_prefix(script::screens::FOLDER)?;
-        return Some((kind, script::screens::screen_name(inside)?));
-    }
-    let path = &item.path[..item.path.len() - ending];
-    Some((kind, script::project_names::option_of(path)?))
+    (kind != NameKind::Screen).then(|| (kind, item.path[..item.path.len() - ending].to_owned()))
+}
+
+/// The screen `item` is, by its name (`PauseMenu` for `ui/pauseMenu.lst`).
+pub(crate) fn screen_of(item: &LibraryItem) -> Option<(NameKind, String)> {
+    let (kind, _) = kind_of(item)?;
+    let inside = item.path.strip_prefix(script::screens::FOLDER)?;
+    (kind == NameKind::Screen).then(|| script::screens::screen_name(inside).map(|n| (kind, n)))?
 }
 
 /// The key a name is found by: options are found again ignoring
@@ -49,11 +52,12 @@ pub(crate) fn key(kind: NameKind, option: &str) -> (NameKind, String) {
 /// The option, among `options`, that `item` stands for when `kind`
 /// picks: a file dropped on a field.
 pub(crate) fn dropped_option<'a>(
+    library: &super::LibraryFiles,
     item: &LibraryItem,
     kind: NameKind,
     options: &'a [String],
 ) -> Option<&'a String> {
-    let (its, option) = name_of(item)?;
+    let (its, option) = library.name_of(item)?;
     (its == kind && kind != NameKind::Clip)
         .then(|| options.iter().find(|o| o.eq_ignore_ascii_case(&option)))
         .flatten()
@@ -62,6 +66,7 @@ pub(crate) fn dropped_option<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::library::LibraryFiles;
 
     fn item(kind: LibraryKind, path: &str) -> LibraryItem {
         LibraryItem {
@@ -72,97 +77,85 @@ mod tests {
         }
     }
 
-    #[test]
-    fn each_kind_of_file_stands_for_its_option() {
-        let cases = [
-            (
-                LibraryKind::SoundEvent,
-                "sfx/alert.solsound",
-                NameKind::Sound,
-                "Sfx.Alert",
-            ),
-            (
-                LibraryKind::Module,
-                "coin.module.lst",
-                NameKind::Module,
-                "Coin",
-            ),
-            (
-                LibraryKind::Module,
-                "ships/old.solassembly",
-                NameKind::Module,
-                "Ships.Old",
-            ),
-            (
-                LibraryKind::Texture,
-                "portraits/guardFace.PNG",
-                NameKind::Picture,
-                "Portraits.GuardFace",
-            ),
-            (
-                LibraryKind::Level,
-                "forest/cave.sollevel",
-                NameKind::Level,
-                "Forest.Cave",
-            ),
-            (
-                LibraryKind::SpriteSheet,
-                "sprites/farmer.aseprite",
-                NameKind::Clip,
-                "Sprites.Farmer",
-            ),
-            (
-                LibraryKind::Code,
-                "ui/pauseMenu.lst",
-                NameKind::Screen,
-                "PauseMenu",
-            ),
-            (
-                LibraryKind::Font,
-                "fonts/Lora.TTF",
-                NameKind::Font,
-                "Fonts.Lora",
-            ),
+    /// The Library's files with the names a project with them would have
+    /// (decision 0137: one dot, each name's file listed beside it).
+    fn library() -> LibraryFiles {
+        let mut files: LibraryFiles = vec![
+            item(LibraryKind::SoundEvent, "sfx/alert.solsound"),
+            item(LibraryKind::Module, "coin.module.lst"),
+            item(LibraryKind::Texture, "portraits/guardFace.PNG"),
+            item(LibraryKind::Texture, "sprites/tools.png"),
+            item(LibraryKind::Level, "forest/cave.sollevel"),
+            item(LibraryKind::SpriteSheet, "sprites/farmer.aseprite"),
+            item(LibraryKind::Code, "ui/pauseMenu.lst"),
+            item(LibraryKind::Code, "main.lst"),
+            item(LibraryKind::Model, "ship.glb"),
+        ]
+        .into();
+        let mut names = script::project_names::Names::with_modules(&["coin"])
+            .and_sounds(&["sfx/alert"])
+            .and_levels(&["forest/cave"])
+            .and_clips(&["sprites/farmer/walk"], &[]);
+        names.pictures = vec![
+            "portraits/guardFace".into(),
+            "sprites/tools".into(),
+            "sprites/tools/Axe".into(),
         ];
-        for (kind, path, names, option) in cases {
-            assert_eq!(
-                name_of(&item(kind, path)),
-                Some((names, option.to_string())),
-                "{path}"
-            );
-        }
-        assert_eq!(
-            name_of(&item(LibraryKind::Code, "main.lst")),
-            None,
-            "not a screen"
-        );
-        assert_eq!(name_of(&item(LibraryKind::Model, "ship.glb")), None);
-        assert_eq!(
-            name_of(&item(LibraryKind::SoundEvent, "sfx/2bad.solsound")),
-            None
-        );
+        let (text, _) = script::project_names::project_file("Test 1.0", &names);
+        let paths = script::project_names::paths_in(&[("solis/project.lst".into(), text)]);
+        files.set_name_paths(std::sync::Arc::new(paths));
+        files
     }
 
     #[test]
-    fn a_dropped_file_is_taken_only_by_its_own_kind_among_the_options() {
-        let options = vec!["Sfx".to_string(), "Sfx.Alert".to_string()];
-        let alert = item(LibraryKind::SoundEvent, "sfx/alert.solsound");
+    fn each_kind_of_file_stands_for_its_name_with_one_dot() {
+        let files = library();
+        let name = |kind, path| files.name_of(&item(kind, path)).map(|(_, n)| n);
         assert_eq!(
-            dropped_option(&alert, NameKind::Sound, &options),
-            Some(&options[1])
+            name(LibraryKind::SoundEvent, "sfx/alert.solsound").as_deref(),
+            Some("Alert")
         );
-        assert_eq!(dropped_option(&alert, NameKind::Module, &options), None);
-        let gone = item(LibraryKind::SoundEvent, "sfx/new.solsound");
         assert_eq!(
-            dropped_option(&gone, NameKind::Sound, &options),
-            None,
-            "not yet an option"
+            name(LibraryKind::Module, "coin.module.lst").as_deref(),
+            Some("Coin")
         );
-        let sheet = item(LibraryKind::SpriteSheet, "sfx.aseprite");
         assert_eq!(
-            dropped_option(&sheet, NameKind::Clip, &options),
-            None,
-            "a sheet holds many clips"
+            name(LibraryKind::Texture, "portraits/guardFace.PNG").as_deref(),
+            Some("GuardFace")
         );
+        assert_eq!(
+            name(LibraryKind::Level, "forest/cave.sollevel").as_deref(),
+            Some("Cave")
+        );
+        assert_eq!(
+            name(LibraryKind::Code, "ui/pauseMenu.lst").as_deref(),
+            Some("PauseMenu")
+        );
+        assert_eq!(name(LibraryKind::Code, "main.lst"), None);
+        assert_eq!(name(LibraryKind::Model, "ship.glb"), None);
+    }
+
+    #[test]
+    fn a_clip_finds_its_sheet_and_a_crop_its_picture() {
+        let files = library();
+        let path = |kind, option| files.named(kind, option).map(|i| i.path.clone());
+        assert_eq!(
+            path(NameKind::Clip, "FarmerWalk").as_deref(),
+            Some("sprites/farmer.aseprite")
+        );
+        assert_eq!(
+            path(NameKind::Picture, "ToolsAxe").as_deref(),
+            Some("sprites/tools.png")
+        );
+        assert_eq!(
+            path(NameKind::Picture, "Tools").as_deref(),
+            Some("sprites/tools.png")
+        );
+        assert_eq!(
+            files.icon_picture("Picture.ToolsAxe").as_deref(),
+            Some("sprites/tools.png#Axe")
+        );
+        assert_eq!(path(NameKind::Clip, "Nothing"), None);
+        assert_eq!(files.names_of(NameKind::Sound), ["Alert"]);
     }
 }

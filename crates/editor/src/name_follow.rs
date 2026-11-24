@@ -44,23 +44,26 @@ fn item_at(path: &str) -> LibraryItem {
 /// folder), and the old and new option.
 pub(crate) fn renamed(from: &str, to: &str) -> Option<(Vec<NameKind>, String, String)> {
     let (old, new) = (item_at(from), item_at(to));
-    if old.kind != LibraryKind::Other {
-        let (kind, old) = names::name_of(&old)?;
-        let (same, new) = names::name_of(&new)?;
-        return (kind == same && old != new).then(|| (vec![kind], old, new));
+    // A folder renames nothing: names have one dot (decision 0137).
+    if old.kind == LibraryKind::Other {
+        return None;
     }
-    // A folder: every kind whose names are paths.
-    let old = script::project_names::option_of(from)?;
-    let new = script::project_names::option_of(to)?;
-    let kinds = vec![
-        NameKind::Sound,
-        NameKind::Clip,
-        NameKind::Picture,
-        NameKind::Module,
-        NameKind::Level,
-        NameKind::Font,
-    ];
-    (old != new).then_some((kinds, old, new))
+    // A file's name with one dot, by its own name (a clash of two files'
+    // names is said when the names are written again).
+    let name = |item: &LibraryItem| -> Option<(NameKind, String)> {
+        if let Some(screen) = names::screen_of(item) {
+            return Some(screen);
+        }
+        let (kind, stem) = names::stem_of(item)?;
+        let file = stem.rsplit('/').next().unwrap_or(&stem);
+        let option = script::project_names::one_dot(&[(String::new(), file.to_owned())])
+            .pop()
+            .flatten()?;
+        Some((kind, option))
+    };
+    let (kind, old) = name(&old)?;
+    let (same, new) = name(&new)?;
+    (kind == same && old != new).then(|| (vec![kind], old, new))
 }
 
 /// `value` with `old` (or a name inside it) made `new`, if it names it.

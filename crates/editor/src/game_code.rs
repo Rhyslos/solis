@@ -74,6 +74,11 @@ impl Workbench {
         }
         self.open.program = chunk;
         self.open.program_given = true;
+        if let Some(program) = &self.open.program {
+            self.open
+                .library
+                .set_name_paths(std::sync::Arc::clone(&program.name_paths));
+        }
         // The screens a Screen can show (decision 0087).
         let screens = self.screen_names();
         if self.viewport.sheets.screens != screens {

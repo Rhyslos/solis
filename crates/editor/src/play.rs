@@ -591,13 +591,16 @@ impl Workbench {
 /// a sound event plays it on the entity) and as events for game code
 /// (`CueReached`, `ClipFinished`), sent only to entities with game code.
 /// They carry the project file's names (decision 0077): `Cue.Footstep`,
-/// and the clip by its sheet's path in `paths` (`Clip.Sprites.Farmer.Walk`);
-/// one that has no such name isn't sent.
+/// and the clip as the game code's names list its sheet's path in `paths`
+/// and the clip (`Clip.FarmerWalk`); one that has no such name isn't sent.
 fn cues_of(
     world: &world::World,
     cues: Vec<world::SpriteCue>,
     sounds: &std::collections::HashMap<String, String>,
-    paths: &std::collections::HashMap<reflect::AssetId, String>,
+    (paths, names): (
+        &std::collections::HashMap<reflect::AssetId, String>,
+        Option<&script::project_names::NamePaths>,
+    ),
 ) -> (Vec<crate::game_sound::Request>, Vec<script::Event>) {
     let mut plays = Vec::new();
     let mut events = Vec::new();
@@ -618,7 +621,7 @@ fn cues_of(
                 let sheet = world.sprite_sheet(id).and_then(|s| paths.get(&s));
                 let option = sheet.and_then(|path| {
                     let stem = reflect::data_files::path_stem(path);
-                    script::project_names::option_of(&format!("{stem}/{clip}"))
+                    script::project_names::option_in(names?, "Clip", &format!("{stem}/{clip}"))
                 });
                 (id, "ClipFinished", option)
             }

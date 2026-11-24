@@ -88,7 +88,7 @@ pub(crate) fn name_picker(
     };
     let width = (ui.available_width() - play_room).max(size::FIELD_MIN_W);
     let button = field::dropdown_button_led(ui, label, shown, width, lead);
-    let mut asked = dropped(ui, &button, (options, kind), current);
+    let mut asked = dropped(ui, &button, (options, kind), (current, library));
     egui::Popup::menu(&button)
         .width(width.max(size::FIELD_MIN_W * 3.0))
         // ▶ in the list plays a sound and leaves it open.
@@ -115,10 +115,10 @@ fn dropped(
     ui: &Ui,
     button: &Response,
     (options, kind): (&[String], NameKind),
-    current: &str,
+    (current, library): (&str, &LibraryFiles),
 ) -> Option<NameAsk> {
     let hovered = button.dnd_hover_payload::<LibraryDrag>()?;
-    let option = names::dropped_option(&hovered.0, kind, options)?;
+    let option = names::dropped_option(library, &hovered.0, kind, options)?;
     ui.painter().rect_stroke(
         button.rect,
         CornerRadius::same(size::radius::CONTROL),
