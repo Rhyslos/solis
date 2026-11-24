@@ -133,7 +133,7 @@ fn an_old_project_s_assemblies_become_modules_and_every_copy_and_spawn_finds_the
     assert!(notes.is_empty(), "{notes:?}");
     let names = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
     assert!(
-        names.contains("state Module = [Animals [Chicken], Props [Barrel, Crate]];"),
+        names.contains("state Module = [Barrel, Chicken, Crate];"),
         "{names}"
     );
     // The project file says format 3 now.

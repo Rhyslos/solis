@@ -5,7 +5,7 @@
 ## When to use it
 Whenever game code needs to find things by **what they are** rather than by name: a guard looking for the nearest enemy, a magnet pulling in every coin within reach, a door that opens only for the player, a turret that ignores anything flying. A [tag](concepts.md) is a label an entity carries; an entity can carry several (a bat can be both Enemy and Flying), and many entities can carry the same one.
 
-Why tags and not names? A name belongs to one entity, and `World:find("Bat 12")` finds that one. A tag belongs to a **kind**, so code written once works for every enemy you'll ever place, copy or spawn. And because the project keeps its own list of tags, game code names each as `Tag.Enemy`: a misspelt tag (`Tag.Enmey`) is a mistake in Problems before the game runs, not a question that quietly finds nothing.
+Why tags and not names? A name belongs to one entity, and an entity field set in Properties reaches that one. A tag belongs to a **kind**, so code written once works for every enemy you'll ever place, copy or spawn. And because the project keeps its own list of tags, game code names each as `Tag.Enemy`: a misspelt tag (`Tag.Enmey`) is a mistake in Problems before the game runs, not a question that quietly finds nothing.
 
 > **Good to know:** to ask "which of these have a Health?", you can already ask by component. Tags are for kinds you decide yourself, whatever components the entities have.
 

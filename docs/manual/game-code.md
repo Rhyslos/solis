@@ -170,7 +170,7 @@ What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a c
 
 **What game code sees during a tick:** the world as it was when the tick started, plus its own changes. Solis runs game code on every core of your processor at once, so components can't see each other's moves while they happen. Instead:
 
-- `position()`, `rotation()`, `name()` and `World:find` read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.
+- `position()`, `rotation()` and `name()` read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.
 - `moveTo`, `turnTo`, `face` and `World:say` are kept, and happen when every `update` is done, in the order above. If two components move the same entity, the last one in that order wins.
 - Events are delivered after that, a round at a time; each round sees the world as the round before left it.
 
@@ -1053,7 +1053,6 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 |---|---|---|
 | `solis/world` | `World:say(string words)` | Writes words in the Console. |
 | `solis/world` | `float World:time()` | How long the game has been running, in seconds. |
-| `solis/world` | `entity World:find(string name)` | The first entity with this name, in the Level panel's order, or `nothing`. |
 | `solis/world` | `entity World:the(Component which)` | The one entity with this component, as the tick started; none, or more than one, stops the component ([Reading other entities](#reading-other-entities)). |
 | `solis/components` | `KnightReading entity:knight()`, one for each component | A copy of another entity's component as the tick started, read-only, or `nothing` ([Reading other entities](#reading-other-entities)). |
 | `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
@@ -1175,7 +1174,7 @@ Game code runs inside a **sandbox**: it can reach the game through the engine's 
 - **Problem:** I saved new code while playing, and the Console says the running game couldn't take it. **Why:** the code's start failed with the game's world (it ran fine with no world while checking). **Fix:** fix the line it points at; the game keeps the last code meanwhile.
 - **Problem:** Problems says "a state is set with =, so write mode = Mode.Burst;". **Why:** Lust sets a state with `=`, like any other value, and keeps `is` for questions. Code written for an older Solis set one with `is` (`mode is Mode.Burst;`, or `state is Mood.Calm;` in a `has`). **Fix:** change that `is` to `=`, as the message shows. Questions (`is mode == Mode.Burst? then`) stay as they are.
 - **Problem:** Problems says something is nested too deeply. **Why:** more than 150 levels of brackets, blocks or operators inside each other (`a + b + c …` counts each `+`) is more than Lust takes. **Fix:** split it up with variables or methods.
-- **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `World:find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
+- **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: another entity is nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.
 - **Problem:** a component reads another entity's place and gets where it was before this tick's move. **Why:** during a tick, game code sees the world as it was when the tick started (see Components, above), so every core sees the same world. **Fix:** usually nothing: it catches up next tick. If it must be at once, do both in one component, or send an event (events see the moves made before them).
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.

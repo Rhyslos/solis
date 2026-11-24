@@ -1325,7 +1325,7 @@ footer p { color: var(--muted); }
 <li><a id="concepts--focus"></a><strong>Focus (of a screen's buttons):</strong> the button the keys or a gamepad are on, shown with a blue ring. The arrow keys or the stick move it to the nearest button that way, and Space, Enter or A chooses it. See <a href="#screens">Game screens</a>.</li>
 <li><a id="concepts--shaping"></a><strong>Shaping (text):</strong> turning a run of letters into the font's own shapes and where each goes: a pair like &quot;AV&quot; moved closer (kerning), &quot;fi&quot; drawn as one joined letter where the font has it, an accent placed over its letter. Screens' text is shaped as its font says. See <a href="#screen-text">Text on screens</a>.</li>
 <li><a id="concepts--line-breaking"></a><strong>Line breaking (wrapping):</strong> where a text that's too wide for its box moves onto a new line. Unicode's rules say where that may happen: between words, after a hyphen, between Chinese or Japanese letters. A word too long for a line on its own breaks between its letters. See <a href="#screen-text">Text on screens</a>.</li>
-<li><a id="concepts--text-effects"></a><strong>Text effects (markup):</strong> words in square brackets inside a screen's text that change how part of it looks: <code>[wave]hello[/wave]</code>, <code>[colour=red5]roses[/colour]</code>, <code>[icon=Picture.Ui.Coin]</code>. A mistake in them is shown as written and listed in Problems. See <a href="#text-effects">Text effects</a>.</li>
+<li><a id="concepts--text-effects"></a><strong>Text effects (markup):</strong> words in square brackets inside a screen's text that change how part of it looks: <code>[wave]hello[/wave]</code>, <code>[colour=red5]roses[/colour]</code>, <code>[icon=Picture.Coin]</code>. A mistake in them is shown as written and listed in Problems. See <a href="#text-effects">Text effects</a>.</li>
 <li><a id="concepts--typing-out"></a><strong>Typing out:</strong> a screen's text showing a letter at a time, as if typed, at its Screen's typing speed; game code hears <code>TypingFinished</code> when it's done. It's what the screen shows, not part of the game's state. See <a href="#text-effects">Text effects</a>.</li>
 <li><a id="concepts--fallback-font"></a><strong>Fallback font:</strong> a font a letter is taken from when the font before it in the list doesn't have that letter, such as a Japanese font after an English one. See <a href="#screen-text">Text on screens</a>.</li>
 <li><a id="concepts--ellipsis"></a><strong>Ellipsis (…):</strong> the three dots that end text cut short because it doesn't fit its box. See <a href="#screen-text">Text on screens</a>.</li>
@@ -1362,7 +1362,7 @@ footer p { color: var(--muted); }
 <li><strong>Data table:</strong> a file of rows and typed columns, such as every item with its price, edited in the Table tab like a spreadsheet. Game code reads a row by its ID (<code>Items:row(Item.IronSword).price</code>) with every row and column checked before the game runs; while the game plays, tables don't change. See <a href="#data-tables">Data tables</a>.</li>
 <li><strong>Tag:</strong> a label you give entities, such as Enemy or Collectible, so game code can find every entity of a kind: &quot;all enemies within 3 m&quot;, &quot;the nearest collectible&quot;. The project keeps its own list of tags (Project settings › Tags), and game code names each as <code>Tag.Enemy</code>, so a misspelt tag is a mistake before the game runs. See <a href="#tags">Tags</a>.</li>
 <li><strong>Timer:</strong> a named wait a component starts in game code (&quot;open in 2 seconds&quot;, &quot;every 5 seconds&quot;, &quot;each day at six&quot;), after which it hears <code>TimerFinished</code>. Timers count <strong>game time</strong>, in whole ticks, so they follow the game's speed and stand still while it's paused, and they're kept in save games. Each is named where code starts it (<code>startTimer(Timer.DoorOpens, 2.0)</code>), so a misspelt name elsewhere is a mistake before the game runs. One started while its component is in a state of its own ends with that state (<a href="#states">States that start and stop</a>). See <a href="#timers">Timers</a>.</li>
-<li><a id="concepts--text-key"></a><strong>Text key:</strong> the name a line of the game's text is found by, a group and a name such as <code>Shop.Welcome</code>, made once and never changed. Game code names it <code>Text.Shop.Welcome</code>, so a misspelt key is a mistake before the game runs. See <a href="#translations">Translations</a>.</li>
+<li><a id="concepts--text-key"></a><strong>Text key:</strong> the name a line of the game's text is found by, a group and a name such as <code>Shop.Welcome</code>, made once and never changed. Game code names it <code>Text.ShopWelcome</code>, so a misspelt key is a mistake before the game runs. See <a href="#translations">Translations</a>.</li>
 <li><a id="concepts--main-language"></a><strong>Main language:</strong> the language a game is written in (English unless you choose another). Its text is shown wherever another language has no line yet, so a game works before anything is translated. See <a href="#translations">Translations</a>.</li>
 <li><a id="concepts--fluent"></a><strong>Fluent:</strong> the format each language's text is kept in (<code>.ftl</code> files), which translators know: a key, <code>=</code>, and its words, with values in <code>{ $name }</code> and plural forms each language writes in its own shape. See <a href="#translations">Translations</a>.</li>
 <li><a id="concepts--caption"></a><strong>Caption and subtitle:</strong> words shown low on the screen for what's heard. A <strong>caption</strong> says a sound (&quot;[The door creaks]&quot;); a <strong>subtitle</strong> says what a character says, with their name. Each player turns them on or off and sets their size. See <a href="#subtitles-and-captions">Subtitles and captions</a>.</li>
@@ -1415,7 +1415,7 @@ footer p { color: var(--muted); }
 <section id="concepts--2d">
 <h3>2D<a class="anchor" href="#concepts--2d" aria-label="Link to this section">#</a></h3>
 <ul>
-<li><strong>Atlas crop:</strong> a named part of a picture (one item from a sheet of them), cut out in the <strong>Atlas Crop</strong> tab and kept in a file beside the picture, which never changes. Game code names one <code>Picture.Sprites.Tools.Axe</code>. See <a href="#atlas-crop">Atlas Crop</a>.</li>
+<li><strong>Atlas crop:</strong> a named part of a picture (one item from a sheet of them), cut out in the <strong>Atlas Crop</strong> tab and kept in a file beside the picture, which never changes. Game code names one <code>Picture.ToolsAxe</code>. See <a href="#atlas-crop">Atlas Crop</a>.</li>
 <li><strong>2D in Solis:</strong> flat things lying on the ground, seen from straight above by a camera with no perspective. They're in the same world as 3D, so light, sound, physics, saving and game code work on them too. Height (Z) says what's drawn over what. See <a href="#2d-pixel-perfect">2D: the pixel-perfect view</a>.</li>
 <li><strong>Pixel art:</strong> pictures drawn one pixel at a time, at a small size, meant to be shown scaled up with every pixel kept square and sharp.</li>
 <li><strong>Base resolution:</strong> the size a 2D game is drawn at before it's scaled up to the screen, such as 480 × 270. Smaller shows chunkier pixels and less of the world.</li>
@@ -2466,7 +2466,7 @@ entity 2B8D4NE6TV0HC {
 <li><strong>Problem:</strong> I undid <em>Make module</em> and the file is still in the Library. <strong>Why:</strong> undo changes the level, not files. <strong>Fix:</strong> delete the module in the Library if you don't want it.</li>
 <li><strong>Problem:</strong> copies in another level didn't change. <strong>Why:</strong> saving a module updates the copies in the open level at once; other levels show the change when they're opened. Nothing to fix: their copies follow the module as soon as they're read.</li>
 <li>A level file stores each copy as one block naming its module, plus only the settings that differ, so copies keep files small and Git merges them easily. The module's own file is a Lust data file you can read: a part per entity, a line per setting.</li>
-<li><strong>Assemblies:</strong> Solis called modules <em>assemblies</em> until this version. Opening an older project renames each <code>.solassembly</code> file a <code>.module.lst</code> beside it, keeping its ID, so every copy and every spawn in game code still finds it; the older file is kept in the backups (<a href="#backups-and-upgrades">Backups and upgrades</a>). In game code, <code>Assembly.Ships.Fighter</code> is now <code>Module.Ships.Fighter</code> (<a href="#game-code--making-and-removing-entities">Game code</a>).</li>
+<li><strong>Assemblies:</strong> Solis called modules <em>assemblies</em> until this version. Opening an older project renames each <code>.solassembly</code> file a <code>.module.lst</code> beside it, keeping its ID, so every copy and every spawn in game code still finds it; the older file is kept in the backups (<a href="#backups-and-upgrades">Backups and upgrades</a>). In game code, <code>Assembly.Ships.Fighter</code> is now <code>Module.Fighter</code> (<a href="#game-code--making-and-removing-entities">Game code</a>).</li>
 <li>A model's parts keep their links through a new export from Blender, as long as the parts keep their names.</li>
 </ul>
 </section>
@@ -3000,7 +3000,7 @@ Click <strong>Place</strong> at the right of Home's Library bar (or in its heade
 </li>
 <li><p><strong>Areas renamed levels:</strong> levels were called <em>areas</em> until late 2026, and saved as <code>.solarea</code> files. When you open a project from then, each of its areas is renamed at once: <code>farm.solarea</code> becomes <code>farm.sollevel</code>, beside it, with its first line saying <code>level</code> instead of <code>area</code> and every other line kept as it was (your own comments too). Solis checks the level reads exactly as the area did, moves its <code>.solmeta</code> file with it if it has one, and puts the area in <code>.solis/backups/</code>. The Console says how many were renamed. Everything that named an area finds the level: a recording, the level your game starts in when you <a href="#playtest-export">export it</a>, a save game. The project file is copied to the backups too and then says it's a project with levels, so a Solis from before the rename won't open it: it says the project was made by a newer version, rather than opening it with no levels. An area that can't be renamed (it's damaged, or a level already has its name) stays as it is, still opens as a level, and the Console says why. <strong>Why:</strong> &quot;level&quot; is the word game makers use for a place in a game you build and play, and every name in Solis (the Level panel, <strong>New level</strong>, the file ending) says the same thing.</p>
 </li>
-<li><p><strong>Assemblies renamed modules:</strong> <a href="#modules">modules</a> were called <em>assemblies</em> until late 2026, and saved as <code>.solassembly</code> files. When you open a project from then, each is renamed at once: <code>chicken.solassembly</code> becomes <code>chicken.module.lst</code>, beside it, a Lust data file you can read (a part per entity, a line per setting). Solis checks it reads as exactly the same module, moves its <code>.solmeta</code> file with it (so its ID stays, and every copy placed in a level still finds it), and puts the older file in <code>.solis/backups/</code>. Game code names it as before, by its folders and name (<code>Module.Animals.Chicken</code>); only the word changed, from <code>Assembly</code> to <code>Module</code>. The Console says how many were renamed. The project file then says it's a project with modules, so a Solis from before won't open it. An assembly that can't be renamed stays as it is, still opens as a module, and the Console says why.</p>
+<li><p><strong>Assemblies renamed modules:</strong> <a href="#modules">modules</a> were called <em>assemblies</em> until late 2026, and saved as <code>.solassembly</code> files. When you open a project from then, each is renamed at once: <code>chicken.solassembly</code> becomes <code>chicken.module.lst</code>, beside it, a Lust data file you can read (a part per entity, a line per setting). Solis checks it reads as exactly the same module, moves its <code>.solmeta</code> file with it (so its ID stays, and every copy placed in a level still finds it), and puts the older file in <code>.solis/backups/</code>. Game code names it as before, by its folders and name (<code>Module.Chicken</code>); only the word changed, from <code>Assembly</code> to <code>Module</code>. The Console says how many were renamed. The project file then says it's a project with modules, so a Solis from before won't open it. An assembly that can't be renamed stays as it is, still opens as a module, and the Console says why.</p>
 </li>
 <li><p><strong>After that</strong> the file is in the new layout, so later saves don't make more copies. Your project's Git history is the undo for ordinary changes.</p>
 </li>
@@ -4438,7 +4438,7 @@ After 121 ticks:
 <p><strong>Order:</strong> each tick runs entities in the order of their IDs, and an entity's components in the order of their names, so a game runs the same way every time.</p>
 <p><strong>What game code sees during a tick:</strong> the world as it was when the tick started, plus its own changes. Solis runs game code on every core of your processor at once, so components can't see each other's moves while they happen. Instead:</p>
 <ul>
-<li><code>position()</code>, <code>rotation()</code>, <code>name()</code> and <code>World:find</code> read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.</li>
+<li><code>position()</code>, <code>rotation()</code> and <code>name()</code> read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.</li>
 <li><code>moveTo</code>, <code>turnTo</code>, <code>face</code> and <code>World:say</code> are kept, and happen when every <code>update</code> is done, in the order above. If two components move the same entity, the last one in that order wins.</li>
 <li>Events are delivered after that, a round at a time; each round sees the world as the round before left it.</li>
 </ul>
@@ -4462,9 +4462,9 @@ After 121 ticks:
         <span class="tk-t">float</span> speed = <span class="tk-v">4.0</span><span class="tk-p">;</span> <span class="tk-c">-- [range 0 10, step 0.5, unit &quot;m/s&quot;, tip &quot;Walking speed&quot;]</span>
 
         <span class="tk-c">-- What it uses: picked from the project's own files.</span>
-        <span class="tk-n">Sound</span> alertSound = <span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Sfx</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-p">;</span>
-        <span class="tk-n">Picture</span> portrait = <span class="tk-o">Picture</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Tools</span><span class="tk-p">;</span>
-        <span class="tk-n">Module</span> drops = <span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Drones</span><span class="tk-p">.</span><span class="tk-s">Drone</span><span class="tk-p">;</span>
+        <span class="tk-n">Sound</span> alertSound = <span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-p">;</span>
+        <span class="tk-n">Picture</span> portrait = <span class="tk-o">Picture</span><span class="tk-p">.</span><span class="tk-s">Tools</span><span class="tk-p">;</span>
+        <span class="tk-n">Module</span> drops = <span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Drone</span><span class="tk-p">;</span>
 
         <span class="tk-c">-- How it sees.</span>
         <span class="tk-t">float</span> sightRange = <span class="tk-v">8.0</span><span class="tk-p">;</span> <span class="tk-c">-- [range 0 20, unit &quot;m&quot;, group &quot;Seeing&quot;]</span>
@@ -4497,7 +4497,7 @@ After 121 ticks:
         <span class="tk-v">&quot;alertSound&quot;</span><span class="tk-p">,</span>
         <span class="tk-v">&quot;Alert sound&quot;</span><span class="tk-p">,</span>
         <span class="tk-n">FieldKind</span><span class="tk-p">::</span><span class="tk-n">Choice</span><span class="tk-p">(</span>sounds<span class="tk-p">),</span>
-        <span class="tk-n">Value</span><span class="tk-p">::</span><span class="tk-n">Text</span><span class="tk-p">(</span><span class="tk-v">&quot;Sfx.Footstep&quot;</span><span class="tk-p">.</span>into<span class="tk-p">()),</span>
+        <span class="tk-n">Value</span><span class="tk-p">::</span><span class="tk-n">Text</span><span class="tk-p">(</span><span class="tk-v">&quot;Footstep&quot;</span><span class="tk-p">.</span>into<span class="tk-p">()),</span>
     <span class="tk-p">)</span>
     <span class="tk-p">.</span>hint<span class="tk-p">(</span><span class="tk-n">Hint</span> <span class="tk-p">{</span>
         offers<span class="tk-p">:</span> <span class="tk-n">Offer</span><span class="tk-p">::</span><span class="tk-n">Names</span><span class="tk-p">(</span><span class="tk-n">NameKind</span><span class="tk-p">::</span><span class="tk-n">Sound</span><span class="tk-p">),</span>
@@ -4513,9 +4513,9 @@ After 121 ticks:
 <span class="tk-k">local</span> <span class="tk-n">Guard</span> = component<span class="tk-p">(</span><span class="tk-v">&quot;Guard&quot;</span><span class="tk-p">, {</span>
     <span class="tk-p">{</span> <span class="tk-v">&quot;speed&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;float&quot;</span><span class="tk-p">,</span> <span class="tk-v">4.0</span><span class="tk-p">,</span> <span class="tk-v">nil</span><span class="tk-p">, {</span> range = <span class="tk-p">{</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span> <span class="tk-p">},</span> step = <span class="tk-v">0.5</span><span class="tk-p">,</span> unit = <span class="tk-v">&quot;m/s&quot;</span><span class="tk-p">,</span> tip = <span class="tk-v">&quot;Walking speed&quot;</span> <span class="tk-p">} },</span>
     <span class="tk-c">-- A kind that's one of the project's names picks from them.</span>
-    <span class="tk-p">{</span> <span class="tk-v">&quot;alertSound&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Sound&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Sfx.Footstep&quot;</span> <span class="tk-p">},</span>
-    <span class="tk-p">{</span> <span class="tk-v">&quot;portrait&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Picture&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Sprites.Tools&quot;</span> <span class="tk-p">},</span>
-    <span class="tk-p">{</span> <span class="tk-v">&quot;drops&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Module&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Drones.Drone&quot;</span> <span class="tk-p">},</span>
+    <span class="tk-p">{</span> <span class="tk-v">&quot;alertSound&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Sound&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Footstep&quot;</span> <span class="tk-p">},</span>
+    <span class="tk-p">{</span> <span class="tk-v">&quot;portrait&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Picture&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Tools&quot;</span> <span class="tk-p">},</span>
+    <span class="tk-p">{</span> <span class="tk-v">&quot;drops&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Module&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Drone&quot;</span> <span class="tk-p">},</span>
     <span class="tk-p">{</span> <span class="tk-v">&quot;sightRange&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;float&quot;</span><span class="tk-p">,</span> <span class="tk-v">8.0</span><span class="tk-p">,</span> <span class="tk-v">nil</span><span class="tk-p">, {</span> range = <span class="tk-p">{</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">20</span> <span class="tk-p">},</span> unit = <span class="tk-v">&quot;m&quot;</span><span class="tk-p">,</span> group = <span class="tk-v">&quot;Seeing&quot;</span> <span class="tk-p">} },</span>
     <span class="tk-p">{</span> <span class="tk-v">&quot;says&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;string&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;Halt!&quot;</span><span class="tk-p">,</span> <span class="tk-v">nil</span><span class="tk-p">, {</span> multiline = <span class="tk-v">true</span> <span class="tk-p">} },</span>
     <span class="tk-p">{</span> <span class="tk-v">&quot;seen&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;int&quot;</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">nil</span><span class="tk-p">, {</span> hidden = <span class="tk-v">true</span> <span class="tk-p">} },</span>
@@ -4544,8 +4544,8 @@ After 121 ticks:
 <p><strong>Why a comment?</strong> Lust has no way to put words like these on a field yet. A comment changes nothing about how the code runs, so the hints can't break a game, and when Lust learns them, moving over is taking away the <code>--</code>.</p>
 <p><strong>Limits help, never forbid.</strong> Properties keeps what you drag or type within a field's range, but game code may set anything, and a value outside the range is shown as it is (the slider sits at its end) until you move it. A starting value outside its own range is listed in <a href="#problems">Problems</a>, since you couldn't drag back to it. Each slider drag is one <a href="#undo">undo</a> step.</p>
 <p><strong>Mistakes in a hint</strong> (a word Solis doesn't know, <code>range 10 0</code>, a range on a sound) are listed in Problems with their line, saying what to write. The rest of the code runs, and the field shows without that hint. Hints belong to the code, not the level: they're never saved in a level, and change as soon as you save new code.</p>
-<p><strong>The project's names.</strong> A field whose kind is <code>Sound</code>, <code>Clip</code>, <code>Picture</code>, <code>Module</code>, <code>Screen</code>, <code>Level</code>, <code>Tag</code> or <code>Font</code> (from <code>solis/project.lst</code>) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a <strong>▶</strong> to hear it, in the list and after the field. You can also <strong>drag a file from the Library onto the field</strong>: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (<code>Sfx.Alert</code>), so <strong>renaming or moving the file in the Library changes every field naming it</strong> in the open level, as one undo step. In Lua, write the kind's name as the field's kind (<code>&quot;Sound&quot;</code>); in Rust, a <code>Choice</code> field with <code>Offer::Names(NameKind::Sound)</code>.</p>
-<p><strong>Pictures</strong> are the project's PNG and JPEG files (<code>Picture.Portraits.GuardFace</code> for <code>portraits/guardFace.png</code>), with the parts cut out of each with <a href="#atlas-crop">Atlas Crop</a> inside it (<code>Picture.Sprites.Tools.Axe</code>). <strong>Levels</strong> are its <code>.sollevel</code> files (<code>Level.Forest.Cave</code>), and <strong>fonts</strong> its <code>.ttf</code> and <code>.otf</code> files (<code>Font.Fonts.Lora</code>; see <a href="#screen-text">Text on screens</a>).</p>
+<p><strong>The project's names.</strong> A field whose kind is <code>Sound</code>, <code>Clip</code>, <code>Picture</code>, <code>Module</code>, <code>Screen</code>, <code>Level</code>, <code>Tag</code> or <code>Font</code> (from <code>solis/project.lst</code>) holds one of them, and Properties shows a list to pick from: a box to find one by typing, the project's folders as headings, each name with its file's picture or its kind's icon, and on a sound a <strong>▶</strong> to hear it, in the list and after the field. You can also <strong>drag a file from the Library onto the field</strong>: it lights up when the file is one it can hold, and letting go sets it, one undo step. The field keeps the name (<code>Alert</code>), so <strong>renaming or moving the file in the Library changes every field naming it</strong> in the open level, as one undo step. In Lua, write the kind's name as the field's kind (<code>&quot;Sound&quot;</code>); in Rust, a <code>Choice</code> field with <code>Offer::Names(NameKind::Sound)</code>.</p>
+<p><strong>Pictures</strong> are the project's PNG and JPEG files (<code>Picture.GuardFace</code> for <code>portraits/guardFace.png</code>), and the parts cut out of each with <a href="#atlas-crop">Atlas Crop</a>, named after their picture (<code>Picture.ToolsAxe</code> for the Axe cut from <code>sprites/tools.png</code>). <strong>Levels</strong> are its <code>.sollevel</code> files (<code>Level.Cave</code>), and <strong>fonts</strong> its <code>.ttf</code> and <code>.otf</code> files (<code>Font.Lora</code>; see <a href="#screen-text">Text on screens</a>).</p>
 <p><strong>Colours</strong> show a swatch, which opens a colour picker, and the colour's hex after it (<code>#5AA0E0</code>).</p>
 <p><strong>Lists aren't here yet.</strong> A component can't keep a list of things (a guard's patrol points) until Lust can keep an array in a component; it's been asked for. Until then, use several fields, or child entities as markers.</p>
 </section>
@@ -4779,7 +4779,7 @@ After 121 ticks:
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is</span> made &lt; <span class="tk-v">10</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-t">entity</span> ship = <span class="tk-o">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Ships</span><span class="tk-p">.</span><span class="tk-s">Fighter</span><span class="tk-p">, [</span>made * <span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span><span class="tk-p">]);</span>
+            <span class="tk-t">entity</span> ship = <span class="tk-o">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Fighter</span><span class="tk-p">, [</span>made * <span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span><span class="tk-p">]);</span>
             made = made + <span class="tk-v">1</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -4812,14 +4812,14 @@ After 121 ticks:
 
 <span class="tk-k">function</span> <span class="tk-n">Hangar</span><span class="tk-p">:</span>update<span class="tk-p">(</span>dt<span class="tk-p">)</span>
     <span class="tk-f">if self</span><span class="tk-p">.</span>made &lt; <span class="tk-v">10</span> <span class="tk-f">then</span>
-        <span class="tk-c">-- The module's name as text: Module.Ships.Fighter is &quot;Ships.Fighter&quot;.</span>
-        <span class="tk-k">local</span> ship = solis<span class="tk-p">.</span><span class="tk-n">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-v">&quot;Ships.Fighter&quot;</span><span class="tk-p">,</span> vec3<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>made * <span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span><span class="tk-p">))</span>
+        <span class="tk-c">-- The module's name as text: Module.Fighter is &quot;Fighter&quot;.</span>
+        <span class="tk-k">local</span> ship = solis<span class="tk-p">.</span><span class="tk-n">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-v">&quot;Fighter&quot;</span><span class="tk-p">,</span> vec3<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>made * <span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span><span class="tk-p">))</span>
         <span class="tk-f">self</span><span class="tk-p">.</span>made = <span class="tk-f">self</span><span class="tk-p">.</span>made + <span class="tk-v">1</span>
     <span class="tk-k">end</span>
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><strong>Which module:</strong> one of the project's, named from its file with folders as options inside options: <code>ships/fighter.module.lst</code> is <code>Module.Ships.Fighter</code> (each part's first letter a capital). Solis writes the names into <code>solis/project.lst</code> whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like <code>time</code>) is left out, and the Console says which. <code>Module.None</code> is there when the project has none, and makes nothing.</li>
+<li><strong>Which module:</strong> one of the project's, named from its file: <code>ships/fighter.module.lst</code> is <code>Module.Fighter</code> (its first letter a capital). A name has one dot: only where two files in different folders share a name does the folder join the front (<code>Module.ShipsFighter</code> beside <code>Module.DronesFighter</code>). Solis writes the names into <code>solis/project.lst</code> whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like <code>time</code>) is left out, and the Console says which. <code>Module.None</code> is there when the project has none, and makes nothing.</li>
 <li><strong>When:</strong> like a move, it happens after every <code>update</code> in the tick (<a href="#game-code--components">what game code sees</a>). <code>World:spawn</code> gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A <code>despawn</code> lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.</li>
 <li><strong>Where it shows:</strong> copies game code makes appear in the Level panel while playing, and are gone when you press <strong>Stop</strong>, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours (<a href="#play-mode">Play mode</a>), so a change you make to one of these copies goes with it.</li>
 <li>At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.</li>
@@ -5168,7 +5168,7 @@ After 121 ticks:
 </section>
 <section id="game-code--sounds">
 <h3>Sounds<a class="anchor" href="#game-code--sounds" aria-label="Link to this section">#</a></h3>
-<p>Game code plays <a href="#sound-events">sound events</a> by the project's names for them: Solis writes each event into <code>solis/project.lst</code> as <code>state Sound</code>, folders as options inside options, so <code>sfx/footstep.solsound</code> is <code>Sound.Sfx.Footstep</code>. A misspelt or deleted event is a mistake before the game runs. Fetch <code>Audio</code> from <code>solis/sound</code> and <code>Sound</code> from <code>solis/project</code>:</p>
+<p>Game code plays <a href="#sound-events">sound events</a> by the project's names for them: Solis writes each event into <code>solis/project.lst</code> as <code>state Sound</code>, named from the file, so <code>sfx/footstep.solsound</code> is <code>Sound.Footstep</code>. A misspelt or deleted event is a mistake before the game runs. Fetch <code>Audio</code> from <code>solis/sound</code> and <code>Sound</code> from <code>solis/project</code>:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/sound&quot;</span><span class="tk-p">:</span><span class="tk-n">Audio</span><span class="tk-p">;</span>
@@ -5182,7 +5182,7 @@ After 121 ticks:
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         steps = steps + <span class="tk-v">1</span><span class="tk-p">;</span>
         <span class="tk-f">is</span> steps % <span class="tk-v">30</span> == <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-o">Audio</span><span class="tk-p">:</span>playAt<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Sfx</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-p">,</span> position<span class="tk-p">());</span>
+            <span class="tk-o">Audio</span><span class="tk-p">:</span>playAt<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-p">,</span> position<span class="tk-p">());</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -5215,19 +5215,19 @@ After 121 ticks:
 <span class="tk-k">function</span> <span class="tk-n">Walker</span><span class="tk-p">:</span>update<span class="tk-p">(</span>dt<span class="tk-p">)</span>
     <span class="tk-f">self</span><span class="tk-p">.</span>steps = <span class="tk-f">self</span><span class="tk-p">.</span>steps + <span class="tk-v">1</span>
     <span class="tk-f">if self</span><span class="tk-p">.</span>steps % <span class="tk-v">30</span> == <span class="tk-v">0</span> <span class="tk-f">then</span>
-        <span class="tk-c">-- The sound event's name as text: Sound.Sfx.Footstep is &quot;Sfx.Footstep&quot;.</span>
-        solis<span class="tk-p">.</span><span class="tk-n">Audio</span><span class="tk-p">:</span>playAt<span class="tk-p">(</span><span class="tk-v">&quot;Sfx.Footstep&quot;</span><span class="tk-p">,</span> solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>position<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">))</span>
+        <span class="tk-c">-- The sound event's name as text: Sound.Footstep is &quot;Footstep&quot;.</span>
+        solis<span class="tk-p">.</span><span class="tk-n">Audio</span><span class="tk-p">:</span>playAt<span class="tk-p">(</span><span class="tk-v">&quot;Footstep&quot;</span><span class="tk-p">,</span> solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>position<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">))</span>
     <span class="tk-k">end</span>
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><code>Audio:play(Sound.Music.Theme)</code> plays it the same everywhere: music, the interface.</li>
-<li><code>Audio:playAt(Sound.Sfx.Footstep, place)</code> plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is <strong>In the world</strong>).</li>
-<li><code>playSound(Sound.Sfx.Engine)</code> plays it on the component's entity and follows it as it moves: an engine, a voice (<code>target:playSound(…)</code> on another). <code>stopSounds()</code> stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use <code>setSoundPlaying</code> for that).</li>
+<li><code>Audio:play(Sound.Theme)</code> plays it the same everywhere: music, the interface.</li>
+<li><code>Audio:playAt(Sound.Footstep, place)</code> plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is <strong>In the world</strong>).</li>
+<li><code>playSound(Sound.Engine)</code> plays it on the component's entity and follows it as it moves: an engine, a voice (<code>target:playSound(…)</code> on another). <code>stopSounds()</code> stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use <code>setSoundPlaying</code> for that).</li>
 <li><code>setSoundPlaying(playing)</code> turns the entity's <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> (a sound that keeps playing: an engine, a campfire) on or off.</li>
 <li><code>Audio:setVolume(Bus.Music, volume)</code> sets a <a href="#mixer">bus</a> for the rest of the play (the buses are the Mixer's, as <code>state Bus</code> in <code>solis/project.lst</code>; the UI bus is <code>Bus.Ui</code>, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.</li>
 </ul>
-<p>In Lua they're <code>solis.Audio:playAt(&quot;Sfx.Footstep&quot;, solis.entity.position(self.me))</code> and so on (the option's name as text; <code>&quot;sfx/footstep&quot;</code> works too). In Rust, through the component's host: <code>cx.host().play_sound(&quot;sfx/footstep&quot;, SoundAt::Place(place))</code>, and <code>cx.host().set_bus_volume(&quot;Music&quot;, 0.5)</code>.</p>
+<p>In Lua they're <code>solis.Audio:playAt(&quot;Footstep&quot;, solis.entity.position(self.me))</code> and so on (the option's name as text; <code>&quot;sfx/footstep&quot;</code> works too). In Rust, through the component's host: <code>cx.host().play_sound(&quot;sfx/footstep&quot;, SoundAt::Place(place))</code>, and <code>cx.host().set_bus_volume(&quot;Music&quot;, 0.5)</code>.</p>
 <p><strong>Sound never changes the game.</strong> None of these gives anything back, so code can't ask &quot;is it still playing?&quot;: a game plays exactly the same with sound on, off, or with no sound card, and a <a href="#concepts--simulation">recording</a> replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.</p>
 <ul>
 <li>The <strong>camera</strong> is what hears (or a <a href="#listeners">Listener</a>), and the entity whose code plays a sound is who caused it, for a sound event heard by <strong>Only who caused it</strong>: a sound to its right comes from the right. Pausing the game pauses its sounds, Play carries them on, and Stop fades them out. A Step plays that tick's sounds.</li>
@@ -5251,7 +5251,6 @@ After 121 ticks:
 <tbody>
 <tr><td><code>solis/world</code></td><td><code>World:say(string words)</code></td><td>Writes words in the Console.</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:time()</code></td><td>How long the game has been running, in seconds.</td></tr>
-<tr><td><code>solis/world</code></td><td><code>entity World:find(string name)</code></td><td>The first entity with this name, in the Level panel's order, or <code>nothing</code>.</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:the(Component which)</code></td><td>The one entity with this component, as the tick started; none, or more than one, stops the component (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/components</code></td><td><code>KnightReading entity:knight()</code>, one for each component</td><td>A copy of another entity's component as the tick started, read-only, or <code>nothing</code> (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)</code></td><td>Fires a projectile (see Projectiles, below).</td></tr>
@@ -5265,7 +5264,7 @@ After 121 ticks:
 <tr><td><code>solis/world</code></td><td><code>World:gameSpeed()</code></td><td>How fast the game runs, as the tick started.</td></tr>
 <tr><td><code>solis/screens</code></td><td><code>Screens:setTextSize(float size)</code>, <code>Screens:textSize()</code></td><td>The player's text size on every screen, 0.5 to 3 (1 as designed), from the end of the tick (<a href="#screens">Game screens</a>).</td></tr>
 <tr><td><code>solis/screens</code></td><td><code>Screens:setUiSize(float size)</code>, <code>Screens:uiSize()</code></td><td>The player's UI size: every screen bigger or smaller, 0.5 to 2.</td></tr>
-<tr><td><code>solis/world</code></td><td><code>string World:text(Text which)</code></td><td>A line of the game's text in the player's language: <code>World:text(Text.Shop.Welcome)</code>; a line that takes values is a method of its group's object, <code>ShopText:welcome(name)</code>, from <code>solis/texts</code> (<a href="#translations">Translations</a>). In Lua <code>solis.World:text(&quot;Shop.Welcome&quot;)</code>; in Rust <code>text</code>.</td></tr>
+<tr><td><code>solis/world</code></td><td><code>string World:text(Text which)</code></td><td>A line of the game's text in the player's language: <code>World:text(Text.ShopWelcome)</code>; a line that takes values is a method of its group's object, <code>ShopText:welcome(name)</code>, from <code>solis/texts</code> (<a href="#translations">Translations</a>). In Lua <code>solis.World:text(&quot;Shop.Welcome&quot;)</code>; in Rust <code>text</code>.</td></tr>
 <tr><td><code>solis/screens</code></td><td><code>Screens:setLanguage(Language which)</code>, <code>Screens:language()</code>, <code>Screens:languageName(Language which)</code></td><td>The player's language, one of the project's (<code>Language.Nb</code>), and its own name for a menu (<code>Norsk</code>), from the end of the tick.</td></tr>
 <tr><td><code>solis/screens</code></td><td><code>Screens:setSubtitles(bool on)</code>, <code>Screens:setCaptions(bool on)</code>, <code>Screens:setCaptionSize(float size)</code>, <code>Screens:setCaptionBackground(float strength)</code>, and each read the same way</td><td>The player's subtitles and captions: on or off, their size (0.5 to 2) and how dark their box is (0 to 1) (<a href="#subtitles-and-captions">Subtitles and captions</a>).</td></tr>
 <tr><td><code>solis/window</code></td><td><code>Window:setFullscreen(bool on)</code>, <code>Window:fullscreen()</code></td><td>Whether the game fills the screen (Alt+Enter switches it too).</td></tr>
@@ -5275,14 +5274,14 @@ After 121 ticks:
 <tr><td><code>solis/world</code></td><td><code>World:setSeed(int seed)</code></td><td>Starts the random numbers again from a seed, at the end of the tick.</td></tr>
 <tr><td><code>solis/world</code></td><td><code>Saves:saveTo(string slot)</code></td><td>Saves the whole game in a slot, at the end of the tick (<a href="#save-games">Save games</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>Saves:loadFrom(string slot)</code></td><td>Loads the game saved in a slot, at the end of the tick.</td></tr>
-<tr><td><code>solis/project</code></td><td><code>state Module</code></td><td>The project's modules, folders as options inside options (<code>Module.Ships.Fighter</code>).</td></tr>
+<tr><td><code>solis/project</code></td><td><code>state Module</code></td><td>The project's modules, by their files' names (<code>Module.Fighter</code>).</td></tr>
 <tr><td><code>solis/sound</code></td><td><code>Audio:play(Sound event)</code></td><td>Plays a sound event the same everywhere (see Sounds, above).</td></tr>
 <tr><td><code>solis/sound</code></td><td><code>Audio:playAt(Sound event, vec3 place)</code></td><td>Plays a sound event at a place in the world.</td></tr>
 <tr><td><code>solis/sound</code></td><td><code>Audio:setVolume(Bus bus, float volume)</code></td><td>Sets a bus's volume for the rest of the play, 0 to 1.</td></tr>
 <tr><td>any entity</td><td><code>playSound(Sound event)</code></td><td>Plays a sound event on the entity, following it.</td></tr>
 <tr><td>any entity</td><td><code>stopSounds()</code></td><td>Stops the sounds on the entity, with a short fade.</td></tr>
 <tr><td>any entity</td><td><code>setSoundPlaying(bool playing)</code></td><td>Turns the entity's AudioSource on or off.</td></tr>
-<tr><td><code>solis/project</code></td><td><code>state Sound</code>, <code>state Bus</code></td><td>The project's sound events (<code>Sound.Sfx.Footstep</code>) and the Mixer's buses (<code>Bus.Music</code>).</td></tr>
+<tr><td><code>solis/project</code></td><td><code>state Sound</code>, <code>state Bus</code></td><td>The project's sound events (<code>Sound.Footstep</code>) and the Mixer's buses (<code>Bus.Music</code>).</td></tr>
 <tr><td>any entity</td><td><code>animate(Clip clip)</code></td><td>Plays a clip on the entity's Sprite; already playing or finished it, it carries on as it is (<a href="#sprite-animation">Animating sprites</a>).</td></tr>
 <tr><td>any entity</td><td><code>animateFromStart(Clip clip)</code></td><td>Plays a clip from its beginning, whatever it was doing.</td></tr>
 <tr><td>any entity</td><td><code>stopAnimation()</code></td><td>Stops the entity's Sprite where it is in its clip.</td></tr>
@@ -5291,7 +5290,7 @@ After 121 ticks:
 <tr><td>any entity</td><td><code>setSolid(bool solid)</code></td><td>Turns the entity's collider off, or on again (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a>).</td></tr>
 <tr><td><code>solis/animation</code></td><td>event <code>CueReached(Cue cue)</code></td><td>Sent when a sprite's clip reaches a frame with an event (bring it in with <code>fetch &quot;solis/animation&quot;:CueReached;</code>).</td></tr>
 <tr><td><code>solis/animation</code></td><td>event <code>ClipFinished(Clip clip)</code></td><td>Sent when a sprite's clip has played all its times.</td></tr>
-<tr><td><code>solis/project</code></td><td><code>state Clip</code>, <code>state Cue</code></td><td>The sprites' clips, under their sheets (<code>Clip.Sprites.Farmer.Walk</code>), and their frame events (<code>Cue.Footstep</code>).</td></tr>
+<tr><td><code>solis/project</code></td><td><code>state Clip</code>, <code>state Cue</code></td><td>The sprites' clips, their sheet's name and the clip's (<code>Clip.FarmerWalk</code>), and their frame events (<code>Cue.Footstep</code>).</td></tr>
 <tr><td>any entity</td><td><code>showScreen(Screen which)</code></td><td>Shows one of the game's screens on the entity, at the end of the tick (<a href="#screens">Game screens</a>).</td></tr>
 <tr><td>any entity</td><td><code>hideScreen(Screen which)</code></td><td>Hides it, if the entity shows it.</td></tr>
 <tr><td>any entity</td><td><code>screenShown(Screen which)</code></td><td>Whether the entity shows that screen, as the tick started.</td></tr>
@@ -5338,17 +5337,17 @@ After 121 ticks:
 <tr><td><code>rotationOf(e)</code>, <code>turnTo(e, r)</code>, <code>nameOf(e)</code>, <code>despawn(e)</code></td><td><code>e:rotation()</code>, <code>e:turnTo(r)</code>, <code>e:name()</code>, <code>e:despawn()</code></td></tr>
 <tr><td><code>turnTo(this, facingAlong(d))</code></td><td><code>face(d)</code></td></tr>
 <tr><td><code>say</code>, <code>time</code>, <code>frameTime</code>, <code>find</code>, <code>fire</code>, <code>random</code>, <code>randomRange</code>, <code>randomInt</code>, <code>setSeed</code></td><td>the same names on <code>World</code>: <code>World:say(words)</code></td></tr>
-<tr><td><code>spawn(&quot;ships/fighter&quot;, p)</code></td><td><code>World:spawn(Module.Ships.Fighter, p)</code></td></tr>
-<tr><td><code>Assembly.Ships.Fighter</code>, <code>fetch &quot;solis/project&quot;:Assembly;</code> (assemblies are called modules, <a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0118-the-editor-rethink.md" target="_blank" rel="noopener">decision 0118<span class="out" aria-hidden="true">↗</span></a>)</td><td><code>Module.Ships.Fighter</code>, <code>fetch &quot;solis/project&quot;:Module;</code>. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change.</td></tr>
+<tr><td><code>spawn(&quot;ships/fighter&quot;, p)</code></td><td><code>World:spawn(Module.Fighter, p)</code></td></tr>
+<tr><td><code>Assembly.Ships.Fighter</code>, <code>fetch &quot;solis/project&quot;:Assembly;</code> (assemblies are called modules, <a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0118-the-editor-rethink.md" target="_blank" rel="noopener">decision 0118<span class="out" aria-hidden="true">↗</span></a>)</td><td><code>Module.Fighter</code>, <code>fetch &quot;solis/project&quot;:Module;</code>. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change.</td></tr>
 <tr><td><code>saveGame(slot)</code>, <code>loadGame(slot)</code></td><td><code>Saves:saveTo(slot)</code>, <code>Saves:loadFrom(slot)</code></td></tr>
 <tr><td><code>held(&quot;Jump&quot;)</code>, <code>pressed</code>, <code>released</code>, <code>axis(&quot;Move&quot;)</code></td><td><code>Input:held(Action.Jump)</code> and so on, with <code>fetch &quot;solis/input&quot;:Input;</code> and <code>fetch &quot;solis/project&quot;:Action;</code></td></tr>
 <tr><td><code>bindingOf(&quot;Jump&quot;)</code>, <code>rebind(&quot;Jump&quot;, key)</code></td><td><code>Input:binding(Action.Jump)</code>, <code>Input:rebind(Action.Jump, key)</code></td></tr>
 <tr><td><code>push(e, f)</code>, <code>velocityOf(e)</code>, <code>setVelocity(e, v)</code></td><td><code>e:push(f)</code>, <code>e:velocity()</code>, <code>e:setVelocity(v)</code></td></tr>
 <tr><td><code>moveCharacter(e, w)</code>, <code>onGround(e)</code></td><td><code>e:walk(w)</code>, <code>e:grounded()</code></td></tr>
-<tr><td><code>playSound(&quot;sfx/x&quot;)</code>, <code>playSoundAt(&quot;sfx/x&quot;, p)</code></td><td><code>Audio:play(Sound.Sfx.X)</code>, <code>Audio:playAt(Sound.Sfx.X, p)</code></td></tr>
-<tr><td><code>playSoundOn(&quot;sfx/x&quot;, e)</code>, <code>stopSoundsOn(e)</code>, <code>setSoundPlaying(e, b)</code></td><td><code>e:playSound(Sound.Sfx.X)</code>, <code>e:stopSounds()</code>, <code>e:setSoundPlaying(b)</code></td></tr>
+<tr><td><code>playSound(&quot;sfx/x&quot;)</code>, <code>playSoundAt(&quot;sfx/x&quot;, p)</code></td><td><code>Audio:play(Sound.X)</code>, <code>Audio:playAt(Sound.X, p)</code></td></tr>
+<tr><td><code>playSoundOn(&quot;sfx/x&quot;, e)</code>, <code>stopSoundsOn(e)</code>, <code>setSoundPlaying(e, b)</code></td><td><code>e:playSound(Sound.X)</code>, <code>e:stopSounds()</code>, <code>e:setSoundPlaying(b)</code></td></tr>
 <tr><td><code>setBusVolume(&quot;Music&quot;, v)</code></td><td><code>Audio:setVolume(Bus.Music, v)</code></td></tr>
-<tr><td><code>playClip(e, &quot;walk&quot;)</code>, <code>replayClip</code>, <code>stopClip(e)</code></td><td><code>e:animate(Clip.Sprites.Farmer.Walk)</code>, <code>e:animateFromStart(…)</code>, <code>e:stopAnimation()</code></td></tr>
+<tr><td><code>playClip(e, &quot;walk&quot;)</code>, <code>replayClip</code>, <code>stopClip(e)</code></td><td><code>e:animate(Clip.FarmerWalk)</code>, <code>e:animateFromStart(…)</code>, <code>e:stopAnimation()</code></td></tr>
 <tr><td><code>on AnimationCue(string name)</code>, <code>on ClipFinished(string clip)</code></td><td><code>on CueReached(Cue cue)</code>, <code>on ClipFinished(Clip clip)</code></td></tr>
 <tr><td><code>castRay(…)</code>, <code>castRayHit(…)</code>, <code>castRayNormal(…)</code></td><td>one call: <code>RayHit hit = Physics:castRay(…);</code> then <code>hit.distance</code>, <code>hit.entity</code>, <code>hit.normal</code></td></tr>
 <tr><td>Lua <code>solis.positionOf(e)</code>, <code>solis.say(w)</code>, <code>solis.held(&quot;Jump&quot;)</code></td><td><code>solis.entity.position(e)</code>, <code>solis.World:say(w)</code>, <code>solis.Input:held(&quot;Jump&quot;)</code></td></tr>
@@ -5376,7 +5375,7 @@ After 121 ticks:
 <li><strong>Problem:</strong> I saved new code while playing, and the Console says the running game couldn't take it. <strong>Why:</strong> the code's start failed with the game's world (it ran fine with no world while checking). <strong>Fix:</strong> fix the line it points at; the game keeps the last code meanwhile.</li>
 <li><strong>Problem:</strong> Problems says &quot;a state is set with =, so write mode = Mode.Burst;&quot;. <strong>Why:</strong> Lust sets a state with <code>=</code>, like any other value, and keeps <code>is</code> for questions. Code written for an older Solis set one with <code>is</code> (<code>mode is Mode.Burst;</code>, or <code>state is Mood.Calm;</code> in a <code>has</code>). <strong>Fix:</strong> change that <code>is</code> to <code>=</code>, as the message shows. Questions (<code>is mode == Mode.Burst? then</code>) stay as they are.</li>
 <li><strong>Problem:</strong> Problems says something is nested too deeply. <strong>Why:</strong> more than 150 levels of brackets, blocks or operators inside each other (<code>a + b + c …</code> counts each <code>+</code>) is more than Lust takes. <strong>Fix:</strong> split it up with variables or methods.</li>
-<li><strong>Problem:</strong> Problems says the code stopped while starting. <strong>Why:</strong> Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: <code>World:find</code> finds nothing then. A start that fails or takes more than a second is a mistake. <strong>Fix:</strong> fix the line Problems points at.</li>
+<li><strong>Problem:</strong> Problems says the code stopped while starting. <strong>Why:</strong> Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: another entity is nothing then. A start that fails or takes more than a second is a mistake. <strong>Fix:</strong> fix the line Problems points at.</li>
 <li><strong>Problem:</strong> the Console says a code file was left out. <strong>Why:</strong> each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. <strong>Fix:</strong> split a huge file into smaller ones.</li>
 <li><strong>Problem:</strong> a component reads another entity's place and gets where it was before this tick's move. <strong>Why:</strong> during a tick, game code sees the world as it was when the tick started (see Components, above), so every core sees the same world. <strong>Fix:</strong> usually nothing: it catches up next tick. If it must be at once, do both in one component, or send an event (events see the moves made before them).</li>
 <li>Commit the <code>solis</code> folder with your game, so <code>lust check</code> works on other computers too.</li>
@@ -5490,11 +5489,12 @@ After 121 ticks:
 
 <span class="tk-k">component</span> <span class="tk-n">Kicker</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- The ball to kick: picked in the Kicker's Properties.</span>
+        <span class="tk-t">entity</span> ball = <span class="tk-v">nothing</span><span class="tk-p">;</span>
         <span class="tk-t">int</span> kicked = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
-        <span class="tk-t">entity</span> ball = <span class="tk-o">World</span><span class="tk-p">:</span>find<span class="tk-p">(</span><span class="tk-v">&quot;Ball&quot;</span><span class="tk-p">);</span>
         <span class="tk-f">is</span> kicked == <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             ball<span class="tk-p">:</span>push<span class="tk-p">([</span><span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">]);</span>
             kicked = <span class="tk-v">1</span><span class="tk-p">;</span>
@@ -5513,6 +5513,8 @@ After 121 ticks:
 <span class="tk-k">use</span> script<span class="tk-p">::{</span><span class="tk-n">Context</span><span class="tk-p">,</span> <span class="tk-n">RustComponent</span><span class="tk-p">};</span>
 
 <span class="tk-k">pub struct</span> <span class="tk-n">Kicker</span> <span class="tk-p">{</span>
+    <span class="tk-c">/// The ball to kick: picked in the Kicker's Properties.</span>
+    ball<span class="tk-p">:</span> <span class="tk-n">Option</span>&lt;reflect<span class="tk-p">::</span><span class="tk-n">EntityId</span>&gt;<span class="tk-p">,</span>
     kicked<span class="tk-p">:</span> <span class="tk-t">i64</span><span class="tk-p">,</span>
 <span class="tk-p">}</span>
 
@@ -5520,7 +5522,7 @@ After 121 ticks:
     <span class="tk-k">fn</span> update<span class="tk-p">(</span>&amp;<span class="tk-k">mut</span> <span class="tk-f">self</span><span class="tk-p">,</span> cx<span class="tk-p">:</span> &amp;<span class="tk-k">mut</span> <span class="tk-n">Context</span>&lt;<span class="tk-v">'_</span>&gt;<span class="tk-p">,</span> _dt<span class="tk-p">:</span> <span class="tk-t">f64</span><span class="tk-p">) {</span>
         <span class="tk-k">let</span> me = cx<span class="tk-p">.</span>me<span class="tk-p">();</span>
         <span class="tk-f">if self</span><span class="tk-p">.</span>kicked == <span class="tk-v">0</span> <span class="tk-p">{</span>
-            <span class="tk-f">if</span> <span class="tk-k">let</span> <span class="tk-n">Some</span><span class="tk-p">(</span>ball<span class="tk-p">)</span> = cx<span class="tk-p">.</span>host<span class="tk-p">().</span>find<span class="tk-p">(</span><span class="tk-v">&quot;Ball&quot;</span><span class="tk-p">) {</span>
+            <span class="tk-f">if</span> <span class="tk-k">let</span> <span class="tk-n">Some</span><span class="tk-p">(</span>ball<span class="tk-p">)</span> = <span class="tk-f">self</span><span class="tk-p">.</span>ball <span class="tk-p">{</span>
                 cx<span class="tk-p">.</span>host<span class="tk-p">().</span>push<span class="tk-p">(</span>ball<span class="tk-p">,</span> <span class="tk-n">Vec3</span><span class="tk-p">::</span>new<span class="tk-p">(</span><span class="tk-v">5.0</span><span class="tk-p">,</span> <span class="tk-v">0.0</span><span class="tk-p">,</span> <span class="tk-v">2.0</span><span class="tk-p">));</span>
             <span class="tk-p">}</span>
             <span class="tk-f">self</span><span class="tk-p">.</span>kicked = <span class="tk-v">1</span><span class="tk-p">;</span>
@@ -5536,13 +5538,13 @@ After 121 ticks:
     <span class="tk-c">// values() and set(): as Mover's in Game code, under Components.</span>
 <span class="tk-p">}</span></code></pre>
 <pre data-lang="lua" data-name="Lua"><code><span class="tk-k">local</span> <span class="tk-n">Kicker</span> = component<span class="tk-p">(</span><span class="tk-v">&quot;Kicker&quot;</span><span class="tk-p">, {</span>
+    <span class="tk-p">{</span> <span class="tk-v">&quot;ball&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;entity&quot;</span> <span class="tk-p">},</span>
     <span class="tk-p">{</span> <span class="tk-v">&quot;kicked&quot;</span><span class="tk-p">,</span> <span class="tk-v">&quot;int&quot;</span><span class="tk-p">,</span> <span class="tk-v">0</span> <span class="tk-p">},</span>
 <span class="tk-p">})</span>
 
 <span class="tk-k">function</span> <span class="tk-n">Kicker</span><span class="tk-p">:</span>update<span class="tk-p">(</span>dt<span class="tk-p">)</span>
-    <span class="tk-k">local</span> ball = solis<span class="tk-p">.</span><span class="tk-n">World</span><span class="tk-p">:</span>find<span class="tk-p">(</span><span class="tk-v">&quot;Ball&quot;</span><span class="tk-p">)</span>
     <span class="tk-f">if self</span><span class="tk-p">.</span>kicked == <span class="tk-v">0</span> <span class="tk-f">then</span>
-        solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>push<span class="tk-p">(</span>ball<span class="tk-p">,</span> vec3<span class="tk-p">(</span><span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">))</span>
+        solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>push<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>ball<span class="tk-p">,</span> vec3<span class="tk-p">(</span><span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">))</span>
         <span class="tk-f">self</span><span class="tk-p">.</span>kicked = <span class="tk-v">1</span>
     <span class="tk-k">end</span>
     <span class="tk-c">-- Is anything below, within 2 metres?</span>
@@ -6208,7 +6210,7 @@ After 121 ticks:
 <li>The name can be worked out as the game runs (<code>image item.icon;</code>): that picture is read the first time it's shown.</li>
 <li>A name written out in the screen's code that names no picture, or no crop of it, is listed in <strong>Problems</strong> with its line before you press Play. A missing picture shows as a grey box with its name.</li>
 </ul>
-<p><strong>What a screen can use:</strong> <code>column</code>, <code>row</code>, <code>stack</code>, <code>space</code>, <code>text</code>, <code>button</code>, <code>image</code>, <code>progress</code> bars, and <code>canvas</code> with <code>box</code>, <code>circle</code> and <code>line</code> placed by <code>x</code> and <code>y</code> (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: <code>pad</code> (and <code>padX</code>, <code>padTop</code>…), <code>gap</code>, <code>width</code> and <code>height</code> (a number, or <code>fill</code>), <code>grow</code>, <code>size</code>, <code>bold</code>, <code>nowrap</code>, <code>font</code> (one of the project's fonts, with fallbacks: <a href="#screen-text">Text on screens</a>), the alignment words, colour words (<code>white</code>, <code>red5</code>, <code>gray9</code>, <code>#ff8800</code>), <code>background</code>, <code>round</code>, <code>border</code>, <code>opacity</code> and, for pictures, <code>cover</code>. Inside a text's words go its effects (<code>[wave]</code>, <code>[colour=red5]</code>, <code>[icon=Picture.Ui.Coin]</code>: <a href="#text-effects">Text effects</a>). Other pieces are laid out but not drawn yet.</p>
+<p><strong>What a screen can use:</strong> <code>column</code>, <code>row</code>, <code>stack</code>, <code>space</code>, <code>text</code>, <code>button</code>, <code>image</code>, <code>progress</code> bars, and <code>canvas</code> with <code>box</code>, <code>circle</code> and <code>line</code> placed by <code>x</code> and <code>y</code> (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: <code>pad</code> (and <code>padX</code>, <code>padTop</code>…), <code>gap</code>, <code>width</code> and <code>height</code> (a number, or <code>fill</code>), <code>grow</code>, <code>size</code>, <code>bold</code>, <code>nowrap</code>, <code>font</code> (one of the project's fonts, with fallbacks: <a href="#screen-text">Text on screens</a>), the alignment words, colour words (<code>white</code>, <code>red5</code>, <code>gray9</code>, <code>#ff8800</code>), <code>background</code>, <code>round</code>, <code>border</code>, <code>opacity</code> and, for pictures, <code>cover</code>. Inside a text's words go its effects (<code>[wave]</code>, <code>[colour=red5]</code>, <code>[icon=Picture.Coin]</code>: <a href="#text-effects">Text effects</a>). Other pieces are laid out but not drawn yet.</p>
 <p><strong>See-through colours.</strong> A colour written with two more digits says how solid it is, from <code>00</code> (not seen at all) to <code>ff</code> (solid): <code>background &quot;#1a1c2ccc&quot;</code> is a dark panel 80% solid, with the game showing faintly through it, which keeps a dialogue box readable without hiding the world. It works wherever a screen takes a colour: a <code>background</code>, the words' colour, a <code>border</code>, a bar's, and the colours in a text's effects. A colour worked out in code does the same (<code>Colour:hex(&quot;#1a1c2ccc&quot;)</code>, or <code>sky:fade(0.5)</code>). <code>opacity</code> fades a whole piece and what's in it; a see-through colour fades only that colour, so the words on a see-through panel stay solid.</p>
 </section>
 <section id="screens--settings">
@@ -6346,7 +6348,7 @@ After 121 ticks:
 <div class="note">
 <p>A font with Chinese, Japanese or Korean letters is big (often 5 to 20 MB). Only the fonts a screen names are read, so list one only on the screens that need it. A font may be at most 32 MB, and screens can use at most 32 of a project's fonts.</p>
 </div>
-<p><strong>In game code,</strong> a field can hold one of the project's fonts, as it can a sound or a picture: its type is <code>Font</code>, and Properties offers a list of the project's fonts to pick from, which follows a font file you rename. The fonts are <code>Font.Fonts.Lora</code> for <code>fonts/Lora.ttf</code> (see <a href="#game-code">Game code</a>).</p>
+<p><strong>In game code,</strong> a field can hold one of the project's fonts, as it can a sound or a picture: its type is <code>Font</code>, and Properties offers a list of the project's fonts to pick from, which follows a font file you rename. The fonts are <code>Font.Lora</code> for <code>fonts/Lora.ttf</code> (see <a href="#game-code">Game code</a>).</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- sign.lst: a sign whose words and font are picked in Properties.</span>
@@ -6446,7 +6448,7 @@ After 121 ticks:
 <tr><td><code>[colour=red5]roses[/colour]</code></td><td>The letters in a colour: one of the screen's colour words (<code>white</code>, <code>red5</code>, <code>yellow7</code>, <code>teal</code>, the same ones as a piece's colour) or <code>#hex</code> (<code>[colour=#e8955a]</code>).</td></tr>
 <tr><td><code>[b]now[/b]</code></td><td>Bold.</td></tr>
 <tr><td><code>[i]maybe[/i]</code></td><td>Slanted (italic).</td></tr>
-<tr><td><code>[icon=Picture.Ui.Coin]</code></td><td>A picture inside the text, as tall as the text. It's named as game code names pictures: <code>Picture.Ui.Coin</code> is <code>ui/coin.png</code>, or the crop called Coin cut from <code>ui.png</code> with <a href="#atlas-crop">Atlas Crop</a>.</td></tr>
+<tr><td><code>[icon=Picture.Coin]</code></td><td>A picture inside the text, as tall as the text. It's named as game code names pictures: <code>Picture.Coin</code> is <code>ui/coin.png</code>, or the crop called Coin cut from <code>ui.png</code> with <a href="#atlas-crop">Atlas Crop</a>.</td></tr>
 <tr><td><code>[pause 0.5]</code></td><td>While typing out: wait half a second here.</td></tr>
 <tr><td><code>[speed 2]</code></td><td>While typing out: from here, twice as fast (<code>[speed 0.5]</code> half as fast, <code>[speed 1]</code> back to normal, <code>[speed 0]</code> the rest at once).</td></tr>
 <tr><td><code>[[</code></td><td>A <code>[</code> in the text itself: <code>Press [[E]</code> shows &quot;Press [E]&quot;.</td></tr>
@@ -6461,7 +6463,7 @@ After 121 ticks:
         <span class="tk-n">stack</span> <span class="tk-p">[</span><span class="tk-t">width</span> fill<span class="tk-p">,</span> <span class="tk-t">height</span> fill<span class="tk-p">,</span> <span class="tk-t">bottom</span><span class="tk-p">,</span> <span class="tk-t">pad</span> <span class="tk-v">48</span><span class="tk-p">] {</span>
             <span class="tk-n">column</span> <span class="tk-p">[</span><span class="tk-t">width</span> <span class="tk-v">1600</span><span class="tk-p">,</span> <span class="tk-t">pad</span> <span class="tk-v">24</span><span class="tk-p">,</span> <span class="tk-t">gap</span> <span class="tk-v">8</span><span class="tk-p">,</span> <span class="tk-t">background</span> <span class="tk-v">&quot;#121619&quot;</span><span class="tk-p">,</span> <span class="tk-t">round</span> <span class="tk-v">8</span><span class="tk-p">] {</span>
                 <span class="tk-n">text</span> <span class="tk-v">&quot;Mira&quot;</span> <span class="tk-p">[</span><span class="tk-t">size</span> <span class="tk-v">26</span><span class="tk-p">,</span> <span class="tk-t">bold</span><span class="tk-p">,</span> <span class="tk-t">yellow5</span><span class="tk-p">];</span>
-                <span class="tk-n">text</span> <span class="tk-v">&quot;Oh! A new face in the village. [pause 0.4]Have you seen my [colour=#e8955a]red roses[/colour]? They [wave]wiggle[/wave] when it rains. Only 5 [icon=Picture.Ui.Coin] a bunch!&quot;</span> <span class="tk-p">[</span><span class="tk-t">size</span> <span class="tk-v">30</span><span class="tk-p">,</span> <span class="tk-t">white</span><span class="tk-p">];</span>
+                <span class="tk-n">text</span> <span class="tk-v">&quot;Oh! A new face in the village. [pause 0.4]Have you seen my [colour=#e8955a]red roses[/colour]? They [wave]wiggle[/wave] when it rains. Only 5 [icon=Picture.Coin] a bunch!&quot;</span> <span class="tk-p">[</span><span class="tk-t">size</span> <span class="tk-v">30</span><span class="tk-p">,</span> <span class="tk-t">white</span><span class="tk-p">];</span>
             <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -6618,7 +6620,7 @@ After 121 ticks:
 <li><strong>Problem:</strong> Problems says &quot;[glow] isn't a text effect&quot;. <strong>Why:</strong> only the words in the table above are effects. <strong>Fix:</strong> use one of them, or write <code>[[glow]</code> to show the brackets as text.</li>
 <li><strong>Problem:</strong> Problems says &quot;[wave] is never closed&quot;. <strong>Why:</strong> every <code>[wave]</code>, <code>[shake]</code>, <code>[colour=…]</code>, <code>[b]</code> and <code>[i]</code> needs its end (<code>[/wave]</code>). Until then it runs to the end of the text. <strong>Fix:</strong> add the end where the effect should stop.</li>
 <li><strong>Problem:</strong> Problems says a colour &quot;isn't a colour&quot;. <strong>Why:</strong> colours are the screen's colour words (<code>red5</code>, <code>yellow7</code>, <code>white</code>…) or <code>#hex</code>. Names such as <code>gold</code> aren't among them. <strong>Fix:</strong> use <code>#e2b54a</code> for gold, or a colour word.</li>
-<li><strong>Problem:</strong> Problems says &quot;there's no picture Picture.Ui.Coin in the project&quot;. <strong>Why:</strong> an icon names a picture as game code does: its place in the Library, folders and name each starting with a capital, without the ending. <strong>Fix:</strong> check the picture's name in the Library, or cut a crop of that name with Atlas Crop.</li>
+<li><strong>Problem:</strong> Problems says &quot;there's no picture Picture.Coin in the project&quot;. <strong>Why:</strong> an icon names a picture as game code does: its place in the Library, folders and name each starting with a capital, without the ending. <strong>Fix:</strong> check the picture's name in the Library, or cut a crop of that name with Atlas Crop.</li>
 <li><strong>Problem:</strong> <code>[button=Action.Use]</code> is a mistake. <strong>Why:</strong> pictures of a controller's buttons inside text come in a later milestone. <strong>Fix:</strong> name the button in words for now.</li>
 <li><strong>Problem:</strong> an older screen now shows a mistake where it used to show <code>[E]</code>. <strong>Why:</strong> a <code>[</code> starts markup now. <strong>Fix:</strong> write <code>[[E]</code>.</li>
 <li><strong>Problem:</strong> <code>TypingFinished</code> never comes. <strong>Why:</strong> it goes to the entity whose Screen shows the screen, and only once <strong>Typing speed</strong> is above 0. <strong>Fix:</strong> put the component on that entity, and set a speed.</li>
@@ -6646,7 +6648,7 @@ After 121 ticks:
 <p>Use translations for any words a player reads: menus, signs, item names and descriptions, what characters say, and captions. Even a game in one language is worth writing this way from the start:</p>
 <ul>
 <li><strong>Nothing is lost later.</strong> Adding a language later means sending a spreadsheet to a translator, not hunting through code for every sentence.</li>
-<li><strong>A misspelt key is caught before the game runs.</strong> Game code names a line as <code>Text.Shop.Welcome</code>, one of the project's names, so <code>Text.Shop.Welcom</code> is a mistake in <a href="#problems">Problems</a> with its line, never a blank sign.</li>
+<li><strong>A misspelt key is caught before the game runs.</strong> Game code names a line as <code>Text.ShopWelcome</code>, one of the project's names, so <code>Text.ShopWelcom</code> is a mistake in <a href="#problems">Problems</a> with its line, never a blank sign.</li>
 <li><strong>Plurals come out right in every language.</strong> &quot;1 apple, 2 apples&quot; in English; French says &quot;0 pomme&quot;; Polish has three forms. Each translator writes their own language's forms.</li>
 </ul>
 <p>Words that aren't the game's text (a name the player typed, a number) aren't translated: show them as they are, or pass them into a line as a value (below).</p>
@@ -6672,7 +6674,7 @@ Shop-Apples = { $count -&gt;
    *[other] { $who } har { $count } epler
 }</code></pre>
 <p><strong>Values and plurals.</strong> A line can hold values, written <code>{ $name }</code>. A value that's a number can pick between forms: <code>{ $count -&gt; [one] … *[other] … }</code>, where <code>*</code> marks the form used when no other fits. Each language has its own forms (<code>one</code>, <code>few</code>, <code>many</code>, <code>other</code>), and its translator writes the ones it needs.</p>
-<p><strong>In game code.</strong> <code>World:text(Text.Shop.Welcome)</code> gives a line in the player's language. A line that takes values is a method on its group's object, <code>ShopText</code>, in <code>solis/texts</code>, taking its values in the order the main language first uses them; a number is a <code>float</code>, anything else a <code>string</code>:</p>
+<p><strong>In game code.</strong> <code>World:text(Text.ShopWelcome)</code> gives a line in the player's language. A line that takes values is a method on its group's object, <code>ShopText</code>, in <code>solis/texts</code>, taking its values in the order the main language first uses them; a number is a <code>float</code>, anything else a <code>string</code>:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- shopkeeper.lst: greets whoever walks into the shop, in the player's language.</span>
@@ -6684,7 +6686,7 @@ Shop-Apples = { $count -&gt;
 <span class="tk-k">component</span> <span class="tk-n">Shopkeeper</span> <span class="tk-p">{</span>
     <span class="tk-c">-- Someone walked in: welcome them, and say how many apples are left.</span>
     <span class="tk-f">on</span> <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">World</span><span class="tk-p">:</span>text<span class="tk-p">(</span><span class="tk-o">Text</span><span class="tk-p">.</span><span class="tk-s">Shop</span><span class="tk-p">.</span><span class="tk-s">Welcome</span><span class="tk-p">));</span>
+        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">World</span><span class="tk-p">:</span>text<span class="tk-p">(</span><span class="tk-o">Text</span><span class="tk-p">.</span><span class="tk-s">ShopWelcome</span><span class="tk-p">));</span>
         <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">ShopText</span><span class="tk-p">:</span>apples<span class="tk-p">(</span><span class="tk-v">3</span><span class="tk-p">,</span> <span class="tk-v">&quot;Mira&quot;</span><span class="tk-p">));</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -6721,7 +6723,7 @@ Shop-Apples = { $count -&gt;
     solis<span class="tk-p">.</span><span class="tk-n">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span>solis<span class="tk-p">.</span><span class="tk-n">ShopText</span><span class="tk-p">:</span>apples<span class="tk-p">(</span><span class="tk-v">3</span><span class="tk-p">,</span> <span class="tk-v">&quot;Mira&quot;</span><span class="tk-p">))</span>
 <span class="tk-k">end</span></code></pre>
 </div>
-<p>On a screen, show a line with <code>text World:text(Text.Shop.Welcome);</code>. Text effects inside a line (<code>[wave]</code>, <code>[colour=…]</code>) are read after it's translated, so each language carries its own.</p>
+<p>On a screen, show a line with <code>text World:text(Text.ShopWelcome);</code>. Text effects inside a line (<code>[wave]</code>, <code>[colour=…]</code>) are read after it's translated, so each language carries its own.</p>
 <p><strong>Data tables.</strong> Mark a <a href="#data-tables">data table</a>'s text column <strong>Translated</strong> (right-click its heading). Each of its cells then has a key, <code>Items.IronSword.description</code>, listed in the Translations tab; its main-language words stay in the table, and the other languages' go in <code>locale/&lt;code&gt;/items.ftl</code>. Game code reading <code>Items:row(Item.IronSword).description</code> gets it in the player's language.</p>
 <p><strong>The player's language.</strong> A player reads the game in the language they chose, else the one Windows is set to when your project has it, else the main language. Offer the choice in your own menu: <code>Screens:setLanguage(Language.Nb)</code>, <code>Screens:language()</code>, and <code>Screens:languageName(Language.Nb)</code> for the name to show (<code>Norsk</code>). The change shows from the next tick. While you play in the editor, choose it on the Languages page's card.</p>
 <p><strong>Translators' spreadsheet.</strong> <strong>Export spreadsheet</strong> writes <code>translations.csv</code> in your project's folder: a column of keys, the main language, and a column for each language. A translator fills in their column in any spreadsheet program; <strong>Import</strong> reads it back and writes each changed line into its file. A column for a language your project hasn't, or a key it hasn't, is passed over, and the Console says so.</p>
@@ -7335,11 +7337,11 @@ Shop-Apples = { $count -&gt;
 <h4 id="sprite-animation--clips-from-aseprite">Clips from Aseprite<a class="anchor" href="#sprite-animation--clips-from-aseprite" aria-label="Link to this section">#</a></h4>
 <p>An Aseprite file needs no cutting: its frames are its cells, numbered from 0 as Aseprite numbers them. <strong>Tag</strong> runs of frames in Aseprite and save, and every tag is a clip in Solis with Aseprite's frame times, direction and repeat count; click the file in the Library and Properties lists them. A sprite can play the Aseprite file's clips straight away, with no clips file.</p>
 <p><strong>Edit clips…</strong> in the file's Properties makes <code>walker.clips.lst</code> beside <code>walker.aseprite</code> (or opens the one there), for what Aseprite doesn't have: a clip's speed, events on frames, directions and clips of your own. A tag's frames stay Aseprite's, so saving there keeps both in step: to change them in Solis, <strong>Copy</strong> the clip and change the copy. Events typed in Aseprite (a cel's user data) work like events added here.</p>
-<p><strong>How a tag's name becomes a clip's name.</strong> The clip keeps the tag's name as it is (<code>walk</code>, <code>Walk NE</code>). Game code names a clip by its file's path and the tag, each part with its first letter made a capital: <code>sprites/walker.aseprite</code>'s <code>walk</code> is <code>Clip.Sprites.Walker.Walk</code>. A name of all capitals keeps only its first (<code>IDLE</code> is <code>Idle</code>). A tag whose name holds a space or a dash, or starts with a digit, plays and edits as usual but can't be named in game code, and the Console says so when the names are written: rename the tag in Aseprite (<code>WalkNE</code>), or give the clip a direction instead (<a href="#sprite-animation--directions">Directions</a>), which is what directions are for.</p>
+<p><strong>How a tag's name becomes a clip's name.</strong> The clip keeps the tag's name as it is (<code>walk</code>, <code>Walk NE</code>). Game code names a clip by its file's path and the tag, each part with its first letter made a capital: <code>sprites/walker.aseprite</code>'s <code>walk</code> is <code>Clip.WalkerWalk</code>. A name of all capitals keeps only its first (<code>IDLE</code> is <code>Idle</code>). A tag whose name holds a space or a dash, or starts with a digit, plays and edits as usual but can't be named in game code, and the Console says so when the names are written: rename the tag in Aseprite (<code>WalkNE</code>), or give the clip a direction instead (<a href="#sprite-animation--directions">Directions</a>), which is what directions are for.</p>
 <h4 id="sprite-animation--saving-and-undo">Saving and undo<a class="anchor" href="#sprite-animation--saving-and-undo" aria-label="Link to this section">#</a></h4>
 <p>Every change is saved at once and shows at once on every sprite playing the file. <strong>Ctrl+Z</strong> and <strong>Ctrl+Y</strong> over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step <strong>Ctrl+Z</strong> undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>
 <h4 id="sprite-animation--in-game-code">In game code<a class="anchor" href="#sprite-animation--in-game-code" aria-label="Link to this section">#</a></h4>
-<p>Clips and their events are names Lust checks. Solis writes them into <code>solis/project.lst</code> whenever the sheets change: each clip as <code>state Clip</code>, under its sheet's path (<code>sprites/farmer.aseprite</code>'s walk is <code>Clip.Sprites.Farmer.Walk</code>), and each frame event as <code>state Cue</code> (<code>Cue.Footstep</code>). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:</p>
+<p>Clips and their events are names Lust checks. Solis writes them into <code>solis/project.lst</code> whenever the sheets change: each clip as <code>state Clip</code>, under its sheet's path (<code>sprites/farmer.aseprite</code>'s walk is <code>Clip.FarmerWalk</code>), and each frame event as <code>state Cue</code> (<code>Cue.Footstep</code>). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Clip</span><span class="tk-p">,</span> <span class="tk-n">Cue</span><span class="tk-p">];</span>
@@ -7359,8 +7361,8 @@ Shop-Apples = { $count -&gt;
 
     <span class="tk-c">-- Back to standing once the hoe swing is done.</span>
     <span class="tk-f">on</span> <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Farmer</span><span class="tk-p">.</span><span class="tk-s">Hoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Farmer</span><span class="tk-p">.</span><span class="tk-s">Idle</span><span class="tk-p">);</span>
+        <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">);</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -7385,7 +7387,7 @@ Shop-Apples = { $count -&gt;
             <span class="tk-c">// Count the footsteps as they land.</span>
             <span class="tk-v">&quot;CueReached&quot;</span> <span class="tk-f">if</span> named == <span class="tk-v">&quot;Footstep&quot;</span> <span class="tk-p">=&gt;</span> <span class="tk-f">self</span><span class="tk-p">.</span>steps += <span class="tk-v">1</span><span class="tk-p">,</span>
             <span class="tk-c">// Back to standing once the hoe swing is done.</span>
-            <span class="tk-v">&quot;ClipFinished&quot;</span> <span class="tk-f">if</span> named == <span class="tk-v">&quot;Sprites.Farmer.Hoe&quot;</span> <span class="tk-p">=&gt; {</span>
+            <span class="tk-v">&quot;ClipFinished&quot;</span> <span class="tk-f">if</span> named == <span class="tk-v">&quot;FarmerHoe&quot;</span> <span class="tk-p">=&gt; {</span>
                 <span class="tk-k">let</span> me = cx<span class="tk-p">.</span>me<span class="tk-p">();</span>
                 cx<span class="tk-p">.</span>host<span class="tk-p">().</span>play_clip<span class="tk-p">(</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;idle&quot;</span><span class="tk-p">,</span> <span class="tk-v">false</span><span class="tk-p">);</span>
             <span class="tk-p">}</span>
@@ -7409,15 +7411,15 @@ Shop-Apples = { $count -&gt;
 
 <span class="tk-c">-- Back to standing once the hoe swing is done.</span>
 <span class="tk-k">function</span> <span class="tk-n">Farmer</span><span class="tk-p">:</span>on_ClipFinished<span class="tk-p">(</span>clip<span class="tk-p">)</span>
-    <span class="tk-f">if</span> clip == <span class="tk-v">&quot;Sprites.Farmer.Hoe&quot;</span> <span class="tk-f">then</span>
-        solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>animate<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;Sprites.Farmer.Idle&quot;</span><span class="tk-p">)</span>
+    <span class="tk-f">if</span> clip == <span class="tk-v">&quot;FarmerHoe&quot;</span> <span class="tk-f">then</span>
+        solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>animate<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;FarmerIdle&quot;</span><span class="tk-p">)</span>
     <span class="tk-k">end</span>
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><p><code>animate(Clip.Sprites.Farmer.Walk)</code> plays a clip on the component's entity (<code>target:animate(…)</code> on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.</p>
+<li><p><code>animate(Clip.FarmerWalk)</code> plays a clip on the component's entity (<code>target:animate(…)</code> on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.</p>
 </li>
-<li><p><code>animateFromStart(Clip.Sprites.Farmer.Hoe)</code> plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.</p>
+<li><p><code>animateFromStart(Clip.FarmerHoe)</code> plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.</p>
 </li>
 <li><p><code>stopAnimation()</code> stops it where it is; <code>animate</code> with the same clip carries on from there.</p>
 </li>
@@ -7432,7 +7434,7 @@ Shop-Apples = { $count -&gt;
         <span class="tk-c">-- Face the way the player pushes.</span>
         <span class="tk-t">bool</span> walkingLeft = <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Move</span><span class="tk-p">).</span>x &lt; <span class="tk-v">0</span><span class="tk-p">;</span>
         setFlip<span class="tk-p">(</span>walkingLeft<span class="tk-p">,</span> <span class="tk-v">false</span><span class="tk-p">);</span>
-        animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Hero</span><span class="tk-p">.</span><span class="tk-s">Run</span><span class="tk-p">);</span>
+        animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroRun</span><span class="tk-p">);</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -7459,12 +7461,12 @@ Shop-Apples = { $count -&gt;
     <span class="tk-c">-- Face the way the player pushes.</span>
     <span class="tk-k">local</span> walkingLeft = solis<span class="tk-p">.</span><span class="tk-n">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-v">&quot;Move&quot;</span><span class="tk-p">).</span>x &lt; <span class="tk-v">0</span>
     solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>setFlip<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> walkingLeft<span class="tk-p">,</span> <span class="tk-v">false</span><span class="tk-p">)</span>
-    solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>animate<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;Sprites.Hero.Run&quot;</span><span class="tk-p">)</span>
+    solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>animate<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;HeroRun&quot;</span><span class="tk-p">)</span>
 <span class="tk-k">end</span></code></pre>
 </div>
 <p>It's safe to call every tick, and like the other calls it lands at the end of the tick.</p>
 </li>
-<li><p>In Lua: <code>solis.entity.animate(e, &quot;Sprites.Farmer.Walk&quot;)</code>, <code>solis.entity.animateFromStart(e, …)</code>, <code>solis.entity.stopAnimation(e)</code> and <code>solis.entity.setFlip(e, true, false)</code>; a function called <code>on_CueReached(cue)</code> or <code>on_ClipFinished(clip)</code> reacts to the events, with the names as text. In Rust: <code>cx.host().play_clip(entity, &quot;walk&quot;, false)</code> (<code>true</code> to start it again), <code>stop_clip</code> and <code>set_flip(entity, true, false)</code>, and the events arrive in <code>handle</code> named <code>CueReached</code> and <code>ClipFinished</code>.</p>
+<li><p>In Lua: <code>solis.entity.animate(e, &quot;FarmerWalk&quot;)</code>, <code>solis.entity.animateFromStart(e, …)</code>, <code>solis.entity.stopAnimation(e)</code> and <code>solis.entity.setFlip(e, true, false)</code>; a function called <code>on_CueReached(cue)</code> or <code>on_ClipFinished(clip)</code> reacts to the events, with the names as text. In Rust: <code>cx.host().play_clip(entity, &quot;walk&quot;, false)</code> (<code>true</code> to start it again), <code>stop_clip</code> and <code>set_flip(entity, true, false)</code>, and the events arrive in <code>handle</code> named <code>CueReached</code> and <code>ClipFinished</code>.</p>
 </li>
 </ul>
 <h5 id="sprite-animation--facing-and-looks">Facing and looks<a class="anchor" href="#sprite-animation--facing-and-looks" aria-label="Link to this section">#</a></h5>
@@ -7490,9 +7492,9 @@ Shop-Apples = { $count -&gt;
         <span class="tk-f">is</span> push<span class="tk-p">:</span>length<span class="tk-p">()</span> &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             <span class="tk-c">-- Turn the way the player pushes: the walk plays that row.</span>
             facing = nearestFacing<span class="tk-p">([</span>push<span class="tk-p">.</span>x<span class="tk-p">,</span> push<span class="tk-p">.</span>y<span class="tk-p">]);</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Knight</span><span class="tk-p">.</span><span class="tk-s">Walk</span><span class="tk-p">);</span>
+            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightWalk</span><span class="tk-p">);</span>
         <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">Sprites</span><span class="tk-p">.</span><span class="tk-s">Knight</span><span class="tk-p">.</span><span class="tk-s">Idle</span><span class="tk-p">);</span>
+            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">);</span>
         <span class="tk-p">}</span>
         <span class="tk-c">-- Mana armour while charged.</span>
         <span class="tk-f">is</span> charged<span class="tk-f">? then</span> <span class="tk-p">{</span>
@@ -7509,15 +7511,15 @@ Shop-Apples = { $count -&gt;
 <p><strong>Why it's built this way.</strong> Before clips had directions and looks, a knight with ten actions facing eight ways in two looks was 160 clips, each with its own name, and game code needed a lookup table to find the right one: one line for every action, direction and look.</p>
 <pre data-lang="text"><code>-- Before: a clip for every action, direction and look.
 check facing {
-    when North { animate(Clip.Sprites.Knight.WalkNorthMain); }
-    when NorthEast { animate(Clip.Sprites.Knight.WalkNorthEastMain); }
+    when North { animate(Clip.KnightWalkNorthMain); }
+    when NorthEast { animate(Clip.KnightWalkNorthEastMain); }
     -- … six more directions, then all eight again for the mana look,
     -- then the same for idle, swing, hurt and the other actions.
 }</code></pre>
 <p>Now the clip is named once and the facing and the look are values beside it, so the table is gone:</p>
 <pre data-lang="text"><code>-- After: one clip; the facing and the look choose its frames.
 facing = nearestFacing([push.x, push.y]);
-animate(Clip.Sprites.Knight.Walk);</code></pre>
+animate(Clip.KnightWalk);</code></pre>
 <p>Two mistakes are said in the Console, once a play for each entity, and change nothing:</p>
 <ul>
 <li><strong>A look from another clips file</strong>, <code>look = Look.OrcRed;</code> on the knight: the Console names the file the look belongs to and the looks this sprite can wear.</li>
@@ -8145,7 +8147,7 @@ animate(Clip.Sprites.Knight.Walk);</code></pre>
 <p class="lead">Cut named pictures out of a PNG or an Aseprite sheet (a sword, a heart, a button's corner), so one sprite or a few can be used on their own, without changing the picture.</p>
 <section id="atlas-crop--when-to-use-it">
 <h3>When to use it<a class="anchor" href="#atlas-crop--when-to-use-it" aria-label="Link to this section">#</a></h3>
-<p>Artists often draw many small pictures on one sheet: every item in a game, every icon of a HUD. Atlas Crop marks each one as a <strong>crop</strong> with a name, so game code and screens can use just that part of the sheet: <code>Picture.Sprites.Tools.Axe</code>. The picture itself is never changed, so the artist keeps drawing on the same sheet and every crop follows.</p>
+<p>Artists often draw many small pictures on one sheet: every item in a game, every icon of a HUD. Atlas Crop marks each one as a <strong>crop</strong> with a name, so game code and screens can use just that part of the sheet: <code>Picture.ToolsAxe</code>. The picture itself is never changed, so the artist keeps drawing on the same sheet and every crop follows.</p>
 <p>For a sprite that plays clips, use <a href="#sprites">sprites</a> and <a href="#sprite-animation">sprite animation</a> instead; for ground made of tiles, a <a href="#tilesets">tileset</a>.</p>
 </section>
 <section id="atlas-crop--how-to-use-it">
@@ -8158,7 +8160,7 @@ animate(Clip.Sprites.Knight.Walk);</code></pre>
 <li>Click a crop, on the picture or in the Crops list (its size and place beside its name), to pick it: its frame turns the <a href="#concepts--the-window">accent colour</a> and thicker, while the others stay a darker grey; the ribbon's <strong>Delete</strong>, <strong>Delete crop</strong> or the Delete key over the picture removes it. <strong>Zoom</strong> in the ribbon's Grid group shows the picture at a chosen size (the wheel zooms too). Every change is saved at once, and <strong>Ctrl+Z</strong> over the tab undoes it. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</li>
 <li>Later, double-click the <code>.atlas.lst</code> file in the Library to open its picture's crops again.</li>
 </ol>
-<p>Game code names each crop by its picture's path and its name, from <code>solis/project.lst</code>: <code>fetch &quot;solis/project&quot;:Picture;</code> then <code>Picture.Sprites.Tools.Axe</code> for <code>sprites/tools.png</code>'s Axe. A <a href="#screens">screen</a> shows one with <code>image &quot;sprites/tools.png#Axe&quot;;</code>: the picture's path, <code>#</code>, and the crop's name.</p>
+<p>Game code names each crop by its picture's path and its name, from <code>solis/project.lst</code>: <code>fetch &quot;solis/project&quot;:Picture;</code> then <code>Picture.ToolsAxe</code> for <code>sprites/tools.png</code>'s Axe. A <a href="#screens">screen</a> shows one with <code>image &quot;sprites/tools.png#Axe&quot;;</code>: the picture's path, <code>#</code>, and the crop's name.</p>
 </section>
 <section id="atlas-crop--settings">
 <h3>Settings<a class="anchor" href="#atlas-crop--settings" aria-label="Link to this section">#</a></h3>
@@ -8950,7 +8952,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <section id="tags--when-to-use-it">
 <h3>When to use it<a class="anchor" href="#tags--when-to-use-it" aria-label="Link to this section">#</a></h3>
 <p>Whenever game code needs to find things by <strong>what they are</strong> rather than by name: a guard looking for the nearest enemy, a magnet pulling in every coin within reach, a door that opens only for the player, a turret that ignores anything flying. A <a href="#concepts">tag</a> is a label an entity carries; an entity can carry several (a bat can be both Enemy and Flying), and many entities can carry the same one.</p>
-<p>Why tags and not names? A name belongs to one entity, and <code>World:find(&quot;Bat 12&quot;)</code> finds that one. A tag belongs to a <strong>kind</strong>, so code written once works for every enemy you'll ever place, copy or spawn. And because the project keeps its own list of tags, game code names each as <code>Tag.Enemy</code>: a misspelt tag (<code>Tag.Enmey</code>) is a mistake in Problems before the game runs, not a question that quietly finds nothing.</p>
+<p>Why tags and not names? A name belongs to one entity, and an entity field set in Properties reaches that one. A tag belongs to a <strong>kind</strong>, so code written once works for every enemy you'll ever place, copy or spawn. And because the project keeps its own list of tags, game code names each as <code>Tag.Enemy</code>: a misspelt tag (<code>Tag.Enmey</code>) is a mistake in Problems before the game runs, not a question that quietly finds nothing.</p>
 <div class="note">
 <p>To ask &quot;which of these have a Health?&quot;, you can already ask by component. Tags are for kinds you decide yourself, whatever components the entities have.</p>
 </div>
@@ -9471,7 +9473,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 
     <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
         waves = waves + <span class="tk-v">1</span><span class="tk-p">;</span>
-        <span class="tk-t">entity</span> drone = <span class="tk-o">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Drones</span><span class="tk-p">.</span><span class="tk-s">Drone</span><span class="tk-p">,</span> position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">]);</span>
+        <span class="tk-t">entity</span> drone = <span class="tk-o">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Drone</span><span class="tk-p">,</span> position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">]);</span>
 
         <span class="tk-c">-- Ten waves, then no more.</span>
         <span class="tk-f">is</span> waves &gt;= <span class="tk-v">10</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
@@ -9534,7 +9536,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <span class="tk-k">function</span> <span class="tk-n">Spawner</span><span class="tk-p">:</span>on_TimerFinished<span class="tk-p">(</span>which<span class="tk-p">)</span>
     <span class="tk-f">self</span><span class="tk-p">.</span>waves = <span class="tk-f">self</span><span class="tk-p">.</span>waves + <span class="tk-v">1</span>
     <span class="tk-k">local</span> place = solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>position<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">)</span>
-    <span class="tk-k">local</span> drone = solis<span class="tk-p">.</span><span class="tk-n">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-v">&quot;Drones.Drone&quot;</span><span class="tk-p">,</span> place + vec3<span class="tk-p">(</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">))</span>
+    <span class="tk-k">local</span> drone = solis<span class="tk-p">.</span><span class="tk-n">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-v">&quot;Drone&quot;</span><span class="tk-p">,</span> place + vec3<span class="tk-p">(</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">))</span>
 
     <span class="tk-c">-- Ten waves, then no more.</span>
     <span class="tk-f">if self</span><span class="tk-p">.</span>waves &gt;= <span class="tk-v">10</span> <span class="tk-f">then</span>
@@ -9889,7 +9891,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Stunned<span class="tk-p">;</span>
         startTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Recover</span><span class="tk-p">,</span> <span class="tk-v">1.5</span><span class="tk-p">);</span>
         <span class="tk-f">tween</span> flash <span class="tk-f">to</span> <span class="tk-v">1</span> <span class="tk-f">over</span> <span class="tk-v">1.5</span><span class="tk-p">;</span>
-        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Sfx</span><span class="tk-p">.</span><span class="tk-s">Dizzy</span><span class="tk-p">);</span>
+        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Dizzy</span><span class="tk-p">);</span>
     <span class="tk-p">}</span>
 
     <span class="tk-c">-- The stun is over: setting the state ends the rest.</span>
@@ -9978,7 +9980,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <span class="tk-k">function</span> <span class="tk-n">Hero</span><span class="tk-p">:</span>on_Hit<span class="tk-p">(</span>damage<span class="tk-p">)</span>
     <span class="tk-f">self</span><span class="tk-p">.</span>mood = <span class="tk-v">&quot;Stunned&quot;</span>
     solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>startTimer<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;Recover&quot;</span><span class="tk-p">,</span> <span class="tk-v">1.5</span><span class="tk-p">)</span>
-    solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>playSound<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;Sfx.Dizzy&quot;</span><span class="tk-p">)</span>
+    solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>playSound<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;Dizzy&quot;</span><span class="tk-p">)</span>
 <span class="tk-k">end</span>
 
 <span class="tk-c">-- The stun is over.</span>
@@ -10022,7 +10024,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 
     <span class="tk-k">method</span> enterCombat<span class="tk-p">() {</span>
         <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Combat<span class="tk-p">;</span>
-        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Music</span><span class="tk-p">.</span><span class="tk-s">Battle</span><span class="tk-p">);</span>
+        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Battle</span><span class="tk-p">);</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> closeIn<span class="tk-p">() {</span>

@@ -431,7 +431,7 @@ pub const NATIVES: &[Native] = &[
         name: "find",
         owner: "World",
         lust: "method entity find(string name) native;",
-        about: "The first entity with this name, in the Level panel's order, or nothing.",
+        about: "The first entity with this name, in the Level panel's order, or nothing. For trying things in the Console: in game code, reach a one-off entity with World:the(Component.X) or an entity field set in Properties, which a typo can't break.",
     },
     Native {
         file: "world",

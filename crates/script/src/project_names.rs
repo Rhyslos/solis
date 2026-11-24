@@ -1,14 +1,16 @@
 //! The project's own names as Lust states ([decision 0065](../../../docs/decisions/0065-engine-api-guidelines.md)):
 //! `solis/project.lst`, written by the editor whenever the project's files
-//! change, so game code names a module as `Module.Ships.Fighter`, not
-//! as text. A typo is then a mistake before the game runs, and a renamed
-//! file points at every line still using the old name.
+//! change, so game code names a module as `Module.Fighter`, not as text.
+//! A typo is then a mistake before the game runs, and a renamed file
+//! points at every line still using the old name.
 //!
-//! Folders become options inside options: `ships/fighter.solassembly` is
-//! `Module.Ships.Fighter`. Each part's first letter is made a capital
-//! (Lust's options start with one); the rest is kept as it is. Natives get
-//! the full name back (`"Ships.Fighter"`) and find the file from it,
-//! ignoring capitals as the Library does.
+//! Every name has one dot ([decision 0137](../../../docs/decisions/0137-the-uniformity-pass.md),
+//! [`one_dot`]): `ships/fighter.module.lst` is `Module.Fighter`, a clip
+//! its sheet's name and its own (`Clip.FarmerWalk`), with folders in front
+//! only where two would clash. Its first letter is made a capital (Lust's
+//! options start with one). Under each state, Solis writes the file each
+//! name stands for, which it reads back ([`paths_in`]) so natives find the
+//! file from the name ([`path_for`]).
 
 use std::collections::BTreeMap;
 
@@ -231,37 +233,35 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
-         -- The project's modules, folders as options inside options: World:spawn(Module.Ships.Fighter, place)\n\
-         -- for ships/fighter.\n\
+         -- The project's modules, by their files' names: World:spawn(Module.Fighter, place) for\n\
+         -- ships/fighter. Each name's file is listed under it, for Solis.\n\
          {module}\n\n\
          -- The project's input actions (Edit > Input actions…): Input:pressed(Action.Jump).\n\
          {action}\n\n\
-         -- The project's sound events, folders as options inside options: Audio:play(Sound.Sfx.Footstep)\n\
-         -- for sfx/footstep.\n\
+         -- The project's sound events, by their files' names: Audio:play(Sound.Footstep) for\n\
+         -- sfx/footstep.\n\
          {sound}\n\n\
          -- The Mixer's buses: Audio:setVolume(Bus.Music, 0.5).\n\
          {bus}\n\n\
-         -- The sprites' clips, by their sheets: animate(Clip.Sprites.Farmer.Walk).\n\
+         -- The sprites' clips, their sheet's name and their own: animate(Clip.FarmerWalk).\n\
          {clip}\n\n\
          -- The clips' events: on CueReached(Cue cue) {{ is cue == Cue.Footstep? … }}.\n\
          {cue}\n\n\
          -- The game's screens (files in ui/): showScreen(Screen.PauseMenu) for ui/pauseMenu.lst.\n\
          {screen}\n\n\
-         -- The project's pictures, folders as options inside options, and the parts cut out of\n\
-         -- them with Atlas Crop inside their pictures: Picture.Sprites.Tools for sprites/tools.png,\n\
-         -- and Picture.Sprites.Tools.Axe for its Axe.\n\
+         -- The project's pictures, and the parts cut out of them with Atlas Crop named after\n\
+         -- their picture: Picture.Tools for sprites/tools.png, and Picture.ToolsAxe for its Axe.\n\
          {picture}\n\n\
          -- The project's tags (Project settings > Tags): is hasTag(Tag.Enemy)?, World:nearest(Tag.Enemy, place).\n\
          {tag}\n\n\
          -- The game's timers, each named where code starts it: startTimer(Timer.DoorOpens, 2.0).\n\
          {timer}\n\n\
-         -- The project's levels, folders as options inside options: Level.Forest.Cave for\n\
-         -- forest/cave.sollevel.\n\
+         -- The project's levels: Level.Cave for forest/cave.sollevel.\n\
          {level}\n\n\
-         -- The project's fonts (TrueType and OpenType files), folders as options inside options:\n\
-         -- Font.Fonts.Lora for fonts/Lora.ttf.\n\
+         -- The project's fonts (TrueType and OpenType files): Font.Lora for fonts/Lora.ttf.\n\
          {font}\n\n\
-         -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.Shop.Welcome).\n\
+         -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.ShopWelcome) for\n\
+         -- Shop.Welcome.\n\
          {text_state}\n\n\
          -- The project's languages (Project settings > Languages): Screens:setLanguage(Language.Nb).\n\
          {language}\n\n\

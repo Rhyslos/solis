@@ -1,0 +1,4 @@
+Checking samples/turret/
+  FAIL  it can't be opened as a project: samples/turret/ has no project.solis
+
+1 thing failed: this build changes the project. Don't ship it until that's understood.

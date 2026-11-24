@@ -831,7 +831,7 @@ mod tests {
         assert!(notes[0].contains("big-ship"));
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
         assert!(
-            project.contains("state Module = [Crate, Ships [Fighter]];"),
+            project.contains("state Module = [Crate, Fighter];"),
             "{project}"
         );
         // The same again: nothing new to say. A new module joins.
@@ -842,7 +842,10 @@ mod tests {
             "the same note isn't said again"
         );
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
-        assert!(project.contains("Ships [Fighter, Freighter]"), "{project}");
+        assert!(
+            project.contains("state Module = [Crate, Fighter, Freighter];"),
+            "{project}"
+        );
         assert!(
             project.contains("state Action = [Move, Look, Jump,"),
             "the ready-made actions: {project}"
@@ -868,10 +871,7 @@ mod tests {
         std::fs::write(assets.join("sfx/footstep.solsound"), "").unwrap();
         notes_of_a_check(&mut code, &assets);
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
-        assert!(
-            project.contains("state Sound = [Sfx [Footstep]];"),
-            "{project}"
-        );
+        assert!(project.contains("state Sound = [Footstep];"), "{project}");
         assert!(
             project.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{project}"

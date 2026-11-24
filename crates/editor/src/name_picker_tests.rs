@@ -136,7 +136,7 @@ fn play_asks_for_the_sound_s_file_and_needs_one() {
 fn a_picture_and_its_parts_are_all_names() {
     let options: Vec<String> = ["Guard", "Sheet", "SheetAxe"].map(String::from).to_vec();
     let rows: Vec<String> = (0..options.len())
-        .filter(|&at| pickable(&options, at, &|o: &str| o == "Sheet"))
+        .filter(|&at| pickable(&options, at, |o: &str| o == "Sheet"))
         .map(|at| options[at].clone())
         .collect();
     assert_eq!(rows, ["Guard", "Sheet", "SheetAxe"]);
