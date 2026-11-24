@@ -123,6 +123,16 @@ Color never carries meaning alone: every colored dot or icon has a word next to 
 - **Checkboxes:** 12–14 px rounded squares; on = accent fill, off = #3A3A3A outline.
 - **Unsaved:** 6–7 px amber dot (#E8B04A) after a document name.
 
+### One part for each kind of element ([decision 0137](../../decisions/0137-the-uniformity-pass.md))
+
+The uniformity pass's rules, added 2026-11-24, for every panel and pop-up:
+- **Buttons:** the ribbon's icon buttons on the ribbon; everywhere else one button, plain (#333333 fill, #3A3A3A border), or filled with the accent for the one main step of a panel or pop-up. Play's light button stays the one light thing on screen. A link is a link only where it goes somewhere.
+- **Text and numbers:** one text box and one number box (typed, or dragged across), with a slider beside the number when its field has a range.
+- **Renaming a row:** in every list, double-click; the name edits in place, Enter keeps it, Esc leaves it.
+- **Checkboxes and toggles by weight:** a checkbox for a light, everyday setting in Properties; a toggle for a heavier setting that changes how something works, usually with a line explaining it.
+- **Picking:** the name picker (search, a picture where there is one) for a list longer than a handful; dropdowns or segmented switches for short ones; the facing pad wherever a facing is chosen.
+- **Pictures cut into pieces:** one picture board, with the same zoom, moving and picking everywhere.
+
 ## Global shell
 
 Every editor screen stacks the same five bands from top to bottom: tab bar (34 px), ribbon (66 px), center editor area (flexible, about 400–470 px), shelf (34 px bar + content, about 290–360 px), status bar (24 px). Only the File views replace the ribbon, center and shelf with one full page.

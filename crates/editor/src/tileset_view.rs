@@ -211,16 +211,16 @@ pub(crate) fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     ui.horizontal(|ui| {
         ui.label(RichText::new("Terrains").color(theme::text_weak()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let add = ui
-                .add_enabled(
-                    t.editor.file.terrains.len() < tiles::tileset::MAX_TERRAINS,
-                    egui::Button::new("+"),
-                )
-                .on_hover_text("Add a terrain: something a cell can be")
-                .on_disabled_hover_text(format!(
-                    "A tileset has at most {} terrains",
-                    tiles::tileset::MAX_TERRAINS
-                ));
+            let add = crate::widgets::button::plain_if(
+                ui,
+                t.editor.file.terrains.len() < tiles::tileset::MAX_TERRAINS,
+                "+",
+            )
+            .on_hover_text("Add a terrain: something a cell can be")
+            .on_disabled_hover_text(format!(
+                "A tileset has at most {} terrains",
+                tiles::tileset::MAX_TERRAINS
+            ));
             add.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add a terrain")
             });
@@ -447,7 +447,7 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                 ))
                     .color(theme::text()),
             );
-            if ui.button(format!("Make {} {}", c.name, guess.word())).clicked() {
+            if crate::widgets::button::plain(ui, &format!("Make {} {}", c.name, guess.word())).clicked() {
                 changed |= t.editor.set_kind(c.id, guess);
             }
         });
@@ -840,16 +840,14 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                             ) {
                                 out.changed |= t.editor.set_rule_size(rule.id, size);
                             }
-                            if ui
-                                .add_enabled(n > 0, egui::Button::new("↑").small())
+                            if crate::widgets::button::plain_if(ui, n > 0, "↑")
                                 .on_hover_text("Try it sooner")
                                 .on_disabled_hover_text("It's tried first already")
                                 .clicked()
                             {
                                 out.changed |= t.editor.move_rule(rule.id, true);
                             }
-                            if ui
-                                .add_enabled(n + 1 < list.len(), egui::Button::new("↓").small())
+                            if crate::widgets::button::plain_if(ui, n + 1 < list.len(), "↓")
                                 .on_hover_text("Try it later")
                                 .on_disabled_hover_text("It's tried last already")
                                 .clicked()
@@ -873,7 +871,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
             });
         ui.add_space(4.0);
     }
-    if ui.button("+ Rule").clicked() {
+    if crate::widgets::button::plain(ui, "+ Rule").clicked() {
         out.changed |= t.editor.add_rule();
     }
     // The slots the rules name, to fill.
@@ -1044,8 +1042,7 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                 changed |= t.editor.set_terrain(c.id, None, None, Some(colour));
             }
         });
-        let x = ui
-            .button("Remove terrain")
+        let x = crate::widgets::button::plain(ui, "Remove terrain")
             .on_hover_text("Take it away with its tiles (maps keep its code, drawn pink)");
         if x.clicked() {
             changed |= t.editor.remove_terrain(c.id);

@@ -7,7 +7,7 @@ Every control follows the accent, the density and the interface scale through th
 | File | What it draws |
 | --- | --- |
 | `mod.rs` | What the controls share: the focus ring, a one-pixel border, words clipped to their room, and the arrow keys' step while a control holds the keyboard. |
-| `button.rs` | `Button::plain`, `Button::primary` (the accent) and `Button::light` (Play's look), with an icon, at a page's or a header's height, or as wide as their room, and `named` for screen readers when the word alone doesn't say what it does ("Play the sound"); `dashed` ("+ Component"); `icon` (26 x 26, an icon alone, named for hover and screen readers); `link`. |
+| `button.rs` | `Button::plain`, `Button::primary` (the accent) and `Button::light` (Play's look), with an icon, at a page's or a header's height, or as wide as their room, and `named` for screen readers when the word alone doesn't say what it does ("Play the sound"); `dashed` ("+ Component"); `icon` (26 x 26, an icon alone, named for hover and screen readers); `link`. `plain`, `plain_if` (greyed out unless it can be used) and `primary` show the panels' buttons in one call: every small action in a panel or pop-up is one of these (decision 0137). |
 | `toggle.rs` | The switch: 32 x 18, its knob at the right on the accent when on. |
 | `checkbox.rs` | The checkbox: a 12 x 12 rounded square, filled with the accent and ticked when on. |
 | `segmented.rs` | The segmented control: choices side by side in a dark well, the chosen one lifted. |

@@ -9,6 +9,9 @@ fn splash(doing: &'static str, progress: Option<f32>) -> Harness<'static> {
     Harness::builder()
         .with_size([800.0, 600.0])
         .build_ui(move |ui| {
+            if !crate::test_support::fonts_ready(ui.ctx()) {
+                return;
+            }
             show(
                 ui,
                 &SplashView {
@@ -40,6 +43,9 @@ type Asked = (bool, Option<UpdateAnswer>);
 fn question(offer: UpdateOffer) -> Harness<'static, Asked> {
     Harness::builder().with_size([800.0, 600.0]).build_ui_state(
         move |ui, state: &mut Asked| {
+            if !crate::test_support::fonts_ready(ui.ctx()) {
+                return;
+            }
             let ctx = ui.ctx().clone();
             if let Some(answer) = update_question(&ctx, "Test Engine", &offer, &mut state.0) {
                 state.1 = Some(answer);

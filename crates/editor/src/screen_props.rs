@@ -175,8 +175,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                     });
                 }
                 None => {
-                    if ui
-                        .button("+ Add a hover look")
+                    if crate::widgets::button::plain(ui, "+ Add a hover look")
                         .on_hover_text("Darkens it a little while the pointer is over it")
                         .clicked()
                     {
@@ -384,7 +383,8 @@ fn ties(
                                             for (max, k, _) in &r.fields {
                                                 if *k == Kind::Number
                                                     && max != field
-                                                    && ui.button(max).clicked()
+                                                    && crate::widgets::button::plain(ui, max)
+                                                        .clicked()
                                                 {
                                                     let to = TieTo::Bar {
                                                         side: side.clone(),
@@ -398,7 +398,7 @@ fn ties(
                                         });
                                     }
                                     _ => {
-                                        if ui.button(field).clicked() {
+                                        if crate::widgets::button::plain(ui, field).clicked() {
                                             changed |= doc.tie(r, field, to);
                                             ui.close();
                                         }

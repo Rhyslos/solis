@@ -787,40 +787,28 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
     let mut changed = false;
     let own = !clip.from_aseprite;
     ui.horizontal_wrapped(|ui| {
-        if ui
-            .button("Start")
+        if crate::widgets::button::plain(ui, "Start")
             .on_hover_text("Back to the start")
             .clicked()
         {
             f.editor.time = 0.0;
         }
-        if ui
-            .button("■ Stop")
+        if crate::widgets::button::plain(ui, "■ Stop")
             .on_hover_text("Stop, back at the start")
             .clicked()
         {
             f.editor.playing = false;
             f.editor.time = 0.0;
         }
-        let play = egui::Button::new(if f.editor.playing {
-            RichText::new("Pause")
+        let play = if f.editor.playing {
+            crate::widgets::button::plain(ui, "Pause")
         } else {
-            RichText::new("▶ Play").color(theme::on_accent())
-        })
-        .fill(if f.editor.playing {
-            theme::field()
-        } else {
-            theme::GO
-        });
-        if ui
-            .add(play)
-            .on_hover_text("Play or pause (Space)")
-            .clicked()
-        {
+            crate::widgets::button::Button::light("▶ Play").show(ui)
+        };
+        if play.on_hover_text("Play or pause (Space)").clicked() {
             toggle_play(f.editor, clip);
         }
-        if ui
-            .button("End")
+        if crate::widgets::button::plain(ui, "End")
             .on_hover_text("To the last frame")
             .clicked()
         {
@@ -886,7 +874,7 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
                             }
                         });
                     });
-                if ui.button("Add them all").clicked() {
+                if crate::widgets::button::plain(ui, "Add them all").clicked() {
                     let all: Vec<u32> = (0..sheet.frames.len() as u32).collect();
                     changed |= f.editor.add_frames(sheet, &all);
                     ui.close();
@@ -894,8 +882,7 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
             });
             add.response
                 .on_disabled_hover_text("An Aseprite tag's frames are changed in Aseprite");
-            if ui
-                .add_enabled(!f.editor.selected.is_empty(), egui::Button::new("Delete"))
+            if crate::widgets::button::plain_if(ui, !f.editor.selected.is_empty(), "Delete")
                 .on_hover_text("Take the picked frames out of the clip (Delete)")
                 .clicked()
             {
@@ -934,16 +921,14 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
         }
         ui.separator();
         ui.label(RichText::new("Zoom").color(theme::text_weak()));
-        if ui
-            .add_enabled(f.editor.zoom > ZOOM_RANGE.0, egui::Button::new("-"))
+        if crate::widgets::button::plain_if(ui, f.editor.zoom > ZOOM_RANGE.0, "-")
             .on_hover_text("Zoom out")
             .on_disabled_hover_text("Zoomed out as far as it goes")
             .clicked()
         {
             f.editor.zoom = (f.editor.zoom / 1.5).max(ZOOM_RANGE.0);
         }
-        if ui
-            .add_enabled(f.editor.zoom < ZOOM_RANGE.1, egui::Button::new("+"))
+        if crate::widgets::button::plain_if(ui, f.editor.zoom < ZOOM_RANGE.1, "+")
             .on_hover_text("Zoom in")
             .on_disabled_hover_text("Zoomed in as far as it goes")
             .clicked()
@@ -1004,7 +989,7 @@ fn event_field(
         ui.label(RichText::new("Sound events").color(theme::text_weak()));
         let sounds = crate::workbench_frames::sound_names(f.cue_sounds);
         for name in &sounds {
-            if ui.button(name).clicked() {
+            if crate::widgets::button::plain(ui, name).clicked() {
                 changed |= f.editor.set_event(clips, name);
                 ui.close();
             }
@@ -1013,7 +998,7 @@ fn event_field(
             ui.label("None yet: an event named like a sound event plays it.");
         }
         ui.separator();
-        if ui.button("No event").clicked() {
+        if crate::widgets::button::plain(ui, "No event").clicked() {
             changed |= f.editor.set_event(clips, "");
             ui.close();
         }

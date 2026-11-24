@@ -161,10 +161,10 @@ pub fn update_question(
             ui.add_space(6.0);
             ui.horizontal(|ui| {
                 let update = if offer.installed {
-                    ui.button("Update now")
+                    crate::widgets::button::primary(ui, "Update now")
                         .on_hover_text(format!("Downloads it, installs it and opens {name} again"))
                 } else {
-                    ui.button("Open the download page")
+                    crate::widgets::button::primary(ui, "Open the download page")
                 };
                 if update.clicked() {
                     answer = Some(if offer.installed {
@@ -173,7 +173,7 @@ pub fn update_question(
                         UpdateAnswer::OpenDownloadPage
                     });
                 }
-                if ui.button("Open without updating").clicked() {
+                if crate::widgets::button::plain(ui, "Open without updating").clicked() {
                     answer = Some(UpdateAnswer::NotNow { skip: *skip });
                 }
             });

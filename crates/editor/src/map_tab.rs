@@ -318,21 +318,21 @@ fn layers(ui: &mut Ui, m: &MapUi<'_>, asked: &mut Vec<MapRequest>) {
                         asked.push(MapRequest::ToggleHidden(layer.id));
                     }
                     ui.menu_button("⋯", |ui| {
-                        if ui
-                            .add_enabled(i + 1 < map.layers().len(), egui::Button::new("Move up"))
-                            .clicked()
+                        if crate::widgets::button::plain_if(
+                            ui,
+                            i + 1 < map.layers().len(),
+                            "Move up",
+                        )
+                        .clicked()
                         {
                             asked.push(MapRequest::MoveLayer(i, true));
                             ui.close();
                         }
-                        if ui
-                            .add_enabled(i > 0, egui::Button::new("Move down"))
-                            .clicked()
-                        {
+                        if crate::widgets::button::plain_if(ui, i > 0, "Move down").clicked() {
                             asked.push(MapRequest::MoveLayer(i, false));
                             ui.close();
                         }
-                        if ui.button("Delete").clicked() {
+                        if crate::widgets::button::plain(ui, "Delete").clicked() {
                             asked.push(MapRequest::RemoveLayer(i));
                             ui.close();
                         }

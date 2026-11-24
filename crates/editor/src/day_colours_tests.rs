@@ -18,6 +18,9 @@ fn harness() -> Harness<'static, (Value, Vec<Value>)> {
         .with_size(egui::vec2(360.0, 400.0))
         .build_ui_state(
             |ui, (value, changes): &mut (Value, Vec<Value>)| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 if let Some(v) = day_colours(ui, value, false) {
                     *value = v.clone();
                     changes.push(v);

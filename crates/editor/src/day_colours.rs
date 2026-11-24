@@ -139,8 +139,7 @@ pub(crate) fn day_colours(ui: &mut Ui, value: &Value, mixed: bool) -> Option<Val
             changed = true;
         }
         if stops.len() < MAX_STOPS
-            && ui
-                .button("+ Add a colour")
+            && crate::widgets::button::plain(ui, "+ Add a colour")
                 .on_hover_text("A new colour in the longest stretch of the day, as it is there now")
                 .clicked()
         {

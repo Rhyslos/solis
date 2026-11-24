@@ -196,8 +196,7 @@ fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRe
         .on_hover_text("Move here, copy and paste components, delete");
     egui::Popup::menu(&button).show(|ui| {
         if let Some(id) = one.filter(|_| menu.move_here)
-            && ui
-                .button("Move here")
+            && crate::widgets::button::plain(ui, "Move here")
                 .on_hover_text(
                     "Moves it to where the camera looks (a spotlight to the camera, shining \
                      the same way)",
@@ -208,8 +207,7 @@ fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRe
             ui.close();
         }
         if let Some(id) = one.filter(|_| menu.unpack)
-            && ui
-                .button("Unpack")
+            && crate::widgets::button::plain(ui, "Unpack")
                 .on_hover_text(
                     "Splits the model into one entity per part, so each can be moved or \
                      changed on its own",
@@ -220,16 +218,14 @@ fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRe
             ui.close();
         }
         if let Some(entity) = one
-            && ui
-                .button("Copy components")
+            && crate::widgets::button::plain(ui, "Copy components")
                 .on_hover_text("Copies the values of every component it has")
                 .clicked()
         {
             requests.push(PropertyRequest::CopyComponents { entity, only: None });
             ui.close();
         }
-        if ui
-            .add_enabled(menu.copied, egui::Button::new("Paste components"))
+        if crate::widgets::button::plain_if(ui, menu.copied, "Paste components")
             .on_hover_text("Gives the selection the copied components' values, adding any it lacks")
             .on_disabled_hover_text("Copy an entity's components first")
             .clicked()
@@ -242,8 +238,7 @@ fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRe
         }
         if let Some(id) = one {
             ui.separator();
-            if ui
-                .button("Delete")
+            if crate::widgets::button::plain(ui, "Delete")
                 .on_hover_text("Deletes it and everything belonging to it")
                 .clicked()
             {
@@ -377,7 +372,7 @@ pub(crate) fn module_note(
                 "Its changes are kept, in case the part comes back. Remove it if you don't need \
                  them.",
             );
-            if ui.button("Remove").clicked() {
+            if crate::widgets::button::plain(ui, "Remove").clicked() {
                 requests.push(PropertyRequest::Delete(id));
             }
         });

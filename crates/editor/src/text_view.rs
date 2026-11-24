@@ -461,8 +461,7 @@ pub(crate) fn text_properties(
             };
             ui.label(RichText::new(about).color(theme::text_weak()));
             ui.add_space(4.0);
-            if ui
-                .button("Open in its program ↗")
+            if crate::widgets::button::plain(ui, "Open in its program ↗")
                 .on_hover_text(
                     "Opens it in the program your computer uses for this kind of file \
                      (Ledger for Markdown), to edit it there",

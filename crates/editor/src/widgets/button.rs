@@ -160,6 +160,22 @@ impl<'a> Button<'a> {
     }
 }
 
+/// The panels' button for a small action ([decision 0137](../../../../docs/decisions/0137-the-uniformity-pass.md)):
+/// [`Button::plain`] shown.
+pub fn plain(ui: &mut Ui, label: &str) -> Response {
+    Button::plain(label).show(ui)
+}
+
+/// [`plain`], greyed out and not clickable unless `enabled`.
+pub fn plain_if(ui: &mut Ui, enabled: bool, label: &str) -> Response {
+    ui.add_enabled_ui(enabled, |ui| plain(ui, label)).inner
+}
+
+/// The one main step of a panel or pop-up: [`Button::primary`] shown.
+pub fn primary(ui: &mut Ui, label: &str) -> Response {
+    Button::primary(label).show(ui)
+}
+
 /// A filled button's colour under the pointer: a touch lighter.
 fn lifted(fill: Color32, response: &Response) -> Color32 {
     if response.hovered() {

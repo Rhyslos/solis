@@ -144,7 +144,7 @@ pub(crate) fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
                     ("Trigger", ParameterKind::Trigger),
                     ("Direction", ParameterKind::Direction(Facing::Down)),
                 ] {
-                    if ui.button(label).clicked() {
+                    if crate::widgets::button::plain(ui, label).clicked() {
                         changed |= a.editor.add_parameter(kind);
                         ui.close();
                     }
@@ -198,7 +198,7 @@ pub(crate) fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
                         .color(theme::text_weak()),
                 );
                 edit.context_menu(|ui| {
-                    if ui.button("Start at this value").clicked() {
+                    if crate::widgets::button::plain(ui, "Start at this value").clicked() {
                         let start = match (p.kind, value) {
                             (ParameterKind::Number(_), Some(ParamValue::Number(n))) => {
                                 Some(ParameterKind::Number(n))
@@ -216,7 +216,7 @@ pub(crate) fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
                         }
                         ui.close();
                     }
-                    if ui.button("Delete").clicked() {
+                    if crate::widgets::button::plain(ui, "Delete").clicked() {
                         changed |= a.editor.delete_parameter(&p.name);
                         ui.close();
                     }
@@ -267,7 +267,7 @@ fn parameter_value(
             }
         }
         Some(ParamValue::Trigger(fired)) => {
-            let r = ui.add_enabled(!fired, egui::Button::new("Fire"));
+            let r = crate::widgets::button::plain_if(ui, !fired, "Fire");
             r.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Fire {name}"))
             });
@@ -449,29 +449,29 @@ fn graph(ui: &mut Ui, a: &mut AnimatorUi<'_>, keys: bool) -> bool {
     let events = {
         let mut menu = |ui: &mut Ui, target: Option<GraphTarget>| match target {
             None => {
-                if ui.button("Add state").clicked() {
+                if crate::widgets::button::plain(ui, "Add state").clicked() {
                     asked = Some(MenuAsk::AddState);
                     ui.close();
                 }
             }
             Some(GraphTarget::Box(b)) => {
-                if ui.button("Make transition").clicked() {
+                if crate::widgets::button::plain(ui, "Make transition").clicked() {
                     asked = Some(MenuAsk::Aim(b));
                     ui.close();
                 }
                 if let Some(id) = state_of_box(b) {
-                    if ui.button("Start here").clicked() {
+                    if crate::widgets::button::plain(ui, "Start here").clicked() {
                         asked = Some(MenuAsk::Entry(id));
                         ui.close();
                     }
-                    if ui.button("Delete").clicked() {
+                    if crate::widgets::button::plain(ui, "Delete").clicked() {
                         asked = Some(MenuAsk::Delete(GraphTarget::Box(b)));
                         ui.close();
                     }
                 }
             }
             Some(GraphTarget::Wire(w)) => {
-                if ui.button("Delete").clicked() {
+                if crate::widgets::button::plain(ui, "Delete").clicked() {
                     asked = Some(MenuAsk::Delete(GraphTarget::Wire(w)));
                     ui.close();
                 }
@@ -790,13 +790,13 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
             }
             ui.horizontal(|ui| {
                 ui.add_space(100.0);
-                if ui
-                    .add_enabled(
-                        by_clips.len() < Facing::ALL.len(),
-                        egui::Button::new("+ Direction"),
-                    )
-                    .on_disabled_hover_text("Every direction has a clip already")
-                    .clicked()
+                if crate::widgets::button::plain_if(
+                    ui,
+                    by_clips.len() < Facing::ALL.len(),
+                    "+ Direction",
+                )
+                .on_disabled_hover_text("Every direction has a clip already")
+                .clicked()
                 {
                     changed |= editor.add_direction(state.id);
                 }
@@ -864,7 +864,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
         |ui| {
             if starts {
                 ui.label(RichText::new("Starts here").color(theme::COLLIDER));
-            } else if ui.button("Start here").clicked() {
+            } else if crate::widgets::button::plain(ui, "Start here").clicked() {
                 changed |= editor.set_entry(state.id);
             }
         },
@@ -1009,16 +1009,16 @@ fn transition_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, t: &animation::Tra
                 .color(theme::WARNING),
         );
     }
-    if ui
-        .add_enabled(
-            t.when.len() < animation::animator_file::MAX_CONDITIONS,
-            egui::Button::new("+ Condition"),
-        )
-        .on_disabled_hover_text(format!(
-            "A transition has at most {} conditions",
-            animation::animator_file::MAX_CONDITIONS
-        ))
-        .clicked()
+    if crate::widgets::button::plain_if(
+        ui,
+        t.when.len() < animation::animator_file::MAX_CONDITIONS,
+        "+ Condition",
+    )
+    .on_disabled_hover_text(format!(
+        "A transition has at most {} conditions",
+        animation::animator_file::MAX_CONDITIONS
+    ))
+    .clicked()
     {
         changed |= editor.add_condition(t.id);
     }
@@ -1038,15 +1038,10 @@ fn transition_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, t: &animation::Tra
             "When several transitions leave the same state, earlier ones are tried first.",
             |ui| {
                 ui.label(format!("{} of {}", at + 1, same_from.len()));
-                if ui
-                    .add_enabled(at > 0, egui::Button::new("Earlier"))
-                    .clicked()
-                {
+                if crate::widgets::button::plain_if(ui, at > 0, "Earlier").clicked() {
                     changed |= editor.move_transition(t.id, true);
                 }
-                if ui
-                    .add_enabled(at + 1 < same_from.len(), egui::Button::new("Later"))
-                    .clicked()
+                if crate::widgets::button::plain_if(ui, at + 1 < same_from.len(), "Later").clicked()
                 {
                     changed |= editor.move_transition(t.id, false);
                 }

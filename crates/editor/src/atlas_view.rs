@@ -219,7 +219,7 @@ fn picked_crop(
     ui.horizontal(|ui| {
         ui.label("Name");
         let field = ui.text_edit_singleline(&mut editor.naming);
-        if field.lost_focus() || ui.button("Rename").clicked() {
+        if field.lost_focus() || crate::widgets::button::plain(ui, "Rename").clicked() {
             match editor.rename() {
                 Ok(changed) => out.changed |= changed,
                 Err(why) => out.said = Some(why),
@@ -249,7 +249,7 @@ fn picked_crop(
         .small()
         .color(theme::text_weak()),
     );
-    if ui.button("Delete crop").clicked() && editor.delete_picked() {
+    if crate::widgets::button::plain(ui, "Delete crop").clicked() && editor.delete_picked() {
         out.changed = true;
     }
 }

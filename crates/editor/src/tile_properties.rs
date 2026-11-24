@@ -97,8 +97,7 @@ pub(crate) fn tileset_properties(
         });
     }
     let can_add = set.terrains.len() < tiles::tileset::MAX_TERRAINS;
-    if ui
-        .add_enabled(can_add, egui::Button::new("+ Terrain"))
+    if crate::widgets::button::plain_if(ui, can_add, "+ Terrain")
         .on_disabled_hover_text(format!(
             "A tileset has at most {} terrains",
             tiles::tileset::MAX_TERRAINS

@@ -264,8 +264,7 @@ pub(crate) fn sheet_properties(
         ui.label(RichText::new(note).size(11.0).color(theme::WARNING));
     }
     ui.add_space(6.0);
-    let make = ui
-        .button("Edit clips…")
+    let make = crate::widgets::button::plain(ui, "Edit clips…")
         .on_hover_text(
             "Opens its clips file (made beside it if there's none yet): set each clip's speed, \
              give frames events that play sounds, and make clips of your own",
