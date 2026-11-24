@@ -157,8 +157,8 @@ impl World {
                 !s.playing
                     && s.sheet
                         .and_then(|sheet| sets.get(&sheet.asset))
-                        .and_then(|set| set.chosen(&s.clip))
-                        .and_then(animation::Clip::length_seconds)
+                        .and_then(|set| set.facing(&s.clip, crate::sprites::facing_of(s), None))
+                        .and_then(|(clip, _)| clip.length_seconds())
                         .is_some_and(|length| f64::from(s.time) >= length)
             });
             let changed = machine.step(&mut running.run, finished);

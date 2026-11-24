@@ -41,6 +41,7 @@ fn clip_sets(sheet: AssetId) -> Arc<crate::ClipSets> {
         ],
         first: Some(0),
         notes: Vec::new(),
+        ways: Default::default(),
     };
     let mut sets = crate::ClipSets::new();
     sets.insert(sheet, Arc::new(set));

@@ -149,3 +149,49 @@ fn what_doesn_t_fit_the_sheet_is_left_out_with_a_note() {
     assert_eq!(set.get("walk").unwrap().frames.len(), 2);
     assert!(set.get("idle").unwrap().frames.is_empty());
 }
+
+/// A clips file whose "march" faces eight ways, mirrored: South shows frame
+/// 0, East 1, North 2, the diagonals 3 to 4.
+fn walking() -> ClipsFile {
+    use crate::clips_file::Facing;
+    let frame = |n: u32| ClipFrame {
+        frame: n,
+        ms: 100,
+        events: Vec::new(),
+    };
+    let mut walk =
+        crate::clips_file::Clip::one_way("march".into(), 1.0, Direction::Forward, 0, &[frame(0)]);
+    walk.mirror = true;
+    walk.set_directions(8);
+    for (facing, n) in [
+        (Facing::South, 0),
+        (Facing::East, 1),
+        (Facing::North, 2),
+        (Facing::SouthEast, 3),
+        (Facing::NorthEast, 4),
+    ] {
+        walk.set_frames_of(facing, &[frame(n)]);
+    }
+    ClipsFile {
+        clips: vec![walk],
+        ..ClipsFile::default()
+    }
+}
+
+#[test]
+fn a_clip_with_directions_plays_the_row_nearest_the_facing() {
+    use crate::clips_file::Facing;
+    let set = ClipSet::of_sheet(&sheet(), Some(&walking()));
+    let row = |facing: Facing| {
+        let (clip, flipped) = set.facing("march", facing, None).unwrap();
+        (clip.frames[0].frame, flipped)
+    };
+    assert_eq!(row(Facing::South), (0, false));
+    assert_eq!(row(Facing::NorthEast), (4, false));
+    assert_eq!(row(Facing::West), (1, true), "East's row, flipped");
+    assert_eq!(row(Facing::SouthWest), (3, true));
+    // A clip with one direction plays the same whatever the facing.
+    let set = ClipSet::of_sheet(&sheet(), None);
+    let (walk, flipped) = set.facing("walk", Facing::West, None).unwrap();
+    assert_eq!((walk.name.as_str(), flipped), ("walk", false));
+}

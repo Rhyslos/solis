@@ -396,3 +396,49 @@ fn a_grid_bigger_than_the_picture_gives_no_cells_and_says_so() {
             .is_empty()
     );
 }
+
+#[test]
+fn a_sprite_shows_the_row_its_facing_is_nearest_mirrored_ones_flipped() {
+    use animation::clips_file::Facing;
+    let (mut sheets, clips) = cut_knight(4);
+    let Some(FramesState::Read(file, _)) = sheets.frames.get_mut("knight.clips.lst") else {
+        panic!("read");
+    };
+    let walk = &mut Arc::make_mut(file).clips[0];
+    walk.mirror = true;
+    walk.set_directions(4);
+    walk.set_frames_of(
+        Facing::East,
+        &[animation::ClipFrame {
+            frame: 0,
+            ms: 100,
+            events: Vec::new(),
+        }],
+    );
+    sheets.work_out_clips();
+    let sprite = |facing: &str| Sprite {
+        sheet: Some(reflect::AssetRef {
+            asset: clips,
+            part: None,
+        }),
+        clip: "walk".into(),
+        facing: facing.into(),
+        ..Sprite::default()
+    };
+    assert_eq!(
+        sheets.shown(&sprite("South"), 2, 0.0),
+        (1, false),
+        "South: walk's first cell"
+    );
+    assert_eq!(sheets.shown(&sprite("East"), 2, 0.0), (0, false));
+    assert_eq!(
+        sheets.shown(&sprite("West"), 2, 0.0),
+        (0, true),
+        "East's, flipped"
+    );
+    assert_eq!(
+        sheets.shown(&sprite("NorthWest"), 2, 0.0),
+        (0, true),
+        "a diagonal turns sideways"
+    );
+}

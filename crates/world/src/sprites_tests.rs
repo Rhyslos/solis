@@ -34,6 +34,7 @@ fn sets() -> (AssetId, Arc<ClipSets>) {
         ],
         first: Some(0),
         notes: Vec::new(),
+        ways: Default::default(),
     };
     let mut map = ClipSets::new();
     map.insert(sheet, Arc::new(set));
