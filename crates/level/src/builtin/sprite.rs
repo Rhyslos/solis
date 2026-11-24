@@ -19,6 +19,9 @@ pub struct Sprite {
     /// The clip it plays, by name ("walk"); empty for the clips file's
     /// first clip, or, with none, the still [`Self::frame`].
     pub clip: String,
+    /// Which way it faces (`NorthEast`), one of [`Sprite::FACINGS`]: a
+    /// clip with directions plays the row nearest it (Fixes 3).
+    pub facing: String,
     /// Whether the clip is playing (the running game moves it on).
     pub playing: bool,
     /// How fast it plays: 1 as drawn, 2 twice as fast.
@@ -54,6 +57,7 @@ impl Default for Sprite {
         Self {
             sheet: None,
             clip: String::new(),
+            facing: "South".into(),
             playing: true,
             speed: 1.0,
             time: 0.0,
@@ -71,6 +75,17 @@ impl Default for Sprite {
 }
 
 impl Sprite {
+    /// The ways a sprite can face, as a clips file names them.
+    pub const FACINGS: [&'static str; 8] = [
+        "South",
+        "SouthEast",
+        "East",
+        "NorthEast",
+        "North",
+        "NorthWest",
+        "West",
+        "SouthWest",
+    ];
     /// The most frames a sprite counts to.
     pub const MAX_FRAME: i64 = 65_536;
     /// The fastest a sprite plays its clip.
@@ -114,6 +129,18 @@ impl Component for Sprite {
                         ..Hint::default()
                     },
                 ),
+                FieldInfo::new(
+                    "facing",
+                    "Facing",
+                    FieldKind::Choice(Self::FACINGS.map(String::from).to_vec()),
+                    Value::Text(d.facing.clone()),
+                )
+                .hint(Hint {
+                    help: "Which way it faces: a clip with directions plays the row nearest \
+                           it, and game code turns it with facing = Facing.NorthEast."
+                        .into(),
+                    ..Hint::default()
+                }),
                 field::boolean(
                     "playing",
                     "Playing",
@@ -211,6 +238,7 @@ impl Component for Sprite {
         let mut data = ComponentData::default();
         data.set("sheet", Value::Asset(self.sheet));
         data.set("clip", Value::Text(self.clip.clone()));
+        data.set("facing", Value::Text(self.facing.clone()));
         data.set("playing", Value::Bool(self.playing));
         data.set("speed", Value::Float(f64::from(self.speed)));
         data.set("time", Value::Float(f64::from(self.time)));
@@ -251,6 +279,9 @@ impl Component for Sprite {
                 .chars()
                 .take(64)
                 .collect(),
+            facing: (f.text("facing"))
+                .filter(|t| Self::FACINGS.contains(t))
+                .map_or(d.facing.clone(), str::to_owned),
             playing: f.bool("playing", d.playing),
             speed: within(f.float("speed", d.speed), Self::MAX_SPEED, d.speed),
             time: within(f.float("time", d.time), Self::MAX_TIME, d.time),
@@ -283,6 +314,7 @@ mod tests {
                 part: None,
             }),
             clip: "walk".into(),
+            facing: "NorthEast".into(),
             playing: false,
             speed: 2.0,
             time: 1.5,
@@ -312,6 +344,13 @@ mod tests {
         assert_eq!(read.speed, 1.0);
         assert_eq!(read.time, 0.0);
         assert_eq!(read.clip.chars().count(), 64, "trimmed and cut short");
+        let mut odd = s.to_data();
+        odd.set("facing", Value::Text("Up".into()));
+        assert_eq!(
+            Sprite::from_data(&odd).facing,
+            "South",
+            "a facing it doesn't know"
+        );
         let mut odd = s.to_data();
         odd.set("tint", Value::floats(&[9.0, -1.0, 0.5]));
         assert_eq!(Sprite::from_data(&odd).tint, [1.0, 0.0, 0.5]);

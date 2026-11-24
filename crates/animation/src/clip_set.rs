@@ -2,7 +2,7 @@
 //! clips file adds to them, then the clips made in Solis.
 
 use crate::clip::{Clip, ClipFrame};
-use crate::clips_file::ClipsFile;
+use crate::clips_file::{ClipsFile, Facing};
 use assets::sprite_sheet::SpriteSheet;
 
 /// The clips of one sheet (and its clips file, if any).
@@ -16,6 +16,10 @@ pub struct ClipSet {
     pub first: Option<usize>,
     /// What couldn't be used, in plain words.
     pub notes: Vec<String>,
+    /// The rows of each clip with directions, by its name: each facing
+    /// with its frames, and whether they're drawn flipped (a mirrored west
+    /// side). A clip with one direction has none here.
+    pub ways: std::collections::HashMap<String, Vec<(Facing, Clip, bool)>>,
 }
 
 impl ClipSet {
@@ -102,6 +106,26 @@ impl ClipSet {
                     own.speed,
                     false,
                 ));
+                if own.directions > 1 {
+                    let rows = (own.facings().iter())
+                        .map(|&facing| {
+                            let (from, flipped) = own.drawn_from(facing);
+                            let frames = (own.frames_of(from, ms_of).into_iter())
+                                .filter(|f| f.frame < count)
+                                .collect();
+                            let clip = Clip::new(
+                                own.name.clone(),
+                                frames,
+                                own.playback,
+                                own.plays,
+                                own.speed,
+                                false,
+                            );
+                            (facing, clip, flipped)
+                        })
+                        .collect();
+                    set.ways.insert(own.name.clone(), rows);
+                }
             }
             if !file.first.is_empty() {
                 set.first = set.index_of(&file.first);
@@ -124,6 +148,27 @@ impl ClipSet {
     /// The place of the clip called `name`.
     pub fn index_of(&self, name: &str) -> Option<usize> {
         self.clips.iter().position(|c| c.name == name)
+    }
+
+    /// The clip called `name` (with no name, the one played first) as a
+    /// sprite facing `facing` plays it, and whether it's drawn flipped:
+    /// the row nearest the facing (`Facing::nearest_in`, keeping
+    /// `showing` where it can), or the clip itself when it has one
+    /// direction.
+    pub fn facing(
+        &self,
+        name: &str,
+        facing: Facing,
+        showing: Option<Facing>,
+    ) -> Option<(&Clip, bool)> {
+        let clip = self.chosen(name)?;
+        let Some(rows) = self.ways.get(&clip.name) else {
+            return Some((clip, false));
+        };
+        let facings: Vec<Facing> = rows.iter().map(|r| r.0).collect();
+        let shown = facing.nearest_in(&facings, showing);
+        let row = rows.iter().find(|r| r.0 == shown);
+        Some(row.map_or((clip, false), |(_, row, flipped)| (row, *flipped)))
     }
 
     /// The clip a sprite plays: the one called `name`, or with no name,

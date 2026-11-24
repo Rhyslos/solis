@@ -3,7 +3,9 @@
 //! repeated across the view, and gathered into layers drawn behind
 //! everything or in front of it.
 
-use crate::sprite_sheets::{LevelSprite, SpriteBatch, SpriteSheets, ViewSprite, view_frame};
+use crate::sprite_sheets::{
+    LevelSprite, SpriteBatch, SpriteSheets, ViewSprite, view_frame_flipped,
+};
 use assets::sprite_sheet::SpriteSheet;
 use glam::{Mat4, Vec2};
 use reflect::{AssetId, EntityId};
@@ -91,8 +93,9 @@ pub fn parallax_layers(
             }
             None => s.transform,
         };
-        let frame = sheets.shown_frame(&s.sprite, sheet.frames.len(), ahead);
-        let Some(mut one) = view_frame(&s.sprite, sheet, frame, transform, pixel, snap) else {
+        let (frame, flip) = sheets.shown(&s.sprite, sheet.frames.len(), ahead);
+        let one = view_frame_flipped(&s.sprite, sheet, frame, transform, pixel, snap, flip);
+        let Some(mut one) = one else {
             continue;
         };
         one.flags |= PARALLAX | if parallax.in_front { OVER } else { UNDER };

@@ -627,11 +627,20 @@ impl SpriteSheets {
     /// time (a preview in the editor; 0 in the game, which moves its time
     /// on itself): its clip's frame when it has one, otherwise its Frame.
     pub fn shown_frame(&self, sprite: &Sprite, frames: usize, ahead: f64) -> usize {
+        self.shown(sprite, frames, ahead).0
+    }
+
+    /// [`Self::shown_frame`], and whether it's drawn flipped: a clip with
+    /// directions plays the row nearest the sprite's Facing (Fixes 3), a
+    /// mirrored west side flipped.
+    pub fn shown(&self, sprite: &Sprite, frames: usize, ahead: f64) -> (usize, bool) {
+        let facing = animation::clips_file::Facing::named(&sprite.facing)
+            .unwrap_or(animation::clips_file::Facing::South);
         let clip = sprite
             .sheet
             .and_then(|s| self.clip_sets.get(&s.asset))
-            .and_then(|set| set.chosen(&sprite.clip));
-        if let Some(clip) = clip {
+            .and_then(|set| set.facing(&sprite.clip, facing, None));
+        if let Some((clip, flipped)) = clip {
             let ahead = if sprite.playing && ahead > 0.0 {
                 ahead * f64::from(sprite.speed) * f64::from(clip.speed)
             } else {
@@ -640,10 +649,10 @@ impl SpriteSheets {
             if let Some(m) = clip.at(f64::from(sprite.time) + ahead)
                 && (m.frame as usize) < frames
             {
-                return m.frame as usize;
+                return (m.frame as usize, flipped);
             }
         }
-        sprite.frame_index(frames)
+        (sprite.frame_index(frames), false)
     }
 
     /// The sheet at `path`, if it's been read.
@@ -783,6 +792,29 @@ pub fn view_sprite(
 }
 
 /// As [`view_sprite`], showing the sheet's frame `index` (from 0): the one
+/// its clip has reached, mirrored left to right once more when `flip` is
+/// set (a clip's mirrored west side).
+pub fn view_frame_flipped(
+    sprite: &Sprite,
+    sheet: &SpriteSheet,
+    index: usize,
+    transform: Mat4,
+    pixel: f32,
+    snap: Option<f32>,
+    flip: bool,
+) -> Option<ViewSprite> {
+    view_frame_across(
+        sprite,
+        sheet,
+        index,
+        transform,
+        pixel,
+        snap,
+        sprite.flip_x != flip,
+    )
+}
+
+/// As [`view_sprite`], showing the sheet's frame `index` (from 0): the one
 /// its clip has reached.
 pub fn view_frame(
     sprite: &Sprite,
@@ -791,6 +823,21 @@ pub fn view_frame(
     transform: Mat4,
     pixel: f32,
     snap: Option<f32>,
+) -> Option<ViewSprite> {
+    view_frame_across(sprite, sheet, index, transform, pixel, snap, sprite.flip_x)
+}
+
+/// [`view_frame`], mirrored left to right when `flip_x` is set (the
+/// sprite's own Flip across, or its clip's mirrored side undoing it).
+#[allow(clippy::too_many_arguments)]
+fn view_frame_across(
+    sprite: &Sprite,
+    sheet: &SpriteSheet,
+    index: usize,
+    transform: Mat4,
+    pixel: f32,
+    snap: Option<f32>,
+    flip_x: bool,
 ) -> Option<ViewSprite> {
     let frame = sheet.frames.get(index)?;
     let [_, _, w, h] = frame.rect;
@@ -812,7 +859,7 @@ pub fn view_frame(
     let size = Vec2::new(w as f32, h as f32);
     // Flipping mirrors the canvas round the pivot; the shader mirrors the
     // frame's own pixels.
-    if sprite.flip_x {
+    if flip_x {
         offset.x = cw - offset.x - size.x;
         pivot.x = cw - pivot.x;
     }
@@ -823,7 +870,7 @@ pub fn view_frame(
     let from_pivot = offset - pivot;
     let corner = foot.truncate() + axis_x * from_pivot.x + axis_y * from_pivot.y;
     let mut flags = 0;
-    if sprite.flip_x {
+    if flip_x {
         flags |= 1;
     }
     if sprite.flip_y {
@@ -872,8 +919,9 @@ pub fn batches(
         let Some(sheet) = sheets.get(id) else {
             continue;
         };
-        let frame = sheets.shown_frame(&s.sprite, sheet.frames.len(), ahead);
-        let Some(drawn) = view_frame(&s.sprite, sheet, frame, s.transform, pixel, snap) else {
+        let (frame, flip) = sheets.shown(&s.sprite, sheet.frames.len(), ahead);
+        let drawn = view_frame_flipped(&s.sprite, sheet, frame, s.transform, pixel, snap, flip);
+        let Some(drawn) = drawn else {
             continue;
         };
         if s.sprite.see_through {

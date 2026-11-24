@@ -153,7 +153,9 @@ impl Facing {
         ][self as usize]
     }
 
-    fn named(name: &str) -> Option<Self> {
+    /// Its option's name back to the facing (`NorthEast`); none for any
+    /// other word.
+    pub fn named(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|f| f.name() == name)
     }
 
@@ -171,6 +173,36 @@ impl Facing {
             Facing::West => Facing::East,
             Facing::NorthWest => Facing::NorthEast,
             other => other,
+        }
+    }
+
+    /// The facing among `facings` (a clip's rows) a sprite facing this way
+    /// shows. One that's there is shown; with four, a diagonal keeps the
+    /// one `showing` if it's one of its two nearest, and otherwise shows
+    /// the east or west one, so a character walking diagonally turns
+    /// sideways rather than flickering between two; with one, the only.
+    pub fn nearest_in(self, facings: &[Facing], showing: Option<Facing>) -> Facing {
+        if facings.contains(&self) || facings.is_empty() {
+            return if facings.is_empty() {
+                Facing::Any
+            } else {
+                self
+            };
+        }
+        if facings.len() == 1 {
+            return facings[0];
+        }
+        let (across, up_down) = match self {
+            Facing::NorthEast => (Facing::East, Facing::North),
+            Facing::SouthEast => (Facing::East, Facing::South),
+            Facing::SouthWest => (Facing::West, Facing::South),
+            Facing::NorthWest => (Facing::West, Facing::North),
+            _ => return facings[0],
+        };
+        match showing {
+            Some(s) if (s == across || s == up_down) && facings.contains(&s) => s,
+            _ if facings.contains(&across) => across,
+            _ => up_down,
         }
     }
 

@@ -304,3 +304,47 @@ fn turning_either_setting_off_and_on_again_gives_the_clip_back() {
     changed.set_mirror(true);
     assert_eq!(changed, walk);
 }
+
+#[test]
+fn every_facing_against_one_four_and_eight_directions() {
+    use Facing::*;
+    let one = Facing::of_directions(1);
+    let four = Facing::of_directions(4);
+    let eight = Facing::of_directions(8);
+    let ways = [
+        North, NorthEast, East, SouthEast, South, SouthWest, West, NorthWest,
+    ];
+    for way in ways {
+        assert_eq!(way.nearest_in(one, None), Any, "{way:?} with one");
+        assert_eq!(
+            way.nearest_in(eight, Some(North)),
+            way,
+            "{way:?} with eight"
+        );
+    }
+    // Four: a straight facing is itself; a diagonal keeps what's showing
+    // if it's one of its two, else turns east or west.
+    let table = [
+        (NorthEast, None, East),
+        (NorthEast, Some(North), North),
+        (NorthEast, Some(East), East),
+        (NorthEast, Some(South), East),
+        (SouthEast, Some(South), South),
+        (SouthEast, Some(West), East),
+        (SouthWest, None, West),
+        (SouthWest, Some(South), South),
+        (NorthWest, Some(North), North),
+        (NorthWest, Some(East), West),
+        (North, Some(East), North),
+        (West, None, West),
+    ];
+    for (way, showing, shown) in table {
+        assert_eq!(
+            way.nearest_in(four, showing),
+            shown,
+            "{way:?} from {showing:?}"
+        );
+    }
+    assert_eq!(Facing::named("NorthEast"), Some(NorthEast));
+    assert_eq!(Facing::named("northeast"), None);
+}

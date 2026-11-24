@@ -30,6 +30,7 @@ fn clips() -> ClipSet {
         ],
         first: Some(0),
         notes: Vec::new(),
+        ways: Default::default(),
     }
 }
 

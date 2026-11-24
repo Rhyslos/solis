@@ -54,6 +54,13 @@ impl Playback {
     }
 }
 
+/// The way `sprite` faces, for the row of a clip with directions it plays
+/// (South when its Facing is none of a clips file's).
+pub(crate) fn facing_of(sprite: &Sprite) -> animation::clips_file::Facing {
+    animation::clips_file::Facing::named(&sprite.facing)
+        .unwrap_or(animation::clips_file::Facing::South)
+}
+
 impl World {
     /// Gives the world the clips sprites play (again whenever a sheet or a
     /// clips file changes).
@@ -100,8 +107,8 @@ impl World {
             && sprite
                 .sheet
                 .and_then(|s| self.clip_sets.get(&s.asset))
-                .and_then(|set| set.chosen(clip))
-                .and_then(animation::Clip::length_seconds)
+                .and_then(|set| set.facing(clip, facing_of(&sprite), None))
+                .and_then(|(clip, _)| clip.length_seconds())
                 .is_some_and(|length| f64::from(sprite.time) >= length);
         if same && !again && (sprite.playing || finished) {
             return;
@@ -163,7 +170,8 @@ impl World {
             let Some(clip) = sprite
                 .sheet
                 .and_then(|s| sets.get(&s.asset))
-                .and_then(|set| set.chosen(&sprite.clip))
+                .and_then(|set| set.facing(&sprite.clip, facing_of(sprite), None))
+                .map(|(clip, _)| clip)
             else {
                 continue;
             };
