@@ -266,7 +266,7 @@ The project lead, 2026-11-20 ([decision 0133](../decisions/0133-fixes-from-makin
 - **T5:** `libudev-dev`, named in the report, isn't needed: gamepads (gilrs) are Windows only. The list is `build-essential` (Luau is C++), `pkg-config` and `libasound2-dev`.
 - **Asked of Lust** (ready to send): "A program's top-level names are all locals of one function in the Lua Lust writes, and Luau allows 200: a program of a few hundred methods, states and classes can't start. Could each file's names be fields of a table, or the ones past a count be written as globals of the program's environment? Solis rewrites the Lua to do the second until then (`script::many_names`)."
 
-### Fixes 2: the missing game-code calls (next)
+### Fixes 2: the missing game-code calls (done)
 
 All in Lust, Rust and Lua, checked against the guidelines (rule 25).
 - **M5** (High) Game code reads another entity's component, read-only, as the last tick left it, as screens already do (`entity:knight()`), so a gate can ask whether the knight carries its key.
@@ -276,14 +276,14 @@ All in Lust, Rust and Lua, checked against the guidelines (rule 25).
 - **M3** (Medium) A collider turned off and on from game code (`setSolid(false)`), for bodies that fall.
 - **M4** (Low) `setVisible(bool)` on an entity.
 
-### Fixes 3: clips by action and direction, and another look
+### Fixes 3: clips by action and direction, and another look (done)
 
-Planned in [fixes-3.md](fixes-3.md), with the project lead's answers (2026-11-23); its second round of mock-ups waits for approval. The project lead chose a sheet cut in the editor over reading direction names from Aseprite tags.
+Planned and built in [fixes-3.md](fixes-3.md) (its As built notes), with the project lead's answers (2026-11-23). The project lead chose a sheet cut in the editor over reading direction names from Aseprite tags. As built, game code sets a component's fields rather than calling `setFacing` and `setLook` ([decision 0136](../decisions/0136-engine-calls-make-or-set.md)): `facing = Facing.NorthEast;`, `look = Look.KnightMana;`.
 - **M1** (High) A picture cut into cells in the editor (by a grid, or freely, Atlas Crop's way), clips with one, four or eight directions made from its cells, and game code naming the direction (`setFacing(Facing.NorthEast)`, then `animate(Clip.Sprites.Knight.Walk)`). Ends 300-line lookup tables.
 - **M2** (Medium) Switching a character to another look while playing: a look is another picture with the same cells (`setLook(Look.Sprites.Knight.Mana)`).
 - **D2** (Low) The rule for how a tag becomes a clip's name, in the sprite animation page.
 
-### Fixes 4: Solis's files written down, and playing from the command line
+### Fixes 4: Solis's files written down, and playing from the command line (done)
 
 - **D1** (High) A manual page, "Solis's files": one short annotated example of each (Aseprite features read, sidecars and their hash, a level with a placed prefab copy and its changes, prefabs, tilesets, tile maps, how a state field is stored, the 2D components' fields), for anyone writing a game's own tools.
 - **D3** (Medium) Files can point at others by path, turned into an ID the first time Solis reads them, and/or `solis --new-id`.

@@ -1,6 +1,6 @@
 # Fixes 3: clips with directions, and looks
 
-**The project lead answered the questions on 2026-11-23 (see [their answers](#the-project-leads-answers-2026-11-23)); the second round of mock-ups waits for their approval.** Fixes 3 of [the fixes from making Orc Invasion](game-stages.md#fixes-from-making-orc-invasion) ([decision 0133](../decisions/0133-fixes-from-making-orc-invasion.md)), planned on 2026-11-23 under [the scope reset](scope-reset.md): Lust only, small steps, the light path except where a file format or a save changes.
+**Built** (pull requests 317 to 333, one step each), after the project lead's answers and approval on 2026-11-23 (see [their answers](#the-project-leads-answers-2026-11-23)). Fixes 3 of [the fixes from making Orc Invasion](game-stages.md#fixes-from-making-orc-invasion) ([decision 0133](../decisions/0133-fixes-from-making-orc-invasion.md)), planned on 2026-11-23 under [the scope reset](scope-reset.md): Lust only, small steps, the light path except where a file format or a save changes.
 
 ## Why
 
@@ -194,6 +194,7 @@ One step per pull request, each well under an hour. Steps F3.1 and F3.8 change a
 | **F3.11** Game code | `Facing` in `solis/animation`; `setFacing`, `setFacingAlong`, `facing`, `setLook`, `look` in `describe.rs` (Lust); the two mistakes (a look from another file, `setFacing` with an animator). | Native tests for each call and each mistake; the manual's examples compile (`manual_examples_tests`) |
 | | *As built (F3.11), after [decision 0136](../decisions/0136-engine-calls-make-or-set.md):* no calls. A Lust component's `Facing facing` and `Look look` fields are what the engine reads (`script::engine_fields`): set with `=`, read back as the component's own, landed as each tick ends when changed, and kept over edits (`world::game_set`). `nearestFacing(way)` replaces `setFacingAlong`. Looks have one dot, the clips file's name and the look's (`Look.KnightMana`), folders in front only on a clash. The two mistakes are said in the Console once a play per entity, since a look's file and an animator's state are only known while playing. | |
 | **F3.12** The manual's last pass | [Animating sprites](../manual/sprite-animation.md) rewritten around the clips file (cutting a picture in both modes, directions and their two settings, looks, the before-and-after with the lookup table); [Animators](../manual/animators.md) (Faces by); [concepts](../manual/concepts.md) (cell, direction, look); D2, the rule that turns a tag into a clip's name; "directional animation" marked *works well* on the "Can I make this?" page if it exists by then. | The user guide's checks |
+| | *As built (F3.12):* the page leads with a picture cut in Solis, Aseprite's tags a section of their own with the naming rule (D2); the before-and-after is plain text, since the before's clips don't exist to check. No "Can I make this?" page exists yet, so directional animation is marked there when it's made. | |
 
 ## The project lead's answers (2026-11-23)
 
