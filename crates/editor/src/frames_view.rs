@@ -10,6 +10,7 @@
 use crate::frames_editor::{FramesEditor, STANDARD_ZOOM, ZOOM_RANGE};
 use crate::settled::{settled_drag, settled_number};
 use crate::theme;
+use animation::clips_file::{Clip as OwnClip, Facing};
 use animation::{ClipSet, Direction};
 use assets::sprite_sheet::SpriteSheet;
 use egui::{Color32, RichText, Ui};
@@ -58,8 +59,12 @@ fn seconds(s: f64) -> String {
     format!("{s:.2} s")
 }
 
-/// What a clip is, in a few words: "4 frames · 0.40 s" or "… · once".
-fn about(clip: &animation::Clip) -> String {
+/// What a clip is, in a few words: "4 frames · 0.40 s" or "… · once";
+/// a clip with directions says how many ("8 directions").
+fn about(clip: &animation::Clip, directions: u8) -> String {
+    if directions > 1 {
+        return format!("{directions} directions");
+    }
     let frames = crate::library::frames_text(clip.frames.len());
     match clip.repeats {
         0 => format!("{frames} · {}", seconds(clip.pass_seconds())),
@@ -206,7 +211,15 @@ fn clip_row(
     painter.text(
         egui::pos2(rect.left() + rect.width() * 0.4, y),
         egui::Align2::LEFT_CENTER,
-        about(clip),
+        about(
+            clip,
+            editor
+                .file
+                .clips
+                .iter()
+                .find(|c| c.name == clip.name)
+                .map_or(1, |c| c.directions),
+        ),
         small.clone(),
         theme::text_weak(),
     );
@@ -315,6 +328,24 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
             ui.end_row();
         });
     ui.add_space(4.0);
+    let own = editor
+        .file
+        .clips
+        .iter()
+        .find(|c| c.name == clip.name)
+        .map(|c| c.directions);
+    if let Some(directions) = own {
+        crate::widgets::rows::section_caps(ui, "Directions").on_hover_text(
+            "How many ways the clip faces: a row of frames for each, and a sprite plays the \
+             one nearest the way it faces",
+        );
+        let mut picked = directions;
+        let choices = [(1u8, "One"), (4, "Four"), (8, "Eight")];
+        if crate::widgets::segmented::segmented(ui, "clip directions", &mut picked, &choices) {
+            changed |= editor.set_directions(picked);
+        }
+        ui.add_space(4.0);
+    }
     if clip.from_aseprite {
         ui.label(
             RichText::new(format!(
@@ -345,6 +376,15 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>, keys: bool) -> bool 
         ui.label(RichText::new("Choose a clip in the Clips tab.").color(theme::text_weak()));
         return false;
     };
+    // A clip with directions shows a row a facing; the toolbar works on
+    // the row picked.
+    let with_rows = (f.editor.file.clips.iter())
+        .find(|c| c.name == clip.name && c.directions > 1)
+        .cloned();
+    let clip = match &with_rows {
+        Some(own) => row_clip(own, f.editor.facing, sheet),
+        None => clip,
+    };
     let mut changed = false;
     let own = !clip.from_aseprite;
     if keys {
@@ -363,6 +403,13 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>, keys: bool) -> bool 
     }
     changed |= toolbar(ui, f, sheet, &clip);
     ui.add_space(4.0);
+    if let Some(own) = &with_rows {
+        egui::ScrollArea::both()
+            .id_salt("frames rows")
+            .auto_shrink([false, true])
+            .show(ui, |ui| direction_rows(ui, f, sheet, own));
+        return changed;
+    }
     egui::ScrollArea::horizontal()
         .id_salt("frames ruler")
         .auto_shrink([false, true])
@@ -370,6 +417,167 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>, keys: bool) -> bool 
             changed |= ruler(ui, f, sheet, &clip);
         });
     changed
+}
+/// A row's height in the Frames tab when a clip has directions.
+const ROW_HEIGHT: f32 = 34.0;
+/// The width of the rows' names.
+const ROW_NAME_W: f32 = 170.0;
+
+/// The arrow before a facing's name.
+fn arrow(facing: Facing) -> &'static str {
+    match facing {
+        Facing::Any => "•",
+        Facing::North => "↑",
+        Facing::NorthEast => "↗",
+        Facing::East => "→",
+        Facing::SouthEast => "↘",
+        Facing::South => "↓",
+        Facing::SouthWest => "↙",
+        Facing::West => "←",
+        Facing::NorthWest => "↖",
+    }
+}
+
+/// The chosen clip's frames for the row picked, as the toolbar and the
+/// player take them.
+fn row_clip(own: &OwnClip, facing: Facing, sheet: &SpriteSheet) -> animation::Clip {
+    let ms_of = |cell: u32| sheet.frames.get(cell as usize).map_or(1, |f| f.duration_ms);
+    animation::Clip::new(
+        own.name.clone(),
+        own.frames_of(own.drawn_from(facing).0, ms_of),
+        own.playback,
+        own.plays,
+        own.speed,
+        false,
+    )
+}
+
+/// A clip with directions: a row a facing, each frame a tile as wide as
+/// it lasts. A mirrored clip's west rows are its east rows, faded. Click
+/// a frame to pick it (and its row); click a row's name to pick the row.
+fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &OwnClip) {
+    let zoom = f.editor.zoom;
+    let width_of = |ms: u32| (ms as f32 / 1000.0 * zoom).clamp(TILE_WIDTH.0, TILE_WIDTH.1);
+    let ms_of = |cell: u32| sheet.frames.get(cell as usize).map_or(1, |f| f.duration_ms);
+    for &facing in own.facings() {
+        let (from, flipped) = own.drawn_from(facing);
+        let frames = own.frames_of(from, ms_of);
+        let total: f32 = frames.iter().map(|fr| width_of(fr.ms) + 4.0).sum();
+        let (row, _) = ui.allocate_exact_size(
+            egui::vec2((ROW_NAME_W + total).max(ui.available_width()), ROW_HEIGHT),
+            egui::Sense::hover(),
+        );
+        let painter = ui.painter_at(row);
+        let picked_row = f.editor.facing == facing;
+        if picked_row {
+            painter.rect_filled(row, 0.0, theme::field().gamma_multiply(0.5));
+        }
+        painter.hline(
+            row.x_range(),
+            row.bottom(),
+            egui::Stroke::new(1.0, theme::button_border()),
+        );
+        // Its name, and the row a mirrored one shows.
+        let name_rect = egui::Rect::from_min_size(row.min, egui::vec2(ROW_NAME_W, ROW_HEIGHT));
+        let name = ui.interact(
+            name_rect,
+            ui.id().with(("row", facing.name())),
+            egui::Sense::click(),
+        );
+        painter.text(
+            name_rect.left_center() + egui::vec2(8.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            format!("{}  {}", arrow(facing), facing.name()),
+            egui::FontId::proportional(12.0),
+            if flipped {
+                theme::text_weak()
+            } else {
+                theme::text()
+            },
+        );
+        if flipped {
+            painter.text(
+                name_rect.right_center() - egui::vec2(8.0, 0.0),
+                egui::Align2::RIGHT_CENTER,
+                format!("◈ {}", from.name()),
+                egui::FontId::proportional(10.5),
+                theme::text_weak(),
+            );
+        } else if name.clicked() {
+            f.editor.pick_row(Some(facing));
+        }
+        // Its frames.
+        let mut x = row.left() + ROW_NAME_W;
+        for (i, frame) in frames.iter().enumerate() {
+            let w = width_of(frame.ms);
+            let rect = egui::Rect::from_min_size(
+                egui::pos2(x, row.top() + 3.0),
+                egui::vec2(w, ROW_HEIGHT - 6.0),
+            );
+            x += w + 4.0;
+            let fade = if flipped { 0.45 } else { 1.0 };
+            let picked = picked_row && f.editor.selected.contains(&i);
+            painter.rect_filled(rect, 3.0, theme::field().gamma_multiply(fade));
+            let stroke = if picked {
+                egui::Stroke::new(2.0, theme::kind::SPRITE)
+            } else {
+                egui::Stroke::new(1.0, theme::button_border().gamma_multiply(fade))
+            };
+            painter.rect_stroke(rect, 3.0, stroke, egui::StrokeKind::Inside);
+            if let Some(atlas) = f.atlas {
+                let thumb = egui::Rect::from_min_size(
+                    rect.min + egui::vec2(3.0, 2.0),
+                    egui::vec2(24.0, 24.0),
+                );
+                crate::sheet_view::draw_frame(&painter, thumb, sheet, atlas, frame.frame as usize);
+            }
+            let label = if flipped {
+                format!("flipped {}", frame.frame)
+            } else {
+                match frame.events.first() {
+                    Some(event) => format!("{}  ◆ {event}", frame.frame),
+                    None => frame.frame.to_string(),
+                }
+            };
+            painter.text(
+                rect.left_center() + egui::vec2(32.0, 0.0),
+                egui::Align2::LEFT_CENTER,
+                label,
+                egui::FontId::monospace(10.5),
+                theme::text_weak().gamma_multiply(if flipped { 0.8 } else { 1.0 }),
+            );
+            if flipped {
+                continue;
+            }
+            let response = ui.interact(
+                rect,
+                ui.id().with(("row frame", facing.name(), i)),
+                egui::Sense::click(),
+            );
+            response.widget_info(|| {
+                egui::WidgetInfo::selected(
+                    egui::WidgetType::SelectableLabel,
+                    true,
+                    picked,
+                    format!("{} frame {} of {}", facing.name(), i + 1, own.name),
+                )
+            });
+            if response.clicked() {
+                if !picked_row {
+                    f.editor.pick_row(Some(facing));
+                }
+                let m = ui.input(|inp| inp.modifiers);
+                f.editor.pick(i, m.command, m.shift);
+                f.editor.playing = false;
+            }
+        }
+    }
+    ui.add_space(6.0);
+    ui.label(
+        RichText::new("Pick a frame in a direction's row to set its time and event.")
+            .size(11.0)
+            .color(theme::text_weak()),
+    );
 }
 
 /// Plays or pauses (from the start again once a clip played a number of

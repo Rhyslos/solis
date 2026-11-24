@@ -122,7 +122,7 @@ While a zone's points are drawn or edited these keys are the zone's: `Delete` ne
 
 ## The Frames tab (a clips file open)
 
-The keys work while the pointer is over the Frames tab (undo and redo over the Clip tab too); see [Animating sprites](sprite-animation.md).
+The keys work while the pointer is over the Frames tab (undo and redo over the clips list too); see [Animating sprites](sprite-animation.md).
 
 | Action | Shortcut |
 |---|---|
@@ -415,7 +415,7 @@ Every tab has the same frame (left slot, centre, right slot, and the bottom pane
 | Put a dragged tab back | `Esc`, while dragging |
 | Bring a bottom tab to the front (opening a folded panel at its last height) | Click its name |
 | Fold the bottom panel to one line, or open it again | `Ctrl + Space` (while typing too), **▾**, or a click on the tab in front |
-| Close a clips file | The **×** after the Frames or Clip tab |
+| Close a clips file | The **×** after the Frames tab |
 | Choose a layout | Click its card in **File › Preferences › Layout**; **Undo** on the note puts the one before back |
 
 See the [Interface tour](interface-tour.md).

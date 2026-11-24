@@ -30,8 +30,6 @@ pub enum BottomTab {
     /// A clips file's frames along a time ruler, while one is open: the
     /// Animate tab's timeline.
     Frames,
-    /// The chosen clip's playback, while a clips file is open.
-    Clip,
     /// The project's pictures for the canvas's Image tool.
     Pictures,
     /// Messages from the editor, the build and the game, with the
@@ -79,11 +77,10 @@ const fn unbuilt_column(title: &'static str, part: Entry<()>) -> Column {
 
 impl BottomTab {
     /// Every bottom tab.
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 7] = [
         Self::Library,
         Self::Code,
         Self::Frames,
-        Self::Clip,
         Self::Pictures,
         Self::Console,
         Self::Problems,
@@ -96,7 +93,6 @@ impl BottomTab {
             Self::Library => "Library",
             Self::Code => "Code",
             Self::Frames => "Frames",
-            Self::Clip => "Clip",
             Self::Pictures => "Pictures",
             Self::Console => "Console",
             Self::Problems => "Problems",
@@ -128,7 +124,6 @@ impl BottomTab {
             Self::Library => Panel::Assets,
             Self::Code => Panel::Code,
             Self::Frames => Panel::Frames,
-            Self::Clip => Panel::Clip,
             Self::Pictures => Panel::Pictures,
             Self::Console => Panel::Console,
             Self::Problems => Panel::Problems,
@@ -146,7 +141,7 @@ impl BottomTab {
     /// that it closes (until the Animate screen gives a clips file its
     /// own document tab).
     pub fn closes_a_file(self) -> bool {
-        matches!(self, Self::Frames | Self::Clip)
+        matches!(self, Self::Frames)
     }
 }
 
@@ -203,6 +198,8 @@ pub fn right_slot(tab: RibbonTab, open: OpenNow) -> Option<Column> {
         RibbonTab::Home | RibbonTab::Ui => Some(column!("Properties", [P::Properties])),
         RibbonTab::Library => Some(column!("Details", [P::Properties])),
         RibbonTab::Animate if open.animator => Some(column!("Properties", [P::Properties])),
+        // A clips file's chosen clip (Fixes 3, the mock-up's frame (a)).
+        RibbonTab::Animate if open.clips => Some(column!("Clip", [P::Properties])),
         RibbonTab::Audio => Some(column!("Bus", [P::Bus])),
         RibbonTab::Tileset if open.tileset => Some(column!("Slot", [P::Properties])),
         _ => None,
@@ -310,7 +307,7 @@ pub fn bottom_tabs(tab: RibbonTab, open: OpenNow) -> Vec<Entry<BottomTab>> {
         RibbonTab::Animate => {
             let mut tabs = Vec::new();
             if open.clips {
-                tabs.extend([Built(B::Frames), Built(B::Clip)]);
+                tabs.push(Built(B::Frames));
             }
             tabs.extend([
                 Unbuilt(UnbuiltId::HomeShelfAnimation),
