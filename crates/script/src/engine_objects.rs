@@ -12,7 +12,7 @@
 //!
 //! How: once the Lust starts, each field is taken out of its object's
 //! table and the object is given a metatable whose `__index` and
-//! `__newindex` call the natives lent for the tick ([`WRAP`]).
+//! `__newindex` call the natives lent for the tick (`WRAP`).
 
 use mlua::{Function, Table, Value as LuaValue};
 
