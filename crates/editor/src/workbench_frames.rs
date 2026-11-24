@@ -170,6 +170,12 @@ impl Workbench {
                 editor.path.clone(),
                 picture.clone(),
                 editor.file.grid,
+                editor
+                    .file
+                    .cells
+                    .iter()
+                    .map(|c| (c.number, c.rect))
+                    .collect(),
             ));
         }
     }
@@ -201,7 +207,12 @@ impl Workbench {
             && let Some(cut) = cut
             && let Some(editor) = &mut self.open.frames_editor
             && editor.path == cut.path
-            && editor.change(|f| f.grid = cut.grid)
+            && editor.change(|f| {
+                f.grid = cut.grid;
+                f.cells = (cut.drawn.iter())
+                    .map(|&(number, rect)| animation::clips_file::Cell { number, rect })
+                    .collect();
+            })
         {
             self.save_frames();
         }

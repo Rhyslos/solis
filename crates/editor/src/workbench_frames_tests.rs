@@ -487,3 +487,21 @@ fn use_these_cells_is_one_undo_step_and_cancel_changes_nothing() {
     assert!(editor.undo(), "one step back");
     assert_eq!(editor.file.grid, animation::clips_file::Grid::default());
 }
+
+#[test]
+fn cells_drawn_by_hand_are_kept_and_come_back_next_time() {
+    use crate::cut_picture::CutAnswer;
+    let mut w = with_picture_cut_open();
+    let cut = w.open.cut_picture.as_mut().unwrap();
+    cut.picked = Some(0);
+    cut.nudge(0, 1, [16, 24]);
+    w.cut_picture_answered(CutAnswer::Use);
+    let cells = open_file(&w).cells;
+    assert_eq!(cells.len(), 1);
+    assert_eq!((cells[0].number, cells[0].rect), (0, [0, 1, 16, 16]));
+    w.open_cut_picture();
+    assert_eq!(
+        w.open.cut_picture.as_ref().unwrap().drawn,
+        [(0, [0, 1, 16, 16])]
+    );
+}

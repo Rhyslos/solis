@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Free crop** (Fixes 3, F3.5): Cut picture…'s second mode. Draw a cell on the picture, pick one to move or size it by its corners or its X, Y, W and H, nudge it a pixel with the arrow keys, or put it back with **Back to the grid's box**. Cells drawn by hand are kept in the clips file with the grid.
 - **Cut picture…** (Fixes 3, F3.4): **Make clips…** on a PNG or JPEG in the Library makes its clips file and opens a pop-up that cuts the picture into numbered cells by a grid (cell size, gap between, edge), with **Find grid** to guess it; **Use these cells** keeps it as one undo step. **Cut picture…** in the Clip tab opens it again. The atlas's picture and this pop-up now share one picture board.
 - **A picture's clips play its cells** (Fixes 3, F3.3): a clips file beside a PNG or JPEG cuts it into numbered cells by its grid (cell size, gap between, edge) and any boxes drawn by hand, and its clips play those cells, each standing on the sprite's spot. What can't be cut is said in the Clips tab. A sprite whose Sheet is a clips file now draws in the viewport and the game.
 - **Clips files are Lust** (Fixes 3, F3.2): **Edit clips…** on an Aseprite file now makes `walker.clips.lst` beside it, which replaces `.solframes`. Everything plays and edits as before; the file's first look names the sheet it plays, and it has room for what's coming (cells, directions, looks). Clip and event names can be anything Aseprite's tag names can be.
