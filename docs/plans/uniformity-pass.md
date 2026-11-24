@@ -177,7 +177,7 @@ The shared parts are in `crates/editor/src/widgets/` (buttons, cards, checkboxes
 - **Lists with rows:** `widgets::rows` draws the rows of the buses, the Clips and Looks lists, the atlas's crops, the preferences and about pages and a few more; the Level panel, the Library's list view and the input page draw their own.
 - **Pop-ups:** `widgets::dialog` serves Cut picture…, making a module, the module page, Keep or Undo all after playing, leaving with unsaved changes and the languages and tags pages; the start-up splash has a window of its own.
 
-Questions, each with a mock-up of the before and after:
+Questions, each with a mock-up of the before and after on one Design canvas, [Uniformity pass: one look for each element](https://claude.ai/artifact/TdXzWhTMhtqRuRsR5wgpTZ) (five artboards, the today side drawn after the editor's code):
 - One button style for small actions in a view, and the ribbon's for the ribbon?
 - One text box, one number box (with a slider when a range is known), and one way to rename a row in any list?
 - Toggles for settings that take effect at once, checkboxes only in forms that wait for OK?
