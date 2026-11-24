@@ -97,8 +97,12 @@ impl Lent {
         if !same {
             let made = lua.create_table()?;
             let plain_texts = texts.clone();
-            let text = lua.create_function(move |_, key: mlua::LuaString| {
+            let text = lua.create_function(move |lua, key: mlua::LuaString| {
+                // Text.ShopWelcome comes as "ShopWelcome": the line's key,
+                // as the project's names list it (Shop.Welcome); Lua gives
+                // the key itself.
                 let key = key.to_string_lossy();
+                let key = crate::project_names::path_for(lua, "Text", &key).unwrap_or(key);
                 if !plain_texts.all().has(&key) {
                     return Ok((None, Some(no_line(&plain_texts, &key))));
                 }

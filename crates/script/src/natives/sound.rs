@@ -29,7 +29,7 @@ fn lend_audio<'s>(
             scope,
             "Audio_playAt",
             move |lua, (_audio, event, place): (LuaValue, mlua::LuaString, LuaValue)| {
-                let event = crate::project_names::path_of(&event.to_str()?);
+                let event = crate::project_names::path_for(lua, "Sound", &event.to_str()?);
                 if let (Some(event), Some(place)) =
                     (event, vec3_of(&place).filter(|p| p.is_finite()))
                 {
@@ -71,7 +71,7 @@ fn lend_on_entities<'s>(
             scope,
             "entity_playSound",
             move |lua, (which, event): (LuaValue, mlua::LuaString)| {
-                let event = crate::project_names::path_of(&event.to_str()?);
+                let event = crate::project_names::path_for(lua, "Sound", &event.to_str()?);
                 if let (Some(e), Some(event)) = (entity_of(&which), event) {
                     let mut host = h.borrow_mut();
                     host.set_started_in(crate::states::started_in(lua));

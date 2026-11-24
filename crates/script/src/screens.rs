@@ -677,6 +677,7 @@ impl Screens {
             names: Default::default(),
             screens: None,
             engine_reads: Vec::new(),
+            name_paths: Default::default(),
         };
         runtime.load(&compiled, &mut crate::NoHost)?;
         let opened = opened.borrow().clone();

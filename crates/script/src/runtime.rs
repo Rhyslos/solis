@@ -450,6 +450,9 @@ impl Runtime {
         self.commit(lust, classes);
         self.engine_reads.clone_from(&code.engine_reads);
         self.engine_seen.clear();
+        self.luau
+            .lua
+            .set_app_data(std::sync::Arc::clone(&code.name_paths));
         Ok(())
     }
 
@@ -508,6 +511,9 @@ impl Runtime {
         let objects_before = self.object_values();
         self.commit(lust, classes);
         self.engine_reads.clone_from(&code.engine_reads);
+        self.luau
+            .lua
+            .set_app_data(std::sync::Arc::clone(&code.name_paths));
         if let Some(program) = &self.lust {
             for (object, field) in program.objects.set_values(&self.luau, &objects_before) {
                 swapped.notes.push(format!(

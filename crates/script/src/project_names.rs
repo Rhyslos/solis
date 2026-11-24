@@ -20,15 +20,6 @@ pub const STANDARD_BUSES: &[&str] = &["Master", "Music", "Effects", "Voice", "Am
 /// need one): `Module.None`, which makes nothing.
 pub const NO_OPTION: &str = "None";
 
-/// One level of a state: options, each with the options inside it (none
-/// for a file).
-#[derive(Debug, Default)]
-struct Level {
-    options: BTreeMap<String, (String, Level)>,
-    /// Whether this option is a file itself (and not only a folder).
-    file: bool,
-}
-
 /// The project's names, as Solis finds them, for [`project_file`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Names {
@@ -200,7 +191,8 @@ pub const KIT_ACTIONS: [&str; 8] = [
 /// for the first line.
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
-    let module = state_text("Module", &names.modules, "module", &mut notes);
+    let files = |paths: &[String]| paths.iter().map(|p| file_entry(p)).collect::<Vec<_>>();
+    let module = flat_text("Module", &files(&names.modules), "module", &mut notes);
     let mut actions = names.actions.clone();
     for kit in KIT_ACTIONS {
         if !actions.iter().any(|a| a.eq_ignore_ascii_case(kit)) {
@@ -208,18 +200,32 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
         }
     }
     let action = names_text("Action", &actions, "input action", true, &mut notes);
-    let sound = state_text("Sound", &names.sounds, "sound event", &mut notes);
+    let sound = flat_text("Sound", &files(&names.sounds), "sound event", &mut notes);
     let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
-    let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
+    let clips: Vec<_> = names.clips.iter().map(|p| part_entry(p)).collect();
+    let clip = flat_text("Clip", &clips, "sprite clip", &mut notes);
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
     let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
-    let picture = state_text("Picture", &names.pictures, "picture", &mut notes);
+    // A picture, or a part cut out of one (a crop: the picture's path,
+    // then the crop's name).
+    let pictures: Vec<_> = (names.pictures.iter())
+        .map(|p| {
+            let crop = p
+                .rsplit_once('/')
+                .is_some_and(|(picture, _)| names.pictures.iter().any(|q| q == picture));
+            if crop { part_entry(p) } else { file_entry(p) }
+        })
+        .collect();
+    let picture = flat_text("Picture", &pictures, "picture", &mut notes);
     let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
     let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
-    let level = state_text("Level", &names.levels, "level", &mut notes);
-    let font = state_text("Font", &names.fonts, "font", &mut notes);
-    let keys: Vec<String> = names.texts.iter().map(|k| k.replace('.', "/")).collect();
-    let text_state = state_text("Text", &keys, "text key", &mut notes);
+    let level = flat_text("Level", &files(&names.levels), "level", &mut notes);
+    let font = flat_text("Font", &files(&names.fonts), "font", &mut notes);
+    // A text key's parts are all its own: `Shop.Welcome` is ShopWelcome.
+    let keys: Vec<_> = (names.texts.iter())
+        .map(|k| (String::new(), k.replace('.', "/"), k.clone()))
+        .collect();
+    let text_state = flat_text("Text", &keys, "text key", &mut notes);
     let language = names_text("Language", &names.languages, "language", true, &mut notes);
     let look = names_text("Look", &names.looks, "look", true, &mut notes);
     let text = format!(
@@ -339,62 +345,119 @@ pub fn one_dot(names: &[(String, String)]) -> Vec<Option<String>> {
         .collect()
 }
 
-/// One state's line: `state Module = [Crate, Ships [Fighter]];`.
-fn state_text(state: &str, paths: &[String], what: &str, notes: &mut Vec<String>) -> String {
-    let mut top = Level::default();
-    let mut paths: Vec<&String> = paths.iter().collect();
-    paths.sort();
-    paths.dedup();
-    // Paths the same but for capitals name the same option.
-    let mut seen: BTreeMap<String, &String> = BTreeMap::new();
-    'paths: for path in paths {
-        if let Some(first) = seen.get(&path.to_lowercase()) {
-            notes.push(format!(
-                "Two {what} files, {first} and {path}, have the same name but for capitals, so game code \
-                 can't tell them apart. Rename one to use it from code."
-            ));
-            continue;
+/// The project's names of one kind with one dot (decision 0137), and
+/// the file each stands for: `state Module = [Crate, Fighter];`, then a
+/// line Solis reads back for each (`-- @Module.Fighter = ships/fighter`),
+/// which game code never sees. `entries` is each name's folders, its own
+/// parts and the path or key it stands for (as [`one_dot`] takes them).
+fn flat_text(
+    state: &str,
+    entries: &[(String, String, String)],
+    what: &str,
+    notes: &mut Vec<String>,
+) -> String {
+    let mut entries: Vec<&(String, String, String)> = entries.iter().collect();
+    entries.sort_by(|a, b| a.2.cmp(&b.2));
+    entries.dedup_by(|a, b| a.2 == b.2);
+    let asked: Vec<(String, String)> = entries
+        .iter()
+        .map(|(folders, own, _)| (folders.clone(), own.clone()))
+        .collect();
+    let mut options: Vec<(String, &str)> = Vec::new();
+    for (name, (_, _, path)) in one_dot(&asked).into_iter().zip(&entries) {
+        match name {
+            Some(name) => options.push((name, path.as_str())),
+            None => notes.push(format!(
+                "The {what} {path} can't be named in game code: its name must start with a \
+                 letter and hold only letters, digits and _, and no other {what} may be called \
+                 the same. Rename it to use it from code."
+            )),
         }
-        let mut parts = Vec::new();
-        for part in path.split('/') {
-            match option_name(part) {
-                Some(name) => parts.push(name),
-                None => {
-                    notes.push(format!(
-                        "The {what} {path} can't be named in game code: each part of its path must start \
-                         with a letter, hold only letters, digits and _, and not be one \
-                         of Lust's own objects (Maths, Files, Time, Json, Web, Random). Rename it to use it \
-                         from code."
-                    ));
-                    continue 'paths;
-                }
-            }
-        }
-        seen.insert(path.to_lowercase(), path);
-        let mut level = &mut top;
-        for name in parts {
-            level = &mut level
-                .options
-                .entry(name.to_lowercase())
-                .or_insert_with(|| (name.clone(), Level::default()))
-                .1;
-        }
-        level.file = true;
     }
-    let mut options = Vec::new();
-    let what = (what, state == PARTS_INSIDE);
-    write_level(&top, "", what, notes, &mut options);
-    if options.is_empty() {
-        options.push(NO_OPTION.to_string());
+    options.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut text = if options.is_empty() {
+        format!("state {state} = [{NO_OPTION}];")
+    } else {
+        let list: Vec<&str> = options.iter().map(|(name, _)| name.as_str()).collect();
+        format!("state {state} = [{}];", list.join(", "))
+    };
+    for (name, path) in &options {
+        text.push_str(&format!("\n{PATH_MARK}{state}.{name} = {path}"));
     }
-    format!("state {state} = [{}];", options.join(", "))
+    text
 }
 
-/// A state of plain names. `exact`: each must already be an option as it
-/// is (`Jump`; an input action, which game code asks for by its exact
-/// name), else it's left out with a note. Otherwise it's made one as a
-/// path's part is (the `UI` bus is `Bus.Ui`), and found again ignoring
-/// capitals.
+/// How a line naming an option's file starts in `solis/project.lst`.
+const PATH_MARK: &str = "-- @";
+
+/// Each option's file (or key), as `solis/project.lst` lists them under
+/// its states: `Module.Fighter` to `ships/fighter` (decision 0137).
+pub type NamePaths = BTreeMap<String, String>;
+
+/// The options' files in `files` (the game's code): read from the lines
+/// [`flat_text`] writes in `solis/project.lst`; none if it has none.
+pub fn paths_in(files: &[(String, String)]) -> NamePaths {
+    let path = format!("{}/project.lst", level::lust_data::ENGINE_FOLDER);
+    let Some((_, text)) = files.iter().find(|(p, _)| *p == path) else {
+        return NamePaths::new();
+    };
+    text.lines()
+        .filter_map(|line| line.trim().strip_prefix(PATH_MARK))
+        .filter_map(|rest| rest.split_once(" = "))
+        .map(|(option, path)| (option.trim().to_owned(), path.trim().to_owned()))
+        .collect()
+}
+
+/// The file (or key) the option `option` of `state` stands for
+/// (`"Fighter"` of `Module`: `ships/fighter`), from `paths`; `None` for
+/// [`NO_OPTION`] or a name it doesn't have.
+pub fn path_in(paths: &NamePaths, state: &str, option: &str) -> Option<String> {
+    (option != NO_OPTION && !option.is_empty())
+        .then(|| paths.get(&format!("{state}.{option}")).cloned())
+        .flatten()
+}
+
+/// The option of `state` standing for `path` (`ships/fighter`: `Fighter`),
+/// from `paths`, matched ignoring capitals as the Library finds files.
+pub fn option_in(paths: &NamePaths, state: &str, path: &str) -> Option<String> {
+    let prefix = format!("{state}.");
+    paths.iter().find_map(|(option, p)| {
+        option
+            .strip_prefix(&prefix)
+            .filter(|_| p.eq_ignore_ascii_case(path))
+            .map(str::to_owned)
+    })
+}
+
+/// The file a native's name of `state` stands for, from the names the
+/// running code was compiled with (a native is given `Module.Fighter` as
+/// `"Fighter"`): `ships/fighter`. `None` for [`NO_OPTION`] or a name it
+/// doesn't have.
+pub(crate) fn path_for(lua: &mlua::Lua, state: &str, option: &str) -> Option<String> {
+    let paths = lua.app_data_ref::<std::sync::Arc<NamePaths>>()?;
+    path_in(&paths, state, option)
+}
+
+/// A path split as [`flat_text`] takes it: its folders and its file
+/// (`ships/fighter`: `ships`, `fighter`).
+fn file_entry(path: &str) -> (String, String, String) {
+    let (folders, file) = path.rsplit_once('/').unwrap_or(("", path));
+    (folders.to_owned(), file.to_owned(), path.to_owned())
+}
+
+/// A path whose last part is a part of the file before it (a clip of a
+/// sheet, a crop of a picture), split as [`flat_text`] takes it:
+/// `sprites/farmer/walk` is `sprites`, `farmer/walk`.
+fn part_entry(path: &str) -> (String, String, String) {
+    let (file, part) = path.rsplit_once('/').unwrap_or(("", path));
+    let (folders, stem) = file.rsplit_once('/').unwrap_or(("", file));
+    (
+        folders.to_owned(),
+        format!("{stem}/{part}"),
+        path.to_owned(),
+    )
+}
+
 fn names_text(
     state: &str,
     names: &[String],
@@ -423,44 +486,6 @@ fn names_text(
         options.push(NO_OPTION.to_string());
     }
     format!("state {state} = [{}];", options.join(", "))
-}
-
-/// The state whose files hold named parts of their own: a picture's
-/// crops are options inside it (`Picture.Sprites.Tools.Axe` in
-/// `Picture.Sprites.Tools`), so a picture with options inside is no
-/// mistake.
-const PARTS_INSIDE: &str = "Picture";
-
-/// The options of one level, written: a file is its name, a folder its
-/// name and the options inside. A name both a file and a folder keeps the
-/// folder, with a note, unless files hold parts (`what`'s second).
-fn write_level(
-    level: &Level,
-    at: &str,
-    (what, parts): (&str, bool),
-    notes: &mut Vec<String>,
-    out: &mut Vec<String>,
-) {
-    for (name, inner) in level.options.values() {
-        let path = if at.is_empty() {
-            name.clone()
-        } else {
-            format!("{at}.{name}")
-        };
-        if inner.options.is_empty() {
-            out.push(name.clone());
-            continue;
-        }
-        if inner.file && !parts {
-            notes.push(format!(
-                "The {what} {path} has the same name as a folder beside it, so game code can't name it. \
-                 Rename one to use it from code."
-            ));
-        }
-        let mut inside = Vec::new();
-        write_level(inner, &path, (what, parts), notes, &mut inside);
-        out.push(format!("{name} [{}]", inside.join(", ")));
-    }
 }
 
 /// Each state's options in a project file, by the state's name: every
