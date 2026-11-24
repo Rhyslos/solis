@@ -155,8 +155,30 @@ proptest::proptest! {
                 Word::Unit(t) | Word::Tip(t) | Word::Group(t) => {
                     proptest::prop_assert!(t.chars().count() <= MAX_HINT_TEXT);
                 }
-                Word::Multiline | Word::Hidden => {}
+                Word::Multiline | Word::Hidden | Word::Toggle | Word::Checkbox => {}
             }
         }
     }
+}
+
+/// A yes or no can be shown as a switch (decision 0137): `toggle`, and
+/// `checkbox` for the way it is anyway; on another kind, a mistake.
+#[test]
+fn a_bool_can_ask_for_a_switch_and_nothing_else_can() {
+    let (words, mistakes) = read("toggle");
+    assert!(mistakes.is_empty());
+    let mut open = FieldInfo::new("open", "Open", FieldKind::Bool, reflect::Value::Bool(false));
+    assert!(apply(&mut open, words, "bool").is_empty());
+    assert!(open.hint.toggle);
+    let (words, _) = read("checkbox");
+    assert!(apply(&mut open, words, "bool").is_empty());
+    assert!(!open.hint.toggle);
+    let (words, _) = read("toggle");
+    let mut speed = float();
+    let said = apply(&mut speed, words, "float");
+    assert_eq!(
+        said,
+        ["toggle is for a yes or no (a bool), and speed is a float"]
+    );
+    assert_eq!(read("toggle 3").1, ["toggle takes nothing after it"]);
 }

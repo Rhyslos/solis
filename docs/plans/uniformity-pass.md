@@ -67,6 +67,8 @@ Each is planned in detail when it starts, as the game stages are.
 
 *As built (U1b):* every number box outside Properties goes through `widgets::field::number` (`number_in` for one that shows words, `number_if` greyed out), so all are drawn as Properties' are; the text boxes already shared the field's fill and corners through the theme. Renaming a row is `widgets::rows::rename_in` (`rename_row` across the room left), used by the Level panel, the Library and the Clips list. The Level panel's and the Library's F2 stay: the project lead asked for no new key, not fewer.
 
+*As built (U2):* a `bool` in Properties is `widgets::checkbox`, or `widgets::toggle` when its hint says `toggle` (`Hint::toggle`; game code's `-- [toggle]`, `checkbox` the default made explicit); several entities that differ keep egui's dashed box, which the shared one hasn't. The facing pad is `widgets::facing_pad` (`pad_at` placed, `pad` as a field): the clips preview, a Sprite's Facing (`Offer::Facing`) and an animator's direction parameter in its preview, which was a dial. The name picker stays for the project's names; every other list longer than `HANDFUL` (six) opens with a box to find a choice in, Properties' plain choices included, which now use the shared dropdown. A look's picture in its list waits: a look list is rarely long.
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.

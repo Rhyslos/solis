@@ -591,21 +591,6 @@ const ROW_HEIGHT: f32 = 34.0;
 /// The width of the rows' names.
 const ROW_NAME_W: f32 = 170.0;
 
-/// The arrow before a facing's name.
-fn arrow(facing: Facing) -> &'static str {
-    match facing {
-        Facing::Any => "•",
-        Facing::North => "↑",
-        Facing::NorthEast => "↗",
-        Facing::East => "→",
-        Facing::SouthEast => "↘",
-        Facing::South => "↓",
-        Facing::SouthWest => "↙",
-        Facing::West => "←",
-        Facing::NorthWest => "↖",
-    }
-}
-
 /// The chosen clip's frames for the row picked, as the toolbar and the
 /// player take them.
 fn row_clip(own: &OwnClip, facing: Facing, sheet: &SpriteSheet) -> animation::Clip {
@@ -677,7 +662,11 @@ fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &
         painter.text(
             name_rect.left_center() + egui::vec2(8.0, 0.0),
             egui::Align2::LEFT_CENTER,
-            format!("{}  {}", arrow(facing), facing.name()),
+            format!(
+                "{}  {}",
+                crate::widgets::facing_pad::arrow(facing),
+                facing.name()
+            ),
             egui::FontId::proportional(12.0),
             if flipped {
                 theme::text_weak()
@@ -1371,7 +1360,7 @@ const CELL_TILE: f32 = 44.0;
 /// The preview's width on the Cells page.
 const PREVIEW_W: f32 = 300.0;
 /// The facing pad's step between arrows.
-const PAD_STEP: f32 = 26.0;
+const PAD_STEP: f32 = crate::widgets::facing_pad::STEP;
 
 /// The Cells page (Fixes 3, the mock-up's frame (a)): the chosen clip's
 /// picked row playing at the left; at the right the sheet's cells, each
@@ -1420,7 +1409,12 @@ fn preview_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) {
     let label = if facing == Facing::Any {
         clip.name.clone()
     } else {
-        format!("{} · {} {}", clip.name, arrow(facing), facing.name())
+        format!(
+            "{} · {} {}",
+            clip.name,
+            crate::widgets::facing_pad::arrow(facing),
+            facing.name()
+        )
     };
     painter.text(
         area.left_top() + egui::vec2(12.0, 12.0),
@@ -1446,47 +1440,10 @@ fn preview_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) {
         return;
     };
     let centre = egui::pos2(area.center().x, area.bottom() - pad / 2.0 - 12.0);
-    painter.circle_filled(centre, 6.0, theme::button_border());
-    for &way in own.facings() {
-        let [dx, dy] = match way {
-            Facing::North => [0.0, -1.0],
-            Facing::NorthEast => [1.0, -1.0],
-            Facing::East => [1.0, 0.0],
-            Facing::SouthEast => [1.0, 1.0],
-            Facing::South => [0.0, 1.0],
-            Facing::SouthWest => [-1.0, 1.0],
-            Facing::West => [-1.0, 0.0],
-            Facing::NorthWest => [-1.0, -1.0],
-            Facing::Any => continue,
-        };
-        let rect = egui::Rect::from_center_size(
-            centre + egui::vec2(dx, dy) * PAD_STEP,
-            egui::vec2(PAD_STEP - 4.0, PAD_STEP - 4.0),
-        );
-        let response = ui.interact(
-            rect,
-            ui.id().with(("pad", way.name())),
-            egui::Sense::click(),
-        );
-        let lit = way == facing;
-        if lit {
-            painter.rect_filled(rect, 4.0, theme::kind::SPRITE);
-        } else if response.hovered() {
-            painter.rect_filled(rect, 4.0, theme::field());
-        }
-        painter.text(
-            rect.center(),
-            egui::Align2::CENTER_CENTER,
-            arrow(way),
-            egui::FontId::proportional(13.0),
-            if lit { Color32::WHITE } else { theme::text() },
-        );
-        response.widget_info(|| {
-            egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, lit, way.name())
-        });
-        if response.clicked() {
-            f.editor.pick_row(Some(way));
-        }
+    if let Some(way) =
+        crate::widgets::facing_pad::pad_at(ui, centre, own.facings(), Some(facing), "clips preview")
+    {
+        f.editor.pick_row(Some(way));
     }
 }
 

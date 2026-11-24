@@ -24,6 +24,7 @@ pub mod chip;
 pub mod columns;
 pub mod dashed;
 pub mod dialog;
+pub mod facing_pad;
 pub mod field;
 pub mod keycap;
 pub mod menu;

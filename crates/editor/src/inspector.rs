@@ -322,6 +322,18 @@ pub(crate) fn field_widget(
                 &sheets.screens,
             ));
         }
+        (FieldKind::Choice(_), Offer::Facing) => {
+            let current = match value {
+                Value::Text(t) if !mixed.whole => animation::clips_file::Facing::named(t),
+                _ => None,
+            };
+            let (_, clicked) = widgets::facing_pad::pad(ui, current, &field.name);
+            return whole(
+                clicked
+                    .filter(|way| Some(*way) != current)
+                    .map(|way| Value::Text(way.name().to_owned())),
+            );
+        }
         (FieldKind::Text, Offer::LooksOf(sheet_field)) => {
             let looks = match data.get(sheet_field) {
                 Some(Value::Asset(Some(r))) => sheets.looks(r.asset),
@@ -355,11 +367,17 @@ pub(crate) fn field_widget(
     match &field.kind {
         FieldKind::Bool => {
             let mut on = matches!(value, Value::Bool(true));
-            whole(
-                ui.add(egui::Checkbox::new(&mut on, "").indeterminate(mixed.whole))
-                    .changed()
-                    .then_some(Value::Bool(on)),
-            )
+            // A light setting is a checkbox and a heavier one a switch
+            // (decision 0137); several entities that differ show the
+            // checkbox's dash either way.
+            let response = if mixed.whole {
+                ui.add(egui::Checkbox::new(&mut on, "").indeterminate(true))
+            } else if field.hint.toggle {
+                widgets::toggle::toggle(ui, &mut on, &field.label)
+            } else {
+                widgets::checkbox::checkbox(ui, &mut on, "")
+            };
+            whole(response.changed().then_some(Value::Bool(on)))
         }
         FieldKind::Int => {
             let mut n = match value {
@@ -416,22 +434,15 @@ pub(crate) fn field_widget(
                 Value::Text(t) => t.clone(),
                 _ => String::new(),
             };
-            let mut chosen = None;
             let shown = if mixed.whole { "—" } else { current.as_str() };
-            let width = ui.available_width();
-            let button = widgets::field::dropdown_button(ui, &field.label, shown, width);
-            egui::Popup::menu(&button).width(width).show(|ui| {
-                ui.spacing_mut().item_spacing.y = 0.0;
-                for option in options {
-                    let picked = *option == current && !mixed.whole;
-                    if widgets::menu::choice(ui, option, picked).clicked()
-                        && (*option != current || mixed.whole)
-                    {
-                        chosen = Some(Value::Text(option.clone()));
-                    }
-                }
-            });
-            whole(chosen)
+            let names: Vec<&str> = options.iter().map(String::as_str).collect();
+            let list = widgets::field::List {
+                shown,
+                note: None,
+                width: ui.available_width(),
+            };
+            let picked = widgets::field::dropdown_of_names(ui, &field.label, &names, list);
+            whole(picked.map(|i| Value::Text(options[i].clone())))
         }
         FieldKind::Vec3 => {
             let mut v = value.as_floats::<3>().unwrap_or([0.0; 3]).map(f64::from);

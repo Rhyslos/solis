@@ -197,7 +197,7 @@ mod tests {
                 ),
                 (
                     6,
-                    "the hint on says: colour isn't a hint Solis knows: range, step, unit, tip, group, multiline or hidden"
+                    "the hint on says: colour isn't a hint Solis knows: range, step, unit, tip, group, multiline, hidden, toggle or checkbox"
                 ),
             ]
         );

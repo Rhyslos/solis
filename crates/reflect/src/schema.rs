@@ -90,6 +90,10 @@ pub struct Hint {
     pub multiline: bool,
     /// Kept and saved, but not shown in Properties.
     pub hidden: bool,
+    /// A yes or no shown as a switch rather than a checkbox: for a
+    /// heavier setting that changes how something works (decision 0137;
+    /// game code's `toggle`).
+    pub toggle: bool,
     /// What the inspector offers to pick from, beyond typing.
     pub offers: Offer,
 }
@@ -181,6 +185,8 @@ pub enum Offer {
     /// The look names of the clips file in the named asset field of the
     /// same component, for a text field (Fixes 3).
     LooksOf(&'static str),
+    /// The facing pad, for a choice of the eight facings (decision 0137).
+    Facing,
     /// The state names of the animator in the named asset field of the
     /// same component, for a text field (Phase 9, D3b).
     StatesOf(&'static str),
