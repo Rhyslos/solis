@@ -655,7 +655,7 @@ pub fn file_for(picture: &str) -> String {
 /// tags can be called (`walk left`), but not empty, with no control
 /// characters or spaces at either end, and at most [`MAX_NAME`]
 /// characters. Game code reaches them by their project names, which
-/// leave the spaces out (`Clip.Knight.WalkLeft`).
+/// leave the spaces out (`Clip.KnightWalkLeft`).
 pub fn good_name(name: &str) -> bool {
     !name.is_empty() && crate::frames_file::clean_name(name) == name
 }

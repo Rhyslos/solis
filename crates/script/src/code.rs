@@ -93,7 +93,7 @@ pub struct Compiled {
     /// `Changed`, when the game declares it.
     pub state_events: std::collections::BTreeMap<String, String>,
     /// The game's text keys its code and screens use (stage 1,
-    /// translations), in small letters: `Text.Shop.Welcome`,
+    /// translations), in small letters: `Text.ShopWelcome`,
     /// `ShopText:welcome`, `"Shop.Welcome"` in Lua. For the check of lines
     /// nothing uses.
     pub texts_used: Vec<String>,

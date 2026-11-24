@@ -395,7 +395,7 @@ fn game_code_card(ui: &mut Ui) {
         let quiet = |ui: &mut Ui, line: &str| {
             plain(ui, line, text::ui(), tokens::text_meta());
         };
-        code(ui, "World:text(Text.Shop.Welcome)");
+        code(ui, "World:text(Text.ShopWelcome)");
         quiet(ui, "a line in the player's language");
         code(ui, "ShopText:welcome(name, gold)");
         quiet(ui, "a line that takes values");

@@ -242,7 +242,7 @@ impl LibraryFiles {
         out
     }
 
-    /// The picture a screen's `[icon=Picture.Ui.Coin]` names, as an image
+    /// The picture a screen's `[icon=Picture.Coin]` names, as an image
     /// name screens show (`ui/coin.png`, or a crop: `ui.png#Coin`), if the
     /// Library has its file (stage 1, text effects).
     pub(crate) fn icon_picture(&self, name: &str) -> Option<String> {

@@ -20,7 +20,7 @@ pub struct WrittenField<'a> {
     /// The line its `;` is on, from 1.
     pub line: u32,
     /// Its starting value as written, between `=` and `;` and trimmed:
-    /// `Sound.Sfx.Alert`, `[0, 0, 1]`; empty when it has none
+    /// `Sound.Alert`, `[0, 0, 1]`; empty when it has none
     /// (`FarmerAnimator anim;`).
     pub start: &'a str,
 }
@@ -146,7 +146,7 @@ mod tests {
                     component Guard {\n\
                     \x20   has {\n\
                     \x20       float speed = 4.0; -- [range 0 10]\n\
-                    \x20       lock Sound alertSound = Sound.Sfx.Alert;\n\
+                    \x20       lock Sound alertSound = Sound.Alert;\n\
                     \x20       vec3 home = [0, 0,\n\
                     \x20           1];\n\
                     \x20       string says = \"a } and a ;\";\n\
@@ -164,7 +164,7 @@ mod tests {
             starts,
             [
                 "4.0",
-                "Sound.Sfx.Alert",
+                "Sound.Alert",
                 "[0, 0,\n            1]",
                 "\"a } and a ;\""
             ]

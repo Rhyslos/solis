@@ -103,7 +103,7 @@ fn a_screen_that_shows_text_at_once_says_nothing() {
     t.update(
         (entity(), "Hud"),
         &view(&["Gold 5"]),
-        typist(0.0, Some("Sfx.Blip")),
+        typist(0.0, Some("Blip")),
         0.0,
     );
     let (sent, sounds) = t.tick(1.0);
@@ -138,7 +138,7 @@ fn the_typing_sound_plays_at_most_once_a_tick_and_never_on_spaces() {
     t.update(
         (e, "Talk"),
         &view(&["ab  cd"]),
-        typist(60.0, Some("Sfx.Blip")),
+        typist(60.0, Some("Blip")),
         0.0,
     );
     let tick = world::TICK;
@@ -152,7 +152,7 @@ fn the_typing_sound_plays_at_most_once_a_tick_and_never_on_spaces() {
     let mut t = ScreenTyping::default();
     let words = Typist {
         every: SoundEvery::Word,
-        ..typist(60.0, Some("Sfx.Blip"))
+        ..typist(60.0, Some("Blip"))
     };
     t.update((e, "Talk"), &view(&["ab cd"]), words, 0.0);
     let sounds: Vec<usize> = (0..6)
@@ -240,7 +240,7 @@ fn talking(skip_at: i64) -> (Workbench, EntityId) {
     let id = EntityId::random();
     let entity = EntityData::new("Mira").with(&Screen {
         typing_speed: 40.0,
-        typing_sound: "Sfx.Blip".into(),
+        typing_sound: "Blip".into(),
         ..Screen::showing("Talk")
     });
     w.open

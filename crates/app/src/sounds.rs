@@ -422,7 +422,7 @@ impl Sounds {
         } else {
             format!("{name}.solsound")
         };
-        // Exactly, or ignoring capitals: game code's Sound.Sfx.Footstep
+        // Exactly, or ignoring capitals: game code's Sound.Footstep
         // asks for Sfx/Footstep (decision 0076).
         let (key, state) = self.events.get_key_value(&key).or_else(|| {
             self.events

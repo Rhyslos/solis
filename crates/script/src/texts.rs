@@ -20,7 +20,7 @@ local error, type = error, type
 return function(text, withValues)
   local function plain(_, key)
     if type(key) ~= "string" then
-      error("solis.World:text(key) wants a line's key, such as \"Shop.Welcome\" (Text.Shop.Welcome in Lust)", 2)
+      error("solis.World:text(key) wants a line's key, such as \"Shop.Welcome\" (Text.ShopWelcome in Lust)", 2)
     end
     local t, why = text(key)
     if t == nil then error(why, 2) end

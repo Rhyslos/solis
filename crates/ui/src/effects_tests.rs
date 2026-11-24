@@ -38,11 +38,11 @@ fn view_of(words: &str) -> Node {
 }
 
 /// A screen showing `words`, its texts typing out at `speed`, with a
-/// 32 × 16 picture `Picture.Ui.Coin`.
+/// 32 × 16 picture `Picture.Coin`.
 fn screen_of(words: &str, speed: f32) -> Screen {
     let mut pictures = crate::Pictures::new();
     pictures
-        .add("Picture.Ui.Coin", [32, 16], &[200; 32 * 16 * 4])
+        .add("Picture.Coin", [32, 16], &[200; 32 * 16 * 4])
         .unwrap();
     let mut screen = Screen::new("Talk", [800.0, 400.0], ScaleRule::Keep);
     screen.view = Some(view_of(words));
@@ -199,7 +199,7 @@ fn coloured_bold_and_slanted_letters_are_drawn_so() {
 #[test]
 fn an_icon_is_a_picture_the_height_of_its_text_in_line_with_the_words() {
     let mut f = fonts();
-    let s = screen_of("Costs 5 [icon=Picture.Ui.Coin] each", 0.0);
+    let s = screen_of("Costs 5 [icon=Picture.Coin] each", 0.0);
     let shapes = at(&mut f, &s, 0.0);
     let pictures: Vec<_> = shapes
         .iter()
@@ -221,7 +221,7 @@ fn an_icon_is_a_picture_the_height_of_its_text_in_line_with_the_words() {
         "between its words: {five:?} {p:?} {e:?}"
     );
     // A missing picture is the grey box with its name, as for an image.
-    let gone = screen_of("[icon=Picture.Ui.Gone]", 0.0);
+    let gone = screen_of("[icon=Picture.Gone]", 0.0);
     let shapes = at(&mut f, &gone, 0.0);
     assert!(shapes.iter().any(|s| s.kind == ShapeKind::Box));
 }

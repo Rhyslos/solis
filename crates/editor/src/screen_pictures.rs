@@ -41,7 +41,7 @@ pub(crate) struct ScreenPictures {
 
 /// Every image name in `view` and what's inside it, into `out` (at most
 /// [`MAX_SEEN`] in all), with the pictures its text shows as icons
-/// (`[icon=Picture.Ui.Coin]`, stage 1, text effects).
+/// (`[icon=Picture.Coin]`, stage 1, text effects).
 pub(crate) fn names_in(view: &ui::view::Node, out: &mut BTreeSet<String>) {
     fn walk(node: &ui::view::Node, depth: usize, out: &mut BTreeSet<String>) {
         if out.len() >= MAX_SEEN || depth >= ui::screen::MAX_DEPTH {
@@ -65,7 +65,7 @@ pub(crate) fn names_in(view: &ui::view::Node, out: &mut BTreeSet<String>) {
 }
 
 /// The picture (or crop) an icon's project name stands for
-/// (`Picture.Ui.Coin`), if the Library has it (stage 1, text effects).
+/// (`Picture.Coin`), if the Library has it (stage 1, text effects).
 type IconPicture<'a> = dyn Fn(&str) -> Option<String> + 'a;
 
 /// A picture's pixels (straight RGBA) and its size.
@@ -175,7 +175,7 @@ impl ScreenPictures {
             icon(name).ok_or_else(|| {
                 format!(
                     "there's no picture {name} in the project: an icon names a picture as game \
-                     code does, like [icon=Picture.Ui.Coin] for ui/coin.png or for the crop Coin \
+                     code does, like [icon=Picture.Coin] for ui/coin.png or for the crop Coin \
                      of ui.png"
                 )
             })

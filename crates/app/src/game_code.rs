@@ -312,8 +312,8 @@ impl GameCode {
             cues: cues.to_vec(),
             looks: looks.clone(),
             // Every picture, with the parts cut out of it inside it
-            // (decision 0127): Picture.Sprites.Tools and
-            // Picture.Sprites.Tools.Axe.
+            // (decision 0127): Picture.Tools and
+            // Picture.ToolsAxe.
             pictures: asset_paths(assets, PICTURE_ENDINGS)
                 .into_iter()
                 .chain(pictures.iter().cloned())
@@ -325,7 +325,7 @@ impl GameCode {
                     &format!(".{}", asset_db::OLD_LEVEL_EXTENSION),
                 ],
             ),
-            // fonts/Lora.ttf is Font.Fonts.Lora (stage 1, text layout).
+            // fonts/Lora.ttf is Font.Lora (stage 1, text layout).
             fonts: asset_paths(assets, &[".ttf", ".otf"]),
             // ui/pauseMenu.lst is the screen PauseMenu (as the screens'
             // program finds them).
@@ -915,7 +915,7 @@ mod tests {
         assert!(text.contains("state Item = [Apple];"), "{text}");
         // A row's picture starts as the project's first.
         assert!(
-            text.contains("lock Picture icon = Picture.Art.Apple;"),
+            text.contains("lock Picture icon = Picture.Apple;"),
             "{text}"
         );
         GameCode::describe_with(&assets, "Test 1.0", &Animation::default());
@@ -976,7 +976,7 @@ mod tests {
         std::fs::write(
             assets.join("main.lst"),
             "fetch \"solis/project\":Clip;\ncomponent Walker {\n    has {\n        Clip \
-             clip = Clip.Sprites.Walker.Walk;\n    }\n}\npass Walker;\nend\n",
+             clip = Clip.WalkerWalk;\n    }\n}\npass Walker;\nend\n",
         )
         .unwrap();
         let mut code = GameCode::default();

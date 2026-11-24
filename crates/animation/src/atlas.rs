@@ -17,7 +17,7 @@
 //! ```
 //!
 //! Game code names a crop with the picture's path and its name
-//! (`Picture.Sprites.Tools.Axe` for `sprites/tools.png`'s Axe).
+//! (`Picture.ToolsAxe` for `sprites/tools.png`'s Axe).
 
 use level::lust_data::{self as data, DataError};
 

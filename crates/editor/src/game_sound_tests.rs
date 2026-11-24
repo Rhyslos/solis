@@ -20,7 +20,7 @@ const SPEAKER: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Aud
         }\n\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
-            Audio:playAt(Sound.Sfx.Step, position());\n\
+            Audio:playAt(Sound.Step, position());\n\
             playSound(Sound.Engine);\n\
             moveTo(position() + [1, 0, 0]);\n\
         }\n\
@@ -261,7 +261,7 @@ const WALKER: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/animation\":[CueReached, ClipFinished];\n\
     component Walker {\n\
         method update(float dt) {\n\
-            animate(Clip.Walker.Walk);\n\
+            animate(Clip.WalkerWalk);\n\
         }\n\
         on CueReached(Cue cue) {\n\
             is cue == Cue.Footstep? then {\n\
@@ -269,7 +269,7 @@ const WALKER: &str = "fetch \"solis/world\":World;\n\
             }\n\
         }\n\
         on ClipFinished(Clip clip) {\n\
-            is clip == Clip.Walker.Walk? then {\n\
+            is clip == Clip.WalkerWalk? then {\n\
                 World:say(\"done walk\");\n\
             }\n\
         }\n\

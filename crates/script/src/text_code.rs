@@ -1,7 +1,7 @@
 //! The game's text as game code reaches it (stage 1, translations;
 //! [decision 0131](../../../docs/decisions/0131-translations-and-captions.md)):
 //! each line of the main language is an option of `Text` in
-//! `solis/project.lst` (`World:text(Text.Shop.Welcome)`), and each line
+//! `solis/project.lst` (`World:text(Text.ShopWelcome)`), and each line
 //! that takes values is a method of its group's object in `solis/texts.lst`
 //! (the game API guidelines' rule 4), its values in order:
 //!

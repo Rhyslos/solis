@@ -139,7 +139,7 @@ fn cells_are_typed_as_spreadsheets_write_them() {
     );
     let picture = ColumnKind::Name(NameKind::Picture);
     assert_eq!(
-        parse_cell(&picture, "Picture.Sprites.Apple"),
+        parse_cell(&picture, "Picture.Apple"),
         Ok(Cell::Option("Sprites.Apple".into()))
     );
     assert!(parse_cell(&picture, "sprites/apple.png").is_err());

@@ -140,7 +140,7 @@ fn built_in(kind: &str) -> Option<&'static str> {
 }
 
 /// Whether `start` is an option of the state `kind` written out:
-/// `Mode.Calm`, `Clip.Knight.Walk`.
+/// `Mode.Calm`, `Clip.KnightWalk`.
 fn option_of(kind: &str, start: &str) -> bool {
     start.strip_prefix(kind).is_some_and(|rest| {
         rest.starts_with('.')

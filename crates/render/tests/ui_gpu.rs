@@ -913,7 +913,7 @@ fn text_effects_colour_wave_show_icons_and_type_out() {
     // a bold and a slanted one, an icon inside the text, and the same line
     // half typed out.
     let line = "Oh! Have you seen my [colour=#e8955a]red roses[/colour]? They \
-                [wave]wiggle[/wave] when it [b]rains[/b], [i]really[/i]. 5 [icon=Picture.Ui.Coin] each!";
+                [wave]wiggle[/wave] when it [b]rains[/b], [i]really[/i]. 5 [icon=Picture.Coin] each!";
     let mut column = ui::view::Node {
         kind: "column".into(),
         styles: vec![
@@ -946,7 +946,7 @@ fn text_effects_colour_wave_show_icons_and_type_out() {
             }
         })
         .collect();
-    pictures.add("Picture.Ui.Coin", [16, 16], &coin).unwrap();
+    pictures.add("Picture.Coin", [16, 16], &coin).unwrap();
     let size = [600, 200];
     let mut screen = ui::Screen::new("Talk", [600.0, 200.0], ui::ScaleRule::Keep);
     screen.view = Some(view);

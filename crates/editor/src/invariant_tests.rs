@@ -58,7 +58,7 @@ const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, 
     component Hive {\n\
         method update(float dt) {\n\
             is Input:pressed(Action.Interact)? then {\n\
-                entity made = World:spawn(Module.Drones.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
+                entity made = World:spawn(Module.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
             }\n\
         }\n\
     }\n\

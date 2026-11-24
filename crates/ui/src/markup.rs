@@ -6,7 +6,7 @@
 //! - `[colour=gold]…[/colour]` colours them (Lust's colour words, or
 //!   `#hex`);
 //! - `[b]…[/b]` and `[i]…[/i]`: bold and slanted;
-//! - `[icon=Picture.Ui.Coin]`: a picture the height of a line, by the
+//! - `[icon=Picture.Coin]`: a picture the height of a line, by the
 //!   project's name for it (Atlas Crop's, decision 0089);
 //! - `[pause 0.5]` and `[speed 2]` while a text types itself out.
 //!
@@ -86,7 +86,7 @@ pub struct Run {
 pub struct Icon {
     /// Where its [`ICON`] is in the plain text, in bytes.
     pub at: u32,
-    /// The project's name for it (`Picture.Ui.Coin`).
+    /// The project's name for it (`Picture.Coin`).
     pub name: String,
 }
 
@@ -188,7 +188,7 @@ fn read_word(inside: &str) -> Result<Word, String> {
                 Ok(Word::Icon(value.to_string()))
             } else {
                 Err(format!(
-                    "an icon names one of the project's pictures, like [icon=Picture.Ui.Coin], \
+                    "an icon names one of the project's pictures, like [icon=Picture.Coin], \
                      not \"{value}\""
                 ))
             }

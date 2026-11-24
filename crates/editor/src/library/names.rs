@@ -1,6 +1,6 @@
 //! The project's names a Library file stands for (decision 0127): the
 //! option game code names it by, as `solis/project.lst` writes it
-//! (`sfx/alert.solsound` is `Sound.Sfx.Alert`). A field that picks one of
+//! (`sfx/alert.solsound` is `Sound.Alert`). A field that picks one of
 //! the project's names finds each option's file here, for its thumbnail
 //! and to play a sound, and takes a file dropped on it by this name.
 

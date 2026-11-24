@@ -79,7 +79,7 @@ fn an_old_project_s_assemblies_become_modules_and_every_copy_and_spawn_finds_the
     .unwrap();
     let code = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
                 component Coop {\n    method update(float dt) {\n        \
-                entity made = World:spawn(Module.Animals.Chicken, [0, 0, 0]);\n    }\n}\n\n\
+                entity made = World:spawn(Module.Chicken, [0, 0, 0]);\n    }\n}\n\n\
                 pass Coop;\nend\n";
     std::fs::write(assets.join("main.lst"), code).unwrap();
 
@@ -128,7 +128,7 @@ fn an_old_project_s_assemblies_become_modules_and_every_copy_and_spawn_finds_the
             .collect();
         assert_eq!(placed, [wanted], "{level_name}");
     }
-    // Game code names the chicken as before: Module.Animals.Chicken.
+    // Game code names the chicken as before: Module.Chicken.
     let notes = crate::game_code::GameCode::describe(&assets, "Test 1.0");
     assert!(notes.is_empty(), "{notes:?}");
     let names = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();

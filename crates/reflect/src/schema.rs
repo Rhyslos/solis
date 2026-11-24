@@ -113,14 +113,14 @@ impl Hint {
 /// the option's name, so a renamed file follows (decision 0127).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum NameKind {
-    /// A sound event (`Sound.Sfx.Footstep`).
+    /// A sound event (`Sound.Footstep`).
     Sound,
-    /// A sprite's clip (`Clip.Sprites.Farmer.Walk`).
+    /// A sprite's clip (`Clip.FarmerWalk`).
     Clip,
     /// A picture, or a part of one cut with Atlas Crop
-    /// (`Picture.Sprites.Hero`).
+    /// (`Picture.Hero`).
     Picture,
-    /// A module (`Module.Ships.Fighter`).
+    /// A module (`Module.Fighter`).
     Module,
     /// A game screen (`Screen.PauseMenu`).
     Screen,
