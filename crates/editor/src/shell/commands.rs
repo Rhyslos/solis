@@ -163,6 +163,11 @@ pub(crate) enum ShellCommand {
     /// Plays the chosen clip in the direction of this index of
     /// `ribbons::animate::DIRECTIONS`.
     ClipDirection(u8),
+    /// Adds a look to the open clips file, on the picture chosen next
+    /// (Animate › Look, Fixes 3).
+    LookAdd,
+    /// Shows the open clips file's look of this place in its list.
+    LookShow(u8),
     /// Adds a state to the open animator (Animate › State).
     StateAdd,
     /// Makes the state picked the one the animator starts in.
@@ -262,7 +267,7 @@ impl NewFile {
 
 impl ShellCommand {
     /// Every command, in the order the search lists them.
-    pub(crate) const ALL: [Self; 144] = [
+    pub(crate) const ALL: [Self; 147] = [
         C::CloseProject,
         C::NewLevel,
         C::OpenLevel,
@@ -375,6 +380,9 @@ impl ShellCommand {
         C::ClipDirection(1),
         C::ClipDirection(2),
         C::ClipDirection(3),
+        C::LookAdd,
+        C::LookShow(0),
+        C::LookShow(1),
         C::StateAdd,
         C::StateStartHere,
         C::StateDelete,
@@ -505,6 +513,8 @@ impl ShellCommand {
             | C::ClipDelete
             | C::FramesTakeOut
             | C::ClipDirection(_)
+            | C::LookAdd
+            | C::LookShow(_)
             | C::StateAdd
             | C::StateStartHere
             | C::StateDelete
@@ -686,6 +696,8 @@ impl ShellCommand {
             | C::ClipDelete
             | C::FramesTakeOut
             | C::ClipDirection(_)
+            | C::LookAdd
+            | C::LookShow(_)
             | C::StateAdd
             | C::StateStartHere
             | C::StateDelete

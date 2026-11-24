@@ -107,6 +107,21 @@ impl ShellCommand {
                 "Stop snapping on the canvas",
                 w.open.screen_doc.as_ref().is_some_and(|d| d.snap),
             ),
+            C::LookShow(i) => {
+                let looks = (w.open.frames_editor.as_ref())
+                    .map(|e| {
+                        e.file
+                            .looks
+                            .iter()
+                            .map(|l| l.name.clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                match looks.get(usize::from(i)) {
+                    Some(name) => format!("Show the {name} look"),
+                    None => format!("Show look {}", u16::from(i) + 1),
+                }
+            }
             C::ClipDirection(i) => {
                 let d = crate::shell::ribbons::animate::DIRECTIONS
                     .get(usize::from(i))
@@ -193,6 +208,7 @@ impl ShellCommand {
             C::CropEveryTile => "Crop every tile",
             C::CropDelete => "Delete the picked crop",
             C::ClipNew => "New clip",
+            C::LookAdd => "Add a look",
             C::ClipCopy => "Copy the clip",
             C::ClipDelete => "Delete the clip",
             C::FramesTakeOut => "Take the frames picked out",
@@ -238,6 +254,7 @@ impl ShellCommand {
             | C::TilesetZoom(_)
             | C::CropsZoom(_)
             | C::ClipDirection(_)
+            | C::LookShow(_)
             | C::ScreenSize(_)
             | C::ScreenText(_)
             | C::SafeArea
@@ -305,6 +322,8 @@ impl ShellCommand {
             | C::ClipDelete
             | C::FramesTakeOut
             | C::ClipDirection(_)
+            | C::LookAdd
+            | C::LookShow(_)
             | C::StateAdd
             | C::StateStartHere
             | C::StateDelete
@@ -509,6 +528,10 @@ impl ShellCommand {
             }
             C::CropDelete => "Delete",
             C::ClipNew => "A new clip of your own, made from the sheet's frames",
+            C::LookAdd => {
+                "Another picture with the same cells (the knight in mana armour): every clip plays in it"
+            }
+            C::LookShow(_) => "Shows the clips in this look: the cells, the rows and the preview",
             C::ClipCopy => {
                 "A copy of the clip to change here (an Aseprite tag's frames stay Aseprite's)"
             }

@@ -21,6 +21,18 @@ impl Workbench {
         use ShellCommand as C;
         let say = |why: &str| Some(why.to_owned());
         match command {
+            C::LookAdd | C::LookShow(_) => {
+                let Some(editor) = &self.open.frames_editor else {
+                    return say("Open a clips file from the Library first");
+                };
+                match command {
+                    C::LookShow(i) if usize::from(i) >= editor.file.looks.len() => {
+                        say("The clips file has no such look")
+                    }
+                    C::LookAdd if editor.file.sheet().is_none() => say("Choose its picture first"),
+                    _ => None,
+                }
+            }
             C::ClipNew | C::ClipCopy | C::ClipDelete | C::FramesTakeOut | C::ClipDirection(_) => {
                 let Some(editor) = &self.open.frames_editor else {
                     return say("Open a clips file from the Library first");
@@ -66,6 +78,23 @@ impl Workbench {
         match command {
             C::ClipNew | C::ClipCopy | C::ClipDelete | C::FramesTakeOut | C::ClipDirection(_) => {
                 self.run_clips_command(command);
+            }
+            C::LookAdd => {
+                let Some(editor) = &mut self.open.frames_editor else {
+                    return;
+                };
+                if let Some(main) = editor.file.sheet()
+                    && editor.add_look(main)
+                {
+                    self.save_frames();
+                }
+            }
+            C::LookShow(i) => {
+                if let Some(editor) = &mut self.open.frames_editor
+                    && usize::from(i) < editor.file.looks.len()
+                {
+                    editor.look = usize::from(i);
+                }
             }
             _ => self.run_animator_command(command),
         }

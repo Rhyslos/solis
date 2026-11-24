@@ -7317,6 +7317,14 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 </ul>
 <p>Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.</p>
 <p>Every change is saved at once and shows at once on every sprite playing the file. <strong>Ctrl+Z</strong> and <strong>Ctrl+Y</strong> over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step <strong>Ctrl+Z</strong> undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>
+<h4 id="sprite-animation--looks">Looks<a class="anchor" href="#sprite-animation--looks" aria-label="Link to this section">#</a></h4>
+<p>A character can wear other clothes, armour or colours without making its clips again. Draw the other picture the same size and laid out the same way, <code>knight-mana.png</code> beside <code>knight.png</code>, and add it as a <strong>look</strong> of the clips file: every clip then plays in it, from the same cells.</p>
+<ul>
+<li><strong>+ Look</strong> on the ribbon (or <strong>+</strong> beside <strong>Looks</strong> under the clips) adds a look; pick its picture in the <strong>Look</strong> settings on the right. A look's picture must be cut the same way as the main one, so a picture of another size is said under it (&quot;306 × 170, as the main look&quot; when it fits).</li>
+<li>The <strong>Look</strong> switch on the ribbon, or a click in the <strong>Looks</strong> list, shows the clips in that look: the cells, the rows and the preview all draw its picture, and the place in the clip is kept, so you can check one frame in every look.</li>
+<li>In the look's settings, <strong>Name</strong> renames it, <strong>Make main</strong> makes it the look sprites wear when their Look is empty, and <strong>Remove look</strong> takes it out. <strong>← Back to the clip</strong> goes back to the clip's settings.</li>
+</ul>
+<p>A sprite wears a look by its <strong>Look</strong> setting in Properties (see <a href="#sprite-animation--settings">Settings</a>).</p>
 <h4 id="sprite-animation--in-game-code">In game code<a class="anchor" href="#sprite-animation--in-game-code" aria-label="Link to this section">#</a></h4>
 <p>Clips and their events are names Lust checks. Solis writes them into <code>solis/project.lst</code> whenever the sheets change: each clip as <code>state Clip</code>, under its sheet's path (<code>sprites/farmer.aseprite</code>'s walk is <code>Clip.Sprites.Farmer.Walk</code>), and each frame event as <code>state Cue</code> (<code>Cue.Footstep</code>). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:</p>
 <div class="example">
@@ -7475,6 +7483,16 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <tr><td>Directions</td><td>For a clip of your own: <strong>One</strong>, <strong>Four</strong> or <strong>Eight</strong>, the ways it faces. Each has a row of frames in the Frames tab.</td></tr>
 </tbody>
 </table></div>
+<p>A look's settings, also in the Clip slot when a look is picked:</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Setting</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td>Name</td><td>The look's name, as a Sprite's <strong>Look</strong> picks it.</td></tr>
+<tr><td>Picture</td><td>The picture it draws, cut as the main look's. Its size is checked against the main one's.</td></tr>
+<tr><td>Make main</td><td>Makes it the look a sprite wears when its Look is empty.</td></tr>
+<tr><td>Remove look</td><td>Takes it out of the clips file (never the main look); sprites wearing it go back to the main look.</td></tr>
+</tbody>
+</table></div>
 </section>
 <section id="sprite-animation--shortcuts">
 <h3>Shortcuts<a class="anchor" href="#sprite-animation--shortcuts" aria-label="Link to this section">#</a></h3>
@@ -7494,6 +7512,7 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <section id="sprite-animation--tips-and-common-problems">
 <h3>Tips and common problems<a class="anchor" href="#sprite-animation--tips-and-common-problems" aria-label="Link to this section">#</a></h3>
 <ul>
+<li><strong>Problem:</strong> a look's frames are cut off or show the wrong part. <strong>Why:</strong> its picture isn't the main one's size or layout. <strong>Fix:</strong> draw it on a copy of the main picture, so the cells line up; the Look settings say when the sizes differ.</li>
 <li><strong>Problem:</strong> sprites don't move in the viewport. <strong>Why:</strong> the editor rests unless something changes. <strong>Fix:</strong> tick <strong>Preview animation</strong> in the viewport's <strong>≡</strong> menu, or press <strong>Play</strong>.</li>
 <li><strong>Problem:</strong> a tag's frames can't be moved, timed or taken out. <strong>Why:</strong> a tag's frames are Aseprite's, so saving there keeps both in step. <strong>Fix:</strong> change them in Aseprite, or <strong>Copy</strong> the clip (on the ribbon) to change the copy here.</li>
 <li><strong>Problem:</strong> an event doesn't play a sound. <strong>Why:</strong> no sound event has its name. <strong>Fix:</strong> name it after the sound event (<code>footstep</code> or <code>sfx/footstep</code>), or pick one from <strong>◆ ▾</strong>.</li>

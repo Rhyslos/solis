@@ -27,7 +27,7 @@ pub(crate) fn frames_ui<'a>(
     // A picture cut into cells shows its cells; an Aseprite file its
     // frames.
     let cut = (sheets.cut.get(&editor.path)).and_then(|c| c.sheet.as_ref().ok());
-    let (sheet, atlas) = match cut {
+    let (mut sheet, mut atlas) = match cut {
         Some(cut) => (Some(cut), pictures.get(&editor.path)),
         None => (
             editor.file.sheet().and_then(|id| sheets.get(id)),
@@ -36,6 +36,25 @@ pub(crate) fn frames_ui<'a>(
                 .and_then(|path| pictures.get(path)),
         ),
     };
+    // Another look shows its own picture, cut the same way.
+    if let Some(look) = editor
+        .file
+        .looks
+        .get(editor.look)
+        .filter(|_| editor.look > 0)
+        && let Some((_, look_sheet)) = sheets.look_sheet_at(&editor.path, &look.name)
+    {
+        let key = crate::sprite_sheets::look_key(&editor.path, editor.look);
+        let texture = (pictures.get(&key)).or_else(|| {
+            sheets
+                .paths
+                .get(&look.picture)
+                .and_then(|p| pictures.get(p))
+        });
+        if texture.is_some() {
+            (sheet, atlas) = (Some(look_sheet), texture);
+        }
+    }
     let mut notes = match sheets.frames.get(&editor.path) {
         Some(FramesState::Read(_, notes)) => notes.clone(),
         _ => Vec::new(),

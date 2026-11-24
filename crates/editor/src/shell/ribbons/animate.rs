@@ -88,6 +88,7 @@ fn clips_file(w: &Workbench) -> Vec<Group> {
             Some("Frames"),
             [big(Icon::Close, "Take out", C::FramesTakeOut)]
         ),
+        look_group(w),
         Group {
             label: None,
             slots: vec![
@@ -145,4 +146,26 @@ fn sequencer() -> Vec<Group> {
             ]
         ),
     ]
+}
+
+/// The clips file's looks (Fixes 3): the one shown, to switch, and + Look.
+fn look_group(w: &Workbench) -> Group {
+    let editor = w.open.frames_editor.as_ref();
+    let looks: Vec<String> = editor.map_or_else(Vec::new, |e| {
+        e.file.looks.iter().map(|l| l.name.clone()).collect()
+    });
+    let shown = editor
+        .and_then(|e| looks.get(e.look))
+        .cloned()
+        .unwrap_or_else(|| "—".to_owned());
+    let items = (looks.into_iter().enumerate().take(usize::from(u8::MAX)))
+        .map(|(i, name)| item(name, C::LookShow(i as u8)))
+        .collect();
+    group!(
+        Some("Look"),
+        [
+            row_list(format!("Look: {shown}"), items),
+            big(Icon::Plus, "Look", C::LookAdd),
+        ]
+    )
 }

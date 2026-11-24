@@ -104,6 +104,139 @@ pub(crate) fn clips_list(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
             .color(theme::text_weak()),
         );
     }
+    changed |= looks_list(ui, f);
+    changed
+}
+
+/// The clips file's looks under its clips (Fixes 3): a click shows one
+/// and opens its settings in the Clip slot; + adds one.
+fn looks_list(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
+    let mut changed = false;
+    ui.add_space(10.0);
+    crate::widgets::rows::column_header(
+        ui,
+        &format!("Looks  {}", f.editor.file.looks.len()),
+        |ui| {
+            let add = crate::widgets::button::icon(ui, crate::icons::Icon::Plus, "Add a look");
+            if add.clicked()
+                && let Some(main) = f.editor.file.sheet()
+            {
+                changed |= f.editor.add_look(main);
+            }
+        },
+    );
+    let names: Vec<String> = f.editor.file.looks.iter().map(|l| l.name.clone()).collect();
+    for (i, name) in names.iter().enumerate() {
+        let shown = f.editor.look == i;
+        let row = crate::widgets::field::list_row(ui, name, shown);
+        if i == 0 {
+            ui.painter().text(
+                row.rect.right_center() - egui::vec2(8.0, 0.0),
+                egui::Align2::RIGHT_CENTER,
+                "main",
+                egui::FontId::proportional(11.0),
+                theme::text_weak(),
+            );
+        }
+        if row.clicked() {
+            f.editor.look = i;
+            f.editor.look_picked = Some(i);
+        }
+    }
+    changed
+}
+
+/// The Look settings in the Clip slot (Fixes 3, the mock-up's frame (d)):
+/// its name, its picture (with the size check), Make main and Remove
+/// look.
+fn look_settings(ui: &mut Ui, f: &mut FramesUi<'_>, i: usize) -> bool {
+    let mut changed = false;
+    let Some(look) = f.editor.file.looks.get(i).cloned() else {
+        f.editor.look_picked = None;
+        return false;
+    };
+    if ui.link("← Back to the clip").clicked() {
+        f.editor.look_picked = None;
+    }
+    ui.add_space(6.0);
+    let mut name = look.name.clone();
+    ui.horizontal(|ui| {
+        ui.label("Name");
+        let field = ui.add(egui::TextEdit::singleline(&mut name).desired_width(f32::INFINITY));
+        if field.lost_focus() && name != look.name {
+            changed |= f.editor.rename_look(i, &name);
+        }
+    });
+    // The project's pictures to choose this look's from.
+    let mut pictures: Vec<(String, reflect::AssetId)> = (f.sheets.paths.iter())
+        .filter(|(_, p)| crate::sprite_sheets::is_picture(p))
+        .map(|(id, p)| (p.clone(), *id))
+        .collect();
+    pictures.sort();
+    let names: Vec<&str> = pictures.iter().map(|(p, _)| file_name(p)).collect();
+    let shown = f
+        .sheets
+        .paths
+        .get(&look.picture)
+        .map_or("—", |p| file_name(p));
+    let list = crate::widgets::field::List {
+        shown,
+        note: pictures
+            .is_empty()
+            .then_some("No pictures in the project yet."),
+        width: crate::tokens::size::SETTING_FIELD_W,
+    };
+    ui.horizontal(|ui| {
+        ui.label("Picture");
+        if let Some(p) = crate::widgets::field::dropdown_of_names(ui, "Look picture", &names, list)
+        {
+            changed |= f.editor.set_look_picture(i, pictures[p].1);
+        }
+    });
+    // The size check: a look's cells line up only on a picture the main
+    // one's size.
+    let size_of = |id: reflect::AssetId| {
+        f.sheets
+            .paths
+            .get(&id)
+            .and_then(|p| f.sheets.at(p))
+            .map(|s| s.size)
+    };
+    let main = f.editor.file.looks.first().and_then(|m| size_of(m.picture));
+    if let (Some(this), Some(main)) = (size_of(look.picture), main) {
+        let (words, colour) = if this == main {
+            (
+                format!("{} × {}, as the main look", this[0], this[1]),
+                theme::text_weak(),
+            )
+        } else {
+            (
+                format!(
+                    "{} × {}, not {} × {} as the main look: the cells won't line up",
+                    this[0], this[1], main[0], main[1]
+                ),
+                theme::WARNING,
+            )
+        };
+        ui.label(RichText::new(words).size(11.0).color(colour));
+    }
+    if i > 0 {
+        ui.add_space(8.0);
+        ui.horizontal(|ui| {
+            if crate::widgets::button::Button::plain("Make main")
+                .show(ui)
+                .clicked()
+            {
+                changed |= f.editor.make_main(i);
+            }
+            if crate::widgets::button::Button::plain("Remove look")
+                .show(ui)
+                .clicked()
+            {
+                changed |= f.editor.remove_look(i);
+            }
+        });
+    }
     changed
 }
 
@@ -113,6 +246,9 @@ pub(crate) fn clips_list(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
 pub(crate) fn clip_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;
     ui.label(RichText::new(file_name(&f.editor.path)).color(theme::text_weak()));
+    if let Some(i) = f.editor.look_picked {
+        return look_settings(ui, f, i);
+    }
     let Some(sheet) = f.sheet else {
         changed |= choose_sheet(ui, f);
         return changed;
@@ -232,6 +368,7 @@ fn clip_row(
     });
     if response.clicked() {
         editor.choose(&clip.name);
+        editor.look_picked = None;
     }
     if response.double_clicked() && !clip.from_aseprite {
         editor.renaming = Some((clip.name.clone(), clip.name.clone()));
@@ -1361,7 +1498,8 @@ fn cells_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
         ui.label(RichText::new("Cells").strong());
-        let picture = (f.editor.file.sheet())
+        let shown = f.editor.file.looks.get(f.editor.look).map(|l| l.picture);
+        let picture = (shown.or(f.editor.file.sheet()))
             .and_then(|id| f.sheets.paths.get(&id))
             .map(|p| file_name(p).to_owned())
             .unwrap_or_default();

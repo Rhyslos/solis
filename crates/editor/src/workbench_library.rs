@@ -541,7 +541,21 @@ impl Workbench {
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         // A sheet's picture by its path; a clips file's picture cut into
         // cells by the clips file's.
-        let shown = |path: &str| sheets.at(path).or_else(|| sheets.cut_sheet(path));
+        let looks: std::collections::HashMap<
+            String,
+            &std::sync::Arc<assets::sprite_sheet::SpriteSheet>,
+        > = (sheets.cut_looks.iter())
+            .filter_map(|((path, i), c)| {
+                Some((
+                    crate::sprite_sheets::look_key(path, *i),
+                    c.sheet.as_ref().ok()?,
+                ))
+            })
+            .collect();
+        let shown = |path: &str| {
+            (sheets.at(path).or_else(|| sheets.cut_sheet(path)))
+                .or_else(|| looks.get(path).copied())
+        };
         self.open
             .sheet_pictures
             .retain(|path, _| shown(path).is_some());
@@ -556,7 +570,8 @@ impl Workbench {
                 _ => None,
             });
         let cut = (sheets.cut.iter()).filter_map(|(path, c)| Some((path, c.sheet.as_ref().ok()?)));
-        for (path, sheet) in read.chain(cut) {
+        let looks = looks.iter().map(|(key, sheet)| (key, *sheet));
+        for (path, sheet) in read.chain(cut).chain(looks) {
             let made = self.open.sheet_pictures_from.get(path);
             if made.is_some_and(|from| from.is(sheet)) {
                 continue;
