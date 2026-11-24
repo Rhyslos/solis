@@ -330,6 +330,9 @@ pub struct List<'a> {
     pub width: f32,
 }
 
+/// The most choices a list shows without a box to find one in.
+pub const HANDFUL: usize = 6;
+
 /// The longest an open list grows before it scrolls.
 pub const LIST_MAX_H: f32 = 320.0;
 
@@ -355,14 +358,35 @@ pub fn dropdown_showing<T: Copy + PartialEq>(
         }
     }
     egui::Popup::menu(&response).width(list.width).show(|ui| {
+        // A list longer than a handful can be searched (decision 0137).
+        let find_id = response.id.with("find");
+        let mut find: String = ui.data(|d| d.get_temp(find_id)).unwrap_or_default();
+        if choices.len() > HANDFUL {
+            let field = text_field(
+                ui,
+                &format!("Find in {name}"),
+                &mut find,
+                "Find",
+                list.width - 8.0,
+            );
+            if !field.has_focus() && find.is_empty() {
+                field.request_focus();
+            }
+            ui.data_mut(|d| d.insert_temp(find_id, find.clone()));
+        }
+        let wanted = find.trim().to_lowercase();
         egui::ScrollArea::vertical()
             .max_height(LIST_MAX_H)
             .show(ui, |ui| {
                 // The rows of a list touch.
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for (value, word) in choices {
+                    if !wanted.is_empty() && !word.to_lowercase().contains(&wanted) {
+                        continue;
+                    }
                     if list_row(ui, word, value == chosen).clicked() {
                         *chosen = *value;
+                        ui.data_mut(|d| d.remove::<String>(find_id));
                     }
                 }
                 if let Some(note) = list.note {

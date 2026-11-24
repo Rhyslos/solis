@@ -156,7 +156,7 @@ pub fn update_question(
                 );
             }
             ui.add_space(6.0);
-            ui.checkbox(skip, "Skip this version")
+            crate::widgets::checkbox::checkbox(ui, skip, "Skip this version")
                 .on_hover_text("Don't ask about this build again; a newer one asks again");
             ui.add_space(6.0);
             ui.horizontal(|ui| {

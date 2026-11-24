@@ -193,7 +193,7 @@ fn editor(
         "Loop",
         "Plays again from the start when it ends: an engine, a campfire.",
         |ui| {
-            ui.checkbox(&mut event.looping, "");
+            crate::widgets::checkbox::checkbox(ui, &mut event.looping, "");
         },
     );
 

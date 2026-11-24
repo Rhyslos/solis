@@ -152,6 +152,7 @@ impl Component for Sprite {
                     help: "Which way it faces: a clip with directions plays the row nearest \
                            it, and game code turns it with facing = Facing.NorthEast."
                         .into(),
+                    offers: Offer::Facing,
                     ..Hint::default()
                 }),
                 field::boolean(

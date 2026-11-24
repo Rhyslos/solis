@@ -151,7 +151,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                 ui.end_row();
                 ui.label("Bold");
                 let mut bold = piece.has("bold");
-                if ui.checkbox(&mut bold, "").changed() {
+                if crate::widgets::checkbox::checkbox(ui, &mut bold, "").changed() {
                     changed |= if bold {
                         doc.set_style("bold", None)
                     } else {
@@ -186,8 +186,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
             ui.end_row();
             ui.label("Disabled");
             let mut off = piece.has("disabled");
-            if ui
-                .checkbox(&mut off, "")
+            if crate::widgets::checkbox::checkbox(ui, &mut off, "")
                 .on_hover_text("Greyed, and clicks do nothing")
                 .changed()
             {

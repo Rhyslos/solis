@@ -280,6 +280,8 @@ end
 | `group "Seeing"` | A heading over this field and the ones after it, until another group | any field |
 | `multiline` | A box of several lines | `string` |
 | `hidden` | Not shown; still kept, saved and run | any field |
+| `toggle` | A switch rather than a checkbox: for a setting that changes how something works, not an everyday one | `bool` |
+| `checkbox` | A checkbox, as a `bool` is anyway | `bool` |
 
 **Why a comment?** Lust has no way to put words like these on a field yet. A comment changes nothing about how the code runs, so the hints can't break a game, and when Lust learns them, moving over is taking away the `--`.
 

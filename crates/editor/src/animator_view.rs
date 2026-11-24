@@ -250,7 +250,7 @@ fn parameter_value(
 ) {
     match value {
         Some(ParamValue::Switch(mut on)) => {
-            let r = ui.checkbox(&mut on, "");
+            let r = crate::widgets::checkbox::checkbox(ui, &mut on, "");
             r.widget_info(|| {
                 egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, on, name)
             });
@@ -278,20 +278,14 @@ fn parameter_value(
             }
         }
         Some(ParamValue::Direction(v)) => {
-            // A dial: click or drag round it to turn.
-            let (rect, r) = ui.allocate_exact_size(vec2(40.0, 40.0), egui::Sense::click_and_drag());
-            let c = rect.center();
-            let p = ui.painter();
-            p.circle_stroke(c, 18.0, egui::Stroke::new(1.0, theme::button_border()));
-            p.line_segment(
-                [c, c + vec2(v[0], -v[1]) * 16.0],
-                egui::Stroke::new(2.0, crate::interface_look::accent_fill()),
-            );
-            if (r.clicked() || r.dragged())
-                && let Some(at) = r.interact_pointer_pos()
+            // The facing pad, as wherever a facing is chosen (decision 0137).
+            let now = Facing::nearest(v);
+            let (_, clicked) =
+                crate::widgets::facing_pad::pad(ui, Some(now.clips_facing()), ("preview", name));
+            if let Some(way) = clicked
+                && let Some(to) = Facing::ALL.into_iter().find(|f| f.clips_facing() == way)
             {
-                let d = at - c;
-                editor.set_preview(name, ParamValue::Direction([d.x, -d.y]));
+                editor.set_preview(name, ParamValue::Direction(to.vector()));
             }
             ui.label(RichText::new(Facing::nearest(v).word()).color(theme::text_weak()));
         }

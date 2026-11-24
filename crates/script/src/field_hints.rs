@@ -18,7 +18,8 @@ use std::borrow::Cow;
 pub(crate) const MAX_HINT_TEXT: usize = 300;
 
 /// The words a hint may use, for "isn't a hint Solis knows".
-pub(crate) const WORDS: &str = "range, step, unit, tip, group, multiline or hidden";
+pub(crate) const WORDS: &str =
+    "range, step, unit, tip, group, multiline, hidden, toggle or checkbox";
 
 /// One hint, as written.
 #[derive(Debug, Clone, PartialEq)]
@@ -37,6 +38,10 @@ pub(crate) enum Word {
     Multiline,
     /// `hidden`.
     Hidden,
+    /// `toggle`: a yes or no shown as a switch (decision 0137).
+    Toggle,
+    /// `checkbox`: a yes or no shown as a checkbox, as it is unless told.
+    Checkbox,
 }
 
 impl Word {
@@ -50,6 +55,8 @@ impl Word {
             Self::Group(_) => "group",
             Self::Multiline => "multiline",
             Self::Hidden => "hidden",
+            Self::Toggle => "toggle",
+            Self::Checkbox => "checkbox",
         }
     }
 }
@@ -117,9 +124,13 @@ fn word_of(word: &str, rest: &[Token]) -> Result<Word, String> {
         "unit" => text("a short unit").map(Word::Unit),
         "tip" => text("a sentence").map(Word::Tip),
         "group" => text("a heading").map(Word::Group),
-        "multiline" | "hidden" if !rest.is_empty() => Err(format!("{word} takes nothing after it")),
+        "multiline" | "hidden" | "toggle" | "checkbox" if !rest.is_empty() => {
+            Err(format!("{word} takes nothing after it"))
+        }
         "multiline" => Ok(Word::Multiline),
         "hidden" => Ok(Word::Hidden),
+        "toggle" => Ok(Word::Toggle),
+        "checkbox" => Ok(Word::Checkbox),
         other => Err(format!("{other} isn't a hint Solis knows: {WORDS}")),
     }
 }
@@ -170,9 +181,13 @@ pub(crate) fn from_lua(hints: &mlua::Table) -> (Vec<Word>, Vec<String>) {
                 Some(t) => word_of(&key, &[Token::Text(t)]),
                 None => Err(format!("{key} takes text: {key} = \"…\"")),
             },
-            ("multiline" | "hidden", Lua::Boolean(true)) => word_of(&key, &[]),
-            ("multiline" | "hidden", Lua::Boolean(false)) => continue,
-            ("multiline" | "hidden", _) => Err(format!("{key} is true or false: {key} = true")),
+            ("multiline" | "hidden" | "toggle" | "checkbox", Lua::Boolean(true)) => {
+                word_of(&key, &[])
+            }
+            ("multiline" | "hidden" | "toggle" | "checkbox", Lua::Boolean(false)) => continue,
+            ("multiline" | "hidden" | "toggle" | "checkbox", _) => {
+                Err(format!("{key} is true or false: {key} = true"))
+            }
             ("range" | "step", _) => Err(format!(
                 "{key} takes numbers: range = {{ 0, 10 }}, step = 0.5"
             )),
@@ -275,11 +290,14 @@ pub(crate) fn apply(field: &mut FieldInfo, words: Vec<Word>, kind: &str) -> Vec<
         let fits = match word {
             Word::Range(..) | Word::Step(_) | Word::Unit(_) => numbers(&field.kind),
             Word::Multiline => field.kind == FieldKind::Text,
+            Word::Toggle | Word::Checkbox => field.kind == FieldKind::Bool,
             Word::Tip(_) | Word::Group(_) | Word::Hidden => true,
         };
         if !fits {
             let wants = if word == Word::Multiline {
                 "text (a string)"
+            } else if matches!(word, Word::Toggle | Word::Checkbox) {
+                "a yes or no (a bool)"
             } else {
                 "numbers (int, float, vec2 and vec3)"
             };
@@ -314,6 +332,8 @@ pub(crate) fn apply(field: &mut FieldInfo, words: Vec<Word>, kind: &str) -> Vec<
             Word::Group(group) => hint.group = Cow::Owned(group),
             Word::Multiline => hint.multiline = true,
             Word::Hidden => hint.hidden = true,
+            Word::Toggle => hint.toggle = true,
+            Word::Checkbox => hint.toggle = false,
         }
     }
     mistakes
