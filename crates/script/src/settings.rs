@@ -70,23 +70,23 @@ pub const RESOLUTIONS: [[u32; 2]; 6] = [
 /// One change game code asks for.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Setting {
-    /// `Screens:setTextSize(size)`.
+    /// `Screens.textSize = size`.
     TextSize(f64),
-    /// `Screens:setUiSize(size)`.
+    /// `Screens.uiSize = size`.
     UiSize(f64),
-    /// `Window:setFullscreen(on)`.
+    /// `Window.fullscreen = on`.
     Fullscreen(bool),
     /// `Window:setResolution(width, height)`.
     Resolution(u32, u32),
-    /// `Screens:setLanguage(which)`.
+    /// `Screens.language = which`.
     Language(translations::Language),
-    /// `Screens:setSubtitles(on)`.
+    /// `Screens.subtitles = on`.
     Subtitles(bool),
-    /// `Screens:setCaptions(on)`.
+    /// `Screens.captions = on`.
     Captions(bool),
-    /// `Screens:setCaptionSize(size)`.
+    /// `Screens.captionSize = size`.
     CaptionSize(f64),
-    /// `Screens:setCaptionBackground(strength)`.
+    /// `Screens.captionBackground = strength`.
     CaptionBackground(f64),
 }
 

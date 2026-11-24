@@ -31,6 +31,9 @@ pub(super) struct TestWorld {
     /// Sprites turned and dressed by the fields the engine reads, as they
     /// landed (Fixes 3).
     pub(super) sprite_changes: Vec<Change>,
+    /// The game's speed, its hour and the player's settings as game code
+    /// changed them, as they landed (the uniformity pass, U5b).
+    pub(super) world_changes: Vec<Change>,
     /// Whether to keep none of those (a scale case's thousands a tick).
     pub(super) quiet: bool,
     /// The entities' index, made once.
@@ -156,6 +159,14 @@ impl GameWorld for TestWorld {
             | Change::ShowScreen(..) = change
             {
                 self.sprite_changes.push(change.clone());
+            }
+            match change {
+                Change::GameSpeed(speed) => self.speed = Some(*speed),
+                Change::TimeOfDay(hour) => self.hour = Some(*hour),
+                _ => {}
+            }
+            if let Change::GameSpeed(_) | Change::TimeOfDay(_) | Change::Setting(_) = change {
+                self.world_changes.push(change.clone());
             }
             if let Change::State(_)
             | Change::KeepStarted(..)

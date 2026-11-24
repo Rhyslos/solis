@@ -102,7 +102,7 @@ On a screen, show a line with `text World:text(Text.ShopWelcome);`. Text effects
 
 **Data tables.** Mark a [data table](data-tables.md)'s text column **Translated** (right-click its heading). Each of its cells then has a key, `Items.IronSword.description`, listed in the Translations tab; its main-language words stay in the table, and the other languages' go in `locale/<code>/items.ftl`. Game code reading `Items:row(Item.IronSword).description` gets it in the player's language.
 
-**The player's language.** A player reads the game in the language they chose, else the one Windows is set to when your project has it, else the main language. Offer the choice in your own menu: `Screens:setLanguage(Language.Nb)`, `Screens:language()`, and `Screens:languageName(Language.Nb)` for the name to show (`Norsk`). The change shows from the next tick. While you play in the editor, choose it on the Languages page's card.
+**The player's language.** A player reads the game in the language they chose, else the one Windows is set to when your project has it, else the main language. Offer the choice in your own menu: `Screens.language = Language.Nb`, `Screens.language`, and `Screens:languageName(Language.Nb)` for the name to show (`Norsk`). The change shows from the next tick. While you play in the editor, choose it on the Languages page's card.
 
 **Translators' spreadsheet.** **Export spreadsheet** writes `translations.csv` in your project's folder: a column of keys, the main language, and a column for each language. A translator fills in their column in any spreadsheet program; **Import** reads it back and writes each changed line into its file. A column for a language your project hasn't, or a key it hasn't, is passed over, and the Console says so.
 

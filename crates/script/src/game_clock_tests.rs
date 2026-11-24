@@ -91,7 +91,7 @@ fn never_repeats_and_always_matches(speeds: &[f64]) {
 
 #[test]
 fn random_numbers_and_spawned_entities_never_repeat_while_the_game_s_speed_is_0() {
-    // `World:setGameSpeed(0)` is how a game pauses itself: its time
+    // `World.gameSpeed = 0` is how a game pauses itself: its time
     // stands still from the first tick to the last here.
     never_repeats_and_always_matches(&[0.0; 8]);
 }

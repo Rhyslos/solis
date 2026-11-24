@@ -780,7 +780,7 @@ function Die:update(dt)
 end
 ```
 
-Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed. Lust's own `Random` (`Random[1, 6]`, `Random:chance`, an array's `pick` and `shuffle`) doesn't yet: its first roll starts it from the computer's clock, and with it the game's seed, so the same game can't be played again. Use `World:random` and the rest above. The numbers carry on while the game is paused with `World:setGameSpeed(0)`: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.
+Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed. Lust's own `Random` (`Random[1, 6]`, `Random:chance`, an array's `pick` and `shuffle`) doesn't yet: its first roll starts it from the computer's clock, and with it the game's seed, so the same game can't be played again. Use `World:random` and the rest above. The numbers carry on while the game is paused with `World.gameSpeed = 0`: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.
 
 ## Tweens
 
@@ -1059,6 +1059,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `bool sounding` | Its AudioSource on or off. |
 | `Screen screen` | The screen its Screen shows; `Screen.None` hides it ([Game screens](screens.md)). |
 
+**The engine's objects' fields.** The game's speed and hour (`World`), and the player's settings (`Screens`, `Window`), are fields of those objects, read and set with `=` from anywhere: `World.gameSpeed = 0;` pauses the game, and `Screens.textSize = Screens.textSize + 0.25;` makes every screen's text bigger. A read gives the value as the tick started, or what your code set this tick, and a change lands at the end of the tick, in the order the code ran, so the game plays the same on any number of cores. They're in the table below with the methods. The window's size and the sound's volumes stay calls (`Window:setResolution(1920, 1080)`, `Audio:setVolume(Bus.Music, 0.5)`), since each takes more than one value.
+
 | In | Method | What it does |
 |---|---|---|
 | `solis/world` | `World:say(string words)` | Writes words in the Console. |
@@ -1072,17 +1074,16 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
 | `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
 | `solis/world` | `int World:randomInt(int low, int high)` | A random whole number from low to high, both included. |
-| `solis/world` | `World:setGameSpeed(float speed)` | Runs the game at a speed, from the end of the tick: 0 pauses it (time, physics, projectiles and sprites stop and `dt` is 0, but components still run, so a pause menu works), 1 as usual, up to 4. |
-| `solis/world` | `World:gameSpeed()` | How fast the game runs, as the tick started. |
-| `solis/screens` | `Screens:setTextSize(float size)`, `Screens:textSize()` | The player's text size on every screen, 0.5 to 3 (1 as designed), from the end of the tick ([Game screens](screens.md)). |
-| `solis/screens` | `Screens:setUiSize(float size)`, `Screens:uiSize()` | The player's UI size: every screen bigger or smaller, 0.5 to 2. |
+| `solis/world` | `float World.gameSpeed`, set with `=` | The game's speed, as the tick started; setting it runs the game at that speed, from the end of the tick: 0 pauses it (time, physics, projectiles and sprites stop and `dt` is 0, but components still run, so a pause menu works), 1 as usual, up to 4. |
+| `solis/screens` | `float Screens.textSize`, set with `=` | The player's text size on every screen, 0.5 to 3 (1 as designed), from the end of the tick ([Game screens](screens.md)). |
+| `solis/screens` | `float Screens.uiSize`, set with `=` | The player's UI size: every screen bigger or smaller, 0.5 to 2. |
 | `solis/world` | `string World:text(Text which)` | A line of the game's text in the player's language: `World:text(Text.ShopWelcome)`; a line that takes values is a method of its group's object, `ShopText:welcome(name)`, from `solis/texts` ([Translations](translations.md)). In Lua `solis.World:text("Shop.Welcome")`; in Rust `text`. |
-| `solis/screens` | `Screens:setLanguage(Language which)`, `Screens:language()`, `Screens:languageName(Language which)` | The player's language, one of the project's (`Language.Nb`), and its own name for a menu (`Norsk`), from the end of the tick. |
-| `solis/screens` | `Screens:setSubtitles(bool on)`, `Screens:setCaptions(bool on)`, `Screens:setCaptionSize(float size)`, `Screens:setCaptionBackground(float strength)`, and each read the same way | The player's subtitles and captions: on or off, their size (0.5 to 2) and how dark their box is (0 to 1) ([Subtitles and captions](subtitles-and-captions.md)). |
-| `solis/window` | `Window:setFullscreen(bool on)`, `Window:fullscreen()` | Whether the game fills the screen (Alt+Enter switches it too). |
+| `solis/screens` | `Language Screens.language`, set with `=`, `Screens:languageName(Language which)` | The player's language, one of the project's (`Language.Nb`), and its own name for a menu (`Norsk`), from the end of the tick. |
+| `solis/screens` | `bool Screens.subtitles`, `bool Screens.captions`, `float Screens.captionSize`, `float Screens.captionBackground`, each set with `=` | The player's subtitles and captions: on or off, their size (0.5 to 2) and how dark their box is (0 to 1) ([Subtitles and captions](subtitles-and-captions.md)). |
+| `solis/window` | `bool Window.fullscreen`, set with `=` | Whether the game fills the screen (Alt+Enter switches it too). |
 | `solis/window` | `Window:setResolution(int width, int height)`, `Window:resolution()`, `Window:useNextResolution()` | The window's size in pixels, and the next usual one, for a menu. |
 | `solis/window` | `Window:quit()` | Closes the game at the end of the tick, for a menu's Quit button. While playing in the editor, play stops ([Exporting for playtesting](playtest-export.md)). In Lua `solis.Window:quit()`; in Rust `quit`. |
-| `solis/world` | `float World:timeOfDay()`, `World:setTimeOfDay(float hour)` | The game's hour, 0 up to 24, from the Environment's Day and night; setting it moves the day on from there, at the end of the tick ([Sky, fog and exposure](sky-fog-and-exposure.md)). In Lua `solis.World:timeOfDay()`; in Rust `time_of_day`. |
+| `solis/world` | `float World.timeOfDay`, set with `=` | The game's hour, 0 up to 24, from the Environment's Day and night; setting it moves the day on from there, at the end of the tick ([Sky, fog and exposure](sky-fog-and-exposure.md)). In Lua `solis.World:timeOfDay()`; in Rust `time_of_day`. |
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |

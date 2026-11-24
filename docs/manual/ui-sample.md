@@ -23,7 +23,7 @@ Open it when you're about to give your own game a HUD or a menu: it's the shorte
 | `main.lst` | The game code: the **Turret** (fires on Jump, reloads), the drone's **Health**, and the **Pauser**, which opens the menu and changes the player's settings when the menu's buttons say so. |
 | `ui/hud.lst` | The HUD, shown by the Turret's **Screen** component. It reads the turret's ammo and hits (`Ui:entity():turret()`); the bar is a `box` whose width is `300 * ammo / maxAmmo`, and while the turret reloads it stays empty, with `shadow` for a glow. The Screen component's **Glow** gives the whole HUD a soft light. |
 | `ui/droneHealth.lst` | The drone's health bar, shown by the Drone's Screen component, reading its Health. |
-| `ui/pauseMenu.lst` | The menu. It reads the settings (`Screens:textSize()`, `Window:fullscreen()`, `Window:resolution()`) to show them, and each button sends an event to the Game entity (`send BiggerText() to Ui:entity();`), since screens never change the game themselves. |
+| `ui/pauseMenu.lst` | The menu. It reads the settings (`Screens.textSize`, `Window.fullscreen`, `Window:resolution()`) to show them, and each button sends an event to the Game entity (`send BiggerText() to Ui:entity();`), since screens never change the game themselves. |
 | `ui.sollevel` | The level: the camera, the turret, the drone and the Game entity with the Pauser. |
 
 **Why the buttons send events instead of changing the settings themselves:** a screen only reads the game. That keeps every change in game code, where recordings and replays see it, so the sample plays back the same from a recording, menu and all.

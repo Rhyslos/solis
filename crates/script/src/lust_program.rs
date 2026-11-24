@@ -31,6 +31,9 @@ pub(crate) struct LustProgram {
     pub(crate) methods: BTreeMap<String, Methods>,
     /// The game-wide objects it passes (decision 0080).
     pub(crate) objects: crate::objects::Objects,
+    /// Forgets what game code wrote to the engine objects' fields this
+    /// tick (`Screens.textSize`; [`crate::engine_objects`]).
+    pub(crate) forget_written: Vec<Function>,
     /// Its `tickTweens(dt)`, which moves the tweens game code started
     /// (LUST.md §21, "Tweens in an engine"; decision 0106).
     pub(crate) tick_tweens: Option<Function>,
@@ -122,6 +125,7 @@ pub(crate) fn prepare(
             ))
         })
         .map_err(failed)?;
+    let forget_written = crate::engine_objects::wrap(&luau.lua, &api, &env).map_err(failed)?;
     Ok(LustProgram {
         api,
         env,
@@ -131,6 +135,7 @@ pub(crate) fn prepare(
         events: Rc::new(events),
         methods,
         objects,
+        forget_written,
         tick_tweens,
         tween_told: std::cell::Cell::new(false),
     })

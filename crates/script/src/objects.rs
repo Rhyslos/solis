@@ -118,6 +118,11 @@ impl Objects {
         let mut list = Vec::new();
         for name in names.sequence_values::<String>() {
             let name = name?;
+            // The engine's own objects with settings as fields: not a
+            // game's, so never wrapped, ticked or saved as one.
+            if crate::engine_objects::is_engine_object(&name) {
+                continue;
+            }
             let table: Table = objects.raw_get(name.as_str())?;
             let Some(class) = table.metatable() else {
                 continue;

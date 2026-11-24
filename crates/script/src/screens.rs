@@ -626,7 +626,7 @@ pub trait ScreenReader {
     /// left them, if it has one.
     fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData>;
 
-    /// The player's settings, for `Screens:textSize()` and the rest
+    /// The player's settings, for `Screens.textSize` and the rest
     /// (decision 0091).
     fn settings(&self) -> crate::settings::PlayerSettings {
         crate::settings::PlayerSettings::default()

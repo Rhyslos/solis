@@ -99,7 +99,7 @@ impl Environment {
     }
 
     /// The game's hour at `seconds` of game time, moved on by `shift`
-    /// hours (game code's `setTimeOfDay`): 0 up to 24.
+    /// hours (game code's `World.timeOfDay`): 0 up to 24.
     pub fn hour_at(&self, seconds: f64, shift: f64) -> f64 {
         let minutes = f64::from(self.day_minutes.clamp(0.1, 100_000.0));
         let h = f64::from(self.day_start) + seconds / (minutes * 60.0) * 24.0 + shift;

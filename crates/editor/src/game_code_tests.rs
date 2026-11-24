@@ -1367,7 +1367,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
 }
 
 /// A hive that stops the game's time at the end of its third tick
-/// (`setGameSpeed(0)`, how a game pauses itself), and every tick rolls a
+/// (`World.gameSpeed = 0`, how a game pauses itself), and every tick rolls a
 /// number and spawns a drone.
 const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
     component Hive {\n\
@@ -1379,7 +1379,7 @@ const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
             is ticks == 3? then {\n\
-                World:setGameSpeed(0);\n\
+                World.gameSpeed = 0;\n\
             }\n\
             rolled = World:random();\n\
             made = World:spawn(Module.Drone, [0, 0, 1]);\n\

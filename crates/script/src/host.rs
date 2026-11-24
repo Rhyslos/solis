@@ -397,27 +397,27 @@ pub trait Host {
         let _ = change;
     }
 
-    /// `Screens:textSize()`.
+    /// `Screens.textSize`.
     fn text_size(&self) -> f64 {
         self.settings().text_size
     }
-    /// `Screens:setTextSize(size)`.
+    /// `Screens.textSize = size`.
     fn set_text_size(&mut self, size: f64) {
         self.set_setting(crate::settings::Setting::TextSize(size));
     }
-    /// `Screens:uiSize()`.
+    /// `Screens.uiSize`.
     fn ui_size(&self) -> f64 {
         self.settings().ui_size
     }
-    /// `Screens:setUiSize(size)`.
+    /// `Screens.uiSize = size`.
     fn set_ui_size(&mut self, size: f64) {
         self.set_setting(crate::settings::Setting::UiSize(size));
     }
-    /// `Window:fullscreen()`.
+    /// `Window.fullscreen`.
     fn fullscreen(&self) -> bool {
         self.settings().fullscreen
     }
-    /// `Window:setFullscreen(on)`.
+    /// `Window.fullscreen = on`.
     fn set_fullscreen(&mut self, on: bool) {
         self.set_setting(crate::settings::Setting::Fullscreen(on));
     }

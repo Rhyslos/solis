@@ -53,7 +53,7 @@ impl World {
         self.speed
     }
 
-    /// Sets how fast the game runs (game code's `World:setGameSpeed`),
+    /// Sets how fast the game runs (game code's `World.gameSpeed`),
     /// from 0 (paused: time, physics, projectiles and sprites stop; game
     /// code still runs) to [`MAX_SPEED`]. Not a number changes nothing.
     pub fn set_speed(&mut self, speed: f64) {
@@ -65,7 +65,7 @@ impl World {
 
     /// The game's hour (decision 0092): 0 up to 24, from the level's
     /// Environment's day (its start and length) and the game's time,
-    /// moved on by game code's `setTimeOfDay`. With no Environment, the
+    /// moved on by game code's `World.timeOfDay`. With no Environment, the
     /// default day's.
     pub fn time_of_day(&self) -> f64 {
         let env = self.environment().unwrap_or_default();
@@ -78,7 +78,7 @@ impl World {
         self.environment().unwrap_or_default().day_seconds()
     }
 
-    /// Sets the game's hour (game code's `World:setTimeOfDay`): the day
+    /// Sets the game's hour (game code's `World.timeOfDay`): the day
     /// carries on from there. Not a number changes nothing.
     pub fn set_time_of_day(&mut self, hour: f64) {
         if !hour.is_finite() {

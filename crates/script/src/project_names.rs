@@ -267,7 +267,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.ShopWelcome) for\n\
          -- Shop.Welcome.\n\
          {text_state}\n\n\
-         -- The project's languages (Project settings > Languages): Screens:setLanguage(Language.Nb).\n\
+         -- The project's languages (Project settings > Languages): Screens.language = Language.Nb.\n\
          {language}\n\n\
          -- The clips files' looks, each its file's name and the look's: a component's\n\
          -- Look look = Look.KnightMana; dresses its sprite.\n\
@@ -460,6 +460,26 @@ fn part_entry(path: &str) -> (String, String, String) {
         format!("{stem}/{part}"),
         path.to_owned(),
     )
+}
+
+/// The first option of `state Language`, as the project file writes it:
+/// the main language, or `None` when the project has none that game code
+/// can name.
+pub(crate) fn first_language(names: &Names) -> String {
+    let text = names_text(
+        "Language",
+        &names.languages,
+        "language",
+        true,
+        &mut Vec::new(),
+    );
+    let options = text.split_once('[').map_or("", |(_, rest)| rest);
+    options
+        .split([',', ']'])
+        .next()
+        .unwrap_or(NO_OPTION)
+        .trim()
+        .to_owned()
 }
 
 fn names_text(
@@ -898,7 +918,10 @@ mod tests {
     fn the_game_s_screens_are_a_state_of_their_names() {
         let names = Names::standard().and_screens(&["PauseMenu", "Hud", "HUD"]);
         let (text, notes) = project_file("Test 1.0", &names);
-        assert!(text.contains("state Screen = [None, PauseMenu, Hud];"), "{text}");
+        assert!(
+            text.contains("state Screen = [None, PauseMenu, Hud];"),
+            "{text}"
+        );
         assert_eq!(notes.len(), 1, "HUD is all capitals: {notes:?}");
     }
 

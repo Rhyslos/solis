@@ -24,7 +24,7 @@ pub(crate) struct GameScene {
     pub(crate) state: PlayState,
     /// The game's time, in seconds.
     pub(crate) seconds: f64,
-    /// How fast the game runs (`World:setGameSpeed`; 1 as usual).
+    /// How fast the game runs (`World.gameSpeed`; 1 as usual).
     pub(crate) speed: f64,
     /// The projectiles in flight.
     pub(crate) bolts: std::sync::Arc<Vec<crate::viewport::ViewBolt>>,

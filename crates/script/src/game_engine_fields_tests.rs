@@ -252,3 +252,83 @@ fn a_component_s_own_settings_are_fields_solis_reads() {
     );
     assert_eq!(played(4), landed);
 }
+
+/// A pause menu and an inn, setting the engine objects' fields (U5b): on
+/// its second tick the menu halves the game's speed and reads it back at
+/// once, and the inn sets the hour; on the third the menu makes the text
+/// bigger from what it reads; on the fourth it reads the speed that
+/// landed and fills the screen.
+const SETTINGS: &str = "fetch \"solis/world\":World;\n\
+    fetch \"solis/screens\":Screens;\n\
+    fetch \"solis/window\":Window;\n\n\
+    component Menu {\n\
+        has {\n\
+            int ticks = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            ticks = ticks + 1;\n\
+            is ticks == 2? then {\n\
+                World.gameSpeed = 0.5;\n\
+                is World.gameSpeed == 0.5? then {\n\
+                    Screens.captions = true;\n\
+                }\n\
+            }\n\
+            is ticks == 3? then {\n\
+                Screens.textSize = Screens.textSize + 0.5;\n\
+            }\n\
+            is ticks == 4? then {\n\
+                is World.gameSpeed == 0.5? then {\n\
+                    Window.fullscreen = true;\n\
+                }\n\
+            }\n\
+        }\n\
+    }\n\
+    component Inn {\n\
+        has {\n\
+            int ticks = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            ticks = ticks + 1;\n\
+            is ticks == 2? then {\n\
+                World.timeOfDay = 6;\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Menu, Inn;\n\
+    end\n";
+
+/// The menu on A and the inn on B, ticked five times on `shards` cores:
+/// the game-wide changes, each with its tick.
+fn settings_played(shards: usize) -> Vec<(u32, Change)> {
+    let mut world = TestWorld::with(&["A", "B"]);
+    let mut game = unhurried(shards);
+    game.load(&compile(SETTINGS), &mut world).unwrap();
+    let empty = ComponentData::default();
+    let components = vec![(id(1), "Menu", &empty), (id(2), "Inn", &empty)];
+    assert!(game.sync_many(components, &mut world).is_empty());
+    let mut landed = Vec::new();
+    for tick in 1..=5 {
+        world.set_clock(u64::from(tick), f64::from(tick) / 60.0);
+        let ticked = game.tick(1.0 / 60.0, &mut world);
+        assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+        landed.extend(world.world_changes.drain(..).map(|c| (tick, c)));
+    }
+    landed
+}
+
+#[test]
+fn the_engine_objects_settings_are_fields_set_and_read_back() {
+    use crate::settings::Setting;
+    let landed = settings_played(1);
+    assert_eq!(
+        landed,
+        vec![
+            (2, Change::GameSpeed(0.5)),
+            (2, Change::Setting(Setting::Captions(true))),
+            (2, Change::TimeOfDay(6.0)),
+            (3, Change::Setting(Setting::TextSize(1.5))),
+            (4, Change::Setting(Setting::Fullscreen(true))),
+        ]
+    );
+    assert_eq!(settings_played(4), landed, "the same on four cores");
+}

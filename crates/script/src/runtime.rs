@@ -344,12 +344,20 @@ impl Runtime {
                             Some(p) => p.env.get("error")?,
                             None => lua.globals().get("error")?,
                         };
+                        // A field's setter is called by its object's
+                        // metatable, a frame nearer the screen's line than
+                        // a method's is.
+                        let key = format!("{owner}_{name}");
+                        let (way, level) = match crate::engine_objects::field_of_native(&key) {
+                            Some(field) => (format!("sets {owner}.{}", field.name), 3),
+                            None => (format!("calls {owner}:{name}"), 4),
+                        };
                         error.call::<()>((
                             format!(
                                 "a screen can't change the player's settings: send an event to \
-                                 the entity, and its code calls {owner}:{name}"
+                                 the entity, and its code {way}"
                             ),
-                            4,
+                            level,
                         ))?;
                         Err(mlua::Error::runtime("stopped"))
                     })?,
@@ -875,11 +883,16 @@ impl Runtime {
         self.luau.clock.set_limits(limits);
     }
 
-    /// Ends a tick in phases; whether it ran past its budget (the rest of
-    /// it waited, and events still waiting are dropped).
     /// The fields the engine reads (a sprite's facing and look) that
-    /// changed since the last tick ended, or whose component started.
+    /// changed since the last tick ended, or whose component started. The
+    /// engine objects forget what this tick wrote to their fields, so the
+    /// next reads give the values the tick's changes made.
     pub(crate) fn engine_reads(&mut self) -> Vec<crate::game::Change> {
+        if let Some(program) = &self.lust {
+            for forget in &program.forget_written {
+                let _ = forget.call::<()>(());
+            }
+        }
         crate::engine_fields::changes(
             &self.engine_reads,
             &self.running,
@@ -888,6 +901,8 @@ impl Runtime {
         )
     }
 
+    /// Ends a tick in phases; whether it ran past its budget (the rest of
+    /// it waited, and events still waiting are dropped).
     pub(crate) fn finish_tick(&self) -> bool {
         let over = self.luau.clock.over();
         self.luau.clock.stop();

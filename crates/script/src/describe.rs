@@ -1229,6 +1229,7 @@ fn descriptions_with(
     names: &crate::project_names::Names,
 ) -> (Vec<(String, String)>, Vec<String>) {
     let (project, notes) = crate::project_names::project_file(made_by, names);
+    let first_language = crate::project_names::first_language(names);
     // Each file once, in the order they first come.
     let mut names: Vec<&str> = Vec::new();
     for file in NATIVES.iter().map(|n| n.file) {
@@ -1316,7 +1317,24 @@ fn descriptions_with(
             }
             for object in objects {
                 text.push_str(&format!("object {object} {{\n"));
-                for native in mine.iter().filter(|n| n.owner == object) {
+                // Its settings as fields (U5b): read and set with `=`.
+                let fields: Vec<_> = crate::engine_objects::FIELDS
+                    .iter()
+                    .filter(|f| f.object == object)
+                    .collect();
+                if !fields.is_empty() {
+                    text.push_str("    has {\n");
+                    for field in fields {
+                        let lust = field.starting(&first_language);
+                        text.push_str(&format!("        -- {}\n        {lust}\n", field.about));
+                    }
+                    text.push_str("    }\n\n");
+                }
+                for native in mine
+                    .iter()
+                    .filter(|n| n.owner == object)
+                    .filter(|n| !crate::engine_objects::is_field_native(&n.key()))
+                {
                     text.push_str(&format!("    -- {}\n    {}\n\n", native.about, native.lust));
                 }
                 text.truncate(text.trim_end().len());

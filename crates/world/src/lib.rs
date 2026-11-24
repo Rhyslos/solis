@@ -150,11 +150,11 @@ pub struct World {
     projectiles: Projectiles,
     /// The seed the game's random numbers are made from.
     seed: u64,
-    /// How fast the game runs (`World:setGameSpeed`; 1 as it starts, 0
+    /// How fast the game runs (`World.gameSpeed`; 1 as it starts, 0
     /// paused): game time, physics, projectiles and sprites go at this
     /// share of each tick, while game code still runs every tick.
     speed: f64,
-    /// Hours game code moved the day on by (`World:setTimeOfDay`,
+    /// Hours game code moved the day on by (`World.timeOfDay`,
     /// decision 0092); 0 as it starts.
     day_shift: f64,
     /// Bodies and colliders (decision 0036): every entity with a

@@ -36,7 +36,7 @@ component Turret {
         cooldown = cooldown - dt;
 
         -- Fire, if it's ready and the game isn't paused.
-        bool ready = cooldown <= 0 && ammo > 0 && World:gameSpeed() > 0;
+        bool ready = cooldown <= 0 && ammo > 0 && World.gameSpeed > 0;
         is Input:pressed(Action.Jump) && ready? then {
             send Hit(this, damage) to target;
             ammo = ammo - 1;
@@ -83,27 +83,27 @@ component Pauser {
                 send Resumed() to this;
             } or {
                 showScreen(Screen.PauseMenu);
-                World:setGameSpeed(0);
+                World.gameSpeed = 0;
             }
         }
     }
 
     on Resumed() {
         hideScreen(Screen.PauseMenu);
-        World:setGameSpeed(1);
+        World.gameSpeed = 1;
     }
 
     -- Text a quarter bigger each time, back to as designed after 200%.
     on BiggerText() {
-        float size = Screens:textSize() + 0.25;
+        float size = Screens.textSize + 0.25;
         is size > 2? then {
             size = 1;
         }
-        Screens:setTextSize(size);
+        Screens.textSize = size;
     }
 
     on Fullscreen() {
-        Window:setFullscreen(not Window:fullscreen());
+        Window.fullscreen = not Window.fullscreen;
     }
 
     on NextResolution() {

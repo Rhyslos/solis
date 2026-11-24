@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **The game's speed and hour and the player's settings are fields** (the uniformity pass, U5; [decision 0137](docs/decisions/0137-the-uniformity-pass.md)): `World.gameSpeed = 0;` instead of `World:setGameSpeed(0);`, and `World.gameSpeed` instead of `World:gameSpeed()`; the same for `World.timeOfDay`, `Window.fullscreen` and the player's `Screens.textSize`, `uiSize`, `language`, `subtitles`, `captions`, `captionSize` and `captionBackground`. Code reads back what it set in the same tick, and a change lands at the end of the tick as the call's did. The window's size and the sound's volumes stay calls. Lua keeps the calls.
 - **One dot in every name** (the uniformity pass, U4; [decision 0137](docs/decisions/0137-the-uniformity-pass.md)): the project's names in game code have one dot: the file's name (`Module.Fighter` for `ships/fighter`, `Sound.Footstep`, `Level.Cave`, `Font.Lora`), a clip its sheet's and its own (`Clip.FarmerWalk`), a crop its picture's and its own (`Picture.ToolsAxe`), a text key its parts joined (`Text.ShopWelcome`). A folder joins the front only where two files share a name. Moving a file to another folder no longer renames it.
 
 ### Added

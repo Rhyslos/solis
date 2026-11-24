@@ -249,9 +249,9 @@ pub(crate) struct Save {
     /// entity, `objects`, whose components are the objects. Empty when
     /// the game has none.
     pub(crate) objects: String,
-    /// How fast the game ran (`World:setGameSpeed`; 1 as usual).
+    /// How fast the game ran (`World.gameSpeed`; 1 as usual).
     pub(crate) speed: f64,
-    /// The hours game code moved the day on by (`World:setTimeOfDay`; 0
+    /// The hours game code moved the day on by (`World.timeOfDay`; 0
     /// as usual).
     pub(crate) day_shift: f64,
     /// Who is inside each trigger zone (zone, who), and the zones that

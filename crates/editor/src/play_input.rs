@@ -214,7 +214,7 @@ impl Workbench {
     }
 
     /// Alt+Enter while the game has the keys: the player's fullscreen
-    /// setting switches, as `Window:setFullscreen` would. While playing in
+    /// setting switches, as `Window.fullscreen` would. While playing in
     /// the editor the game stays in the Game panel, so it's said.
     pub(crate) fn switch_fullscreen(&mut self) {
         let on = !self.player_settings.fullscreen;
@@ -230,7 +230,7 @@ impl Workbench {
         self.log(
             LogLevel::Info,
             format!(
-                "Alt+Enter: the exported game would {} (Window:fullscreen() is {on} now). While \
+                "Alt+Enter: the exported game would {} (Window.fullscreen is {on} now). While \
                  playing in the editor, the game stays in the Game panel.",
                 if on {
                     "fill the screen"

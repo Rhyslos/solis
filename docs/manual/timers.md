@@ -7,7 +7,7 @@ Whenever something should happen **later**, or **again and again**: a door that 
 
 Why not count seconds yourself, in a field? You can (`left = left - dt;`), but a timer does three things that are easy to get wrong:
 
-- **It counts game time, exactly.** A timer's seconds become whole [ticks](concepts.md) once, as it starts, and Solis counts them in whole numbers, so two seconds is always exactly 120 ticks at normal speed: no tiny rounding that builds up over a long game. It follows the game's speed (`World:setGameSpeed`): at half speed it takes twice as many ticks, and while the speed is 0 (paused) it doesn't count at all.
+- **It counts game time, exactly.** A timer's seconds become whole [ticks](concepts.md) once, as it starts, and Solis counts them in whole numbers, so two seconds is always exactly 120 ticks at normal speed: no tiny rounding that builds up over a long game. It follows the game's speed (`World.gameSpeed`): at half speed it takes twice as many ticks, and while the speed is 0 (paused) it doesn't count at all.
 - **It's saved.** A save made while a timer waits keeps it, and the loaded game finishes it on exactly the tick the saved one would have.
 - **It's in order.** Timers finishing in the same tick come in a fixed order (see [Order](#order)), so the game comes out the same on any computer and any number of cores.
 
@@ -251,7 +251,7 @@ component Rooster {
 component Bed {
     -- Sleeping: the clock jumps to seven the next morning.
     method sleep() {
-        World:setTimeOfDay(7.0);
+        World.timeOfDay = 7.0;
     }
 }
 pass Rooster, Bed;
@@ -308,7 +308,7 @@ end
 -- A bed calls solis.World:setTimeOfDay(7.0) to skip to the morning.
 ```
 
-**When the clock jumps.** Sleeping in a bed (`World:setTimeOfDay(7.0)` at ten at night) jumps the clock past six: the rooster crows **once**, on the next tick, not once for every hour skipped. Midnight works the same way: a timer at 23:30 or at 0:00 finishes as the clock goes round. Setting the clock always moves the day *forward* to that hour, so setting it from seven back to five is the day going on to five the next morning, which comes before six: the rooster crows when six comes.
+**When the clock jumps.** Sleeping in a bed (`World.timeOfDay = 7.0` at ten at night) jumps the clock past six: the rooster crows **once**, on the next tick, not once for every hour skipped. Midnight works the same way: a timer at 23:30 or at 0:00 finishes as the clock goes round. Setting the clock always moves the day *forward* to that hour, so setting it from seven back to five is the day going on to five the next morning, which comes before six: the rooster crows when six comes.
 
 ### Stop a timer, and ask about one
 | Call | What it does |
