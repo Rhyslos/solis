@@ -306,14 +306,19 @@ fn lend_clips<'s>(
         native(
             scope,
             "entity_animate",
-            move |_, (which, clip): (LuaValue, mlua::LuaString)| {
-                // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
-                // clip is the last part (found on the Sprite's sheet ignoring
-                // capitals).
+            move |lua, (which, clip): (LuaValue, mlua::LuaString)| {
+                // Clip.FarmerWalk comes as "FarmerWalk": the clip is the
+                // last part of what the project's names list it as
+                // (sprites/farmer/walk), found on the Sprite's sheet
+                // ignoring capitals.
                 let clip = clip.to_str()?;
-                let name = clip.rsplit('.').next().unwrap_or_default();
+                let path = crate::project_names::path_for(lua, "Clip", &clip);
+                let name = path
+                    .as_deref()
+                    .and_then(|p| p.rsplit('/').next())
+                    .unwrap_or_default();
                 if let Some(e) = entity_of(&which)
-                    && *clip != *crate::project_names::NO_OPTION
+                    && !name.is_empty()
                 {
                     h.borrow_mut().play_clip(e, name, false);
                 }
@@ -335,14 +340,19 @@ fn lend_clips<'s>(
         native(
             scope,
             "entity_animateFromStart",
-            move |_, (which, clip): (LuaValue, mlua::LuaString)| {
-                // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
-                // clip is the last part (found on the Sprite's sheet ignoring
-                // capitals).
+            move |lua, (which, clip): (LuaValue, mlua::LuaString)| {
+                // Clip.FarmerWalk comes as "FarmerWalk": the clip is the
+                // last part of what the project's names list it as
+                // (sprites/farmer/walk), found on the Sprite's sheet
+                // ignoring capitals.
                 let clip = clip.to_str()?;
-                let name = clip.rsplit('.').next().unwrap_or_default();
+                let path = crate::project_names::path_for(lua, "Clip", &clip);
+                let name = path
+                    .as_deref()
+                    .and_then(|p| p.rsplit('/').next())
+                    .unwrap_or_default();
                 if let Some(e) = entity_of(&which)
-                    && *clip != *crate::project_names::NO_OPTION
+                    && !name.is_empty()
                 {
                     h.borrow_mut().play_clip(e, name, true);
                 }

@@ -145,7 +145,14 @@ pub fn note_uses(code: &str, keys: &[String], used: &mut HashSet<String>) {
             crate::keys::group_object(group).to_ascii_lowercase(),
             crate::keys::method_name(key).to_ascii_lowercase()
         );
-        if words.contains(&format!("text.{k}")) || words.contains(&k) || words.contains(&method) {
+        // Game code names a key with one dot, its parts joined
+        // (`Text.ShopWelcome`; decision 0137); Lua by the key itself.
+        let one_dot = format!("text.{}", k.replace('.', ""));
+        if words.contains(&one_dot)
+            || words.contains(&format!("text.{k}"))
+            || words.contains(&k)
+            || words.contains(&method)
+        {
             used.insert(k);
         }
     }

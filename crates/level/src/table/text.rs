@@ -78,7 +78,7 @@ pub fn parse_cell(kind: &ColumnKind, text: &str) -> Result<Cell, String> {
             .map(|o| Cell::Option(o.clone()))
             .ok_or_else(|| format!("isn't one of its options ({})", options.join(", "))),
         ColumnKind::Name(kind) => {
-            // `Picture.Sprites.Apple` as written in game code, or the name
+            // `Picture.Apple` as written in game code, or the name
             // after it.
             let name = trimmed
                 .strip_prefix(kind.state())

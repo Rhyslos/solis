@@ -26,7 +26,7 @@ Typing out is for text that's read once, like dialogue. A HUD's numbers or a men
 | `[colour=red5]roses[/colour]` | The letters in a colour: one of the screen's colour words (`white`, `red5`, `yellow7`, `teal`, the same ones as a piece's colour) or `#hex` (`[colour=#e8955a]`). |
 | `[b]now[/b]` | Bold. |
 | `[i]maybe[/i]` | Slanted (italic). |
-| `[icon=Picture.Ui.Coin]` | A picture inside the text, as tall as the text. It's named as game code names pictures: `Picture.Ui.Coin` is `ui/coin.png`, or the crop called Coin cut from `ui.png` with [Atlas Crop](atlas-crop.md). |
+| `[icon=Picture.Coin]` | A picture inside the text, as tall as the text. It's named as game code names pictures: `Picture.Coin` is `ui/coin.png`, or the crop called Coin cut from `ui.png` with [Atlas Crop](atlas-crop.md). |
 | `[pause 0.5]` | While typing out: wait half a second here. |
 | `[speed 2]` | While typing out: from here, twice as fast (`[speed 0.5]` half as fast, `[speed 1]` back to normal, `[speed 0]` the rest at once). |
 | `[[` | A `[` in the text itself: `Press [[E]` shows "Press [E]". |
@@ -40,7 +40,7 @@ assembly Talk {
         stack [width fill, height fill, bottom, pad 48] {
             column [width 1600, pad 24, gap 8, background "#121619", round 8] {
                 text "Mira" [size 26, bold, yellow5];
-                text "Oh! A new face in the village. [pause 0.4]Have you seen my [colour=#e8955a]red roses[/colour]? They [wave]wiggle[/wave] when it rains. Only 5 [icon=Picture.Ui.Coin] a bunch!" [size 30, white];
+                text "Oh! A new face in the village. [pause 0.4]Have you seen my [colour=#e8955a]red roses[/colour]? They [wave]wiggle[/wave] when it rains. Only 5 [icon=Picture.Coin] a bunch!" [size 30, white];
             }
         }
     }
@@ -208,7 +208,7 @@ What each effect looks like:
 - **Problem:** Problems says "[glow] isn't a text effect". **Why:** only the words in the table above are effects. **Fix:** use one of them, or write `[[glow]` to show the brackets as text.
 - **Problem:** Problems says "[wave] is never closed". **Why:** every `[wave]`, `[shake]`, `[colour=…]`, `[b]` and `[i]` needs its end (`[/wave]`). Until then it runs to the end of the text. **Fix:** add the end where the effect should stop.
 - **Problem:** Problems says a colour "isn't a colour". **Why:** colours are the screen's colour words (`red5`, `yellow7`, `white`…) or `#hex`. Names such as `gold` aren't among them. **Fix:** use `#e2b54a` for gold, or a colour word.
-- **Problem:** Problems says "there's no picture Picture.Ui.Coin in the project". **Why:** an icon names a picture as game code does: its place in the Library, folders and name each starting with a capital, without the ending. **Fix:** check the picture's name in the Library, or cut a crop of that name with Atlas Crop.
+- **Problem:** Problems says "there's no picture Picture.Coin in the project". **Why:** an icon names a picture as game code does: its place in the Library, folders and name each starting with a capital, without the ending. **Fix:** check the picture's name in the Library, or cut a crop of that name with Atlas Crop.
 - **Problem:** `[button=Action.Use]` is a mistake. **Why:** pictures of a controller's buttons inside text come in a later milestone. **Fix:** name the button in words for now.
 - **Problem:** an older screen now shows a mistake where it used to show `[E]`. **Why:** a `[` starts markup now. **Fix:** write `[[E]`.
 - **Problem:** `TypingFinished` never comes. **Why:** it goes to the entity whose Screen shows the screen, and only once **Typing speed** is above 0. **Fix:** put the component on that entity, and set a speed.

@@ -1227,9 +1227,9 @@ const HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module
         }\n\
         method update(float dt) {\n\
             is made == 0? then {\n\
-                entity a = World:spawn(Module.Drones.Drone, [0, 0, 1]);\n\
-                entity b = World:spawn(Module.Drones.Drone, [2, 0, 1]);\n\
-                entity c = World:spawn(Module.Drones.Drone, [4, 0, 1]);\n\
+                entity a = World:spawn(Module.Drone, [0, 0, 1]);\n\
+                entity b = World:spawn(Module.Drone, [2, 0, 1]);\n\
+                entity c = World:spawn(Module.Drone, [4, 0, 1]);\n\
                 entity d = World:spawn(Module.Nowhere, [6, 0, 1]);\n\
                 made = 3;\n\
             }\n\
@@ -1382,7 +1382,7 @@ const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\
                 World:setGameSpeed(0);\n\
             }\n\
             rolled = World:random();\n\
-            made = World:spawn(Module.Drones.Drone, [0, 0, 1]);\n\
+            made = World:spawn(Module.Drone, [0, 0, 1]);\n\
         }\n\
     }\n\
     component Drone {\n\
@@ -1504,7 +1504,7 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
              method update(float dt) {\n\
                  is made == 0? then {\n\
                      loop 1430 {\n\
-                         entity e = World:spawn(Module.Drones.Drone, [0, 0, 1]);\n\
+                         entity e = World:spawn(Module.Drone, [0, 0, 1]);\n\
                      }\n\
                      made = 1;\n\
                  }\n\
@@ -1620,7 +1620,7 @@ const LAUNCHER: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Mo
         }\n\
         method update(float dt) {\n\
             is made == 0? then {\n\
-                entity a = World:spawn(Module.Drones.Drone, [0, 0, 0]);\n\
+                entity a = World:spawn(Module.Drone, [0, 0, 0]);\n\
                 send Launch(7) to a;\n\
                 made = 1;\n\
             }\n\

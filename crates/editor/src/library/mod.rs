@@ -122,26 +122,25 @@ pub(crate) struct LibraryFiles {
     items: Vec<LibraryItem>,
     lowered: Vec<String>,
     /// Each file that stands for one of the project's names, by
-    /// [`names::key`] (decision 0127).
+    /// [`names::key`] (decision 0127): a clip's is its sheet's, a crop's
+    /// its picture's.
     names: HashMap<(reflect::NameKind, String), usize>,
+    /// The file each name stands for, from the last code checked
+    /// (decision 0137): how a name with one dot finds its file.
+    paths: std::sync::Arc<script::project_names::NamePaths>,
 }
 
 impl From<Vec<LibraryItem>> for LibraryFiles {
     fn from(items: Vec<LibraryItem>) -> Self {
         let lowered = items.iter().map(|i| i.name.to_lowercase()).collect();
-        let names = items
-            .iter()
-            .enumerate()
-            .filter_map(|(at, item)| {
-                let (kind, option) = names::name_of(item)?;
-                Some((names::key(kind, &option), at))
-            })
-            .collect();
-        Self {
+        let mut files = Self {
             items,
             lowered,
-            names,
-        }
+            names: HashMap::new(),
+            paths: Default::default(),
+        };
+        files.find_names();
+        files
     }
 }
 
@@ -154,6 +153,58 @@ impl std::ops::Deref for LibraryFiles {
 }
 
 impl LibraryFiles {
+    /// Takes in the names the last code was checked with, and finds each
+    /// one's file again.
+    pub(crate) fn set_name_paths(
+        &mut self,
+        paths: std::sync::Arc<script::project_names::NamePaths>,
+    ) {
+        if !std::sync::Arc::ptr_eq(&self.paths, &paths) {
+            self.paths = paths;
+            self.find_names();
+        }
+    }
+
+    /// Each name's file: the one whose path (without its ending) is the
+    /// name's, or for a clip or a crop, the one the part is cut from.
+    fn find_names(&mut self) {
+        let mut by_stem: HashMap<(reflect::NameKind, String), usize> = HashMap::new();
+        for (at, item) in self.items.iter().enumerate() {
+            if let Some((kind, stem)) = names::stem_of(item) {
+                by_stem.insert((kind, stem.to_ascii_lowercase()), at);
+            }
+        }
+        self.names = (self.paths.iter())
+            .filter_map(|(name, path)| {
+                let (state, option) = name.split_once('.')?;
+                let kind = reflect::NameKind::of_state(state)?;
+                let lower = path.to_ascii_lowercase();
+                let at = by_stem.get(&(kind, lower.clone())).or_else(|| {
+                    let (file, _) = lower.rsplit_once('/')?;
+                    matches!(kind, reflect::NameKind::Clip | reflect::NameKind::Picture)
+                        .then(|| by_stem.get(&(kind, file.to_owned())))
+                        .flatten()
+                })?;
+                Some((names::key(kind, option), *at))
+            })
+            .chain((self.items.iter().enumerate()).filter_map(|(at, item)| {
+                // Screens are named by their file alone.
+                let (kind, option) = names::screen_of(item)?;
+                Some((names::key(kind, &option), at))
+            }))
+            .collect();
+    }
+
+    /// The name `item` itself stands for (not a part of it), if any.
+    pub(crate) fn name_of(&self, item: &LibraryItem) -> Option<(reflect::NameKind, String)> {
+        if let Some(screen) = names::screen_of(item) {
+            return Some(screen);
+        }
+        let (kind, stem) = names::stem_of(item)?;
+        let option = script::project_names::option_in(&self.paths, kind.state(), &stem)?;
+        Some((kind, option))
+    }
+
     /// Each file with its name in lower case.
     pub(crate) fn with_lowered(&self) -> impl Iterator<Item = (&LibraryItem, &str)> {
         self.items
@@ -175,29 +226,34 @@ impl LibraryFiles {
     /// built-in component's field of the project's names offers (stage 1,
     /// text effects: a Screen's typing sound).
     pub(crate) fn names_of(&self, kind: reflect::NameKind) -> Vec<String> {
-        let mut out: Vec<String> = self
-            .items
-            .iter()
-            .filter_map(names::name_of)
+        let mut out: Vec<String> = (self.names.keys())
             .filter(|(k, _)| *k == kind)
-            .map(|(_, option)| option)
+            .filter_map(|(_, lower)| {
+                let state = format!("{}.", kind.state());
+                (self.paths.keys())
+                    .filter_map(|n| n.strip_prefix(&state))
+                    .find(|o| o.eq_ignore_ascii_case(lower))
+                    .map(str::to_owned)
+                    .or_else(|| (kind == reflect::NameKind::Screen).then(|| lower.clone()))
+            })
             .collect();
         out.sort();
         out.dedup();
         out
     }
 
-    /// The picture a screen's `[icon=Picture.Ui.Coin]` names, as an image
+    /// The picture a screen's `[icon=Picture.Coin]` names, as an image
     /// name screens show (`ui/coin.png`, or a crop: `ui.png#Coin`), if the
     /// Library has its file (stage 1, text effects).
     pub(crate) fn icon_picture(&self, name: &str) -> Option<String> {
         let option = name.strip_prefix("Picture.")?;
         let item = self.named(reflect::NameKind::Picture, option)?;
-        let (_, its) = names::name_of(item)?;
-        if its.eq_ignore_ascii_case(option) {
+        let path = script::project_names::path_in(&self.paths, "Picture", option)?;
+        let (_, stem) = names::stem_of(item)?;
+        if path.eq_ignore_ascii_case(&stem) {
             return Some(item.path.clone());
         }
-        let crop = option.get(its.len() + 1..)?;
+        let crop = path.rsplit_once('/')?.1;
         Some(format!("{}#{crop}", item.path))
     }
 
@@ -205,16 +261,8 @@ impl LibraryFiles {
     /// sound), if the Library has it. A clip's is its sheet's, and a
     /// picture's crop's its picture's: the nearest the option is inside.
     pub(crate) fn named(&self, kind: reflect::NameKind, option: &str) -> Option<&LibraryItem> {
-        let mut option = option;
-        loop {
-            if let Some(&at) = self.names.get(&names::key(kind, option)) {
-                return self.items.get(at);
-            }
-            if !matches!(kind, reflect::NameKind::Clip | reflect::NameKind::Picture) {
-                return None;
-            }
-            option = option.rsplit_once('.')?.0;
-        }
+        let &at = self.names.get(&names::key(kind, option))?;
+        self.items.get(at)
     }
 }
 

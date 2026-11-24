@@ -44,6 +44,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
         names: Default::default(),
         screens: None,
         engine_reads: Vec::new(),
+        name_paths: Default::default(),
     }
 }
 

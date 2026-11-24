@@ -41,29 +41,26 @@ Added 2026-11-23, after reading Lust's own rulebook ([LUST.md](https://github.co
 - **Read it out loud.** Lust reads like plain sentences: `is hp <= 0? then { … }`, `tween hp to 0 over 0.5;`, `send Hit(this, 6) to target;`. A call should too: `hero:knight().hasKey`, `World:the(Component.Quest)`. If it needs a comment to explain what it says, rename it.
 - **States are the big idea.** A fixed set of choices is a state, so that `check` covers it. `check` must handle every option, so a new option points at every line that needs it. Design calls to give and take states, so game code can write `check state { when Walking { … } }` and Lust finds what's missing. Folders are options inside options, and `==` includes them.
 - **Things end with their state.** In Lust, what's made during a state ends when the state does. Solis already follows this for timers, tweens and sounds (decision 0126). Anything new that game code starts and that keeps going (a clip, a sound, a wait) should end with the option it started in, unless kept.
-- **Describe, don't drive, where you can.** Lust's views say what the screen should be now, given the data; Lust works out the changes. An engine call that is safe every frame (rule 8) lets game code describe what it wants each tick (`animate(Clip.Knight.Walk)`), instead of tracking what it asked for last time.
+- **Describe, don't drive, where you can.** Lust's views say what the screen should be now, given the data; Lust works out the changes. An engine call that is safe every frame (rule 8) lets game code describe what it wants each tick (`animate(Clip.KnightWalk)`), instead of tracking what it asked for last time.
 - **Make things the Lust way.** A thing with values is made with `new` and braces: `new PickupValues { item = Item.Red, count = 2 }`, the same as `new Player { name = "Ada" }`. Never one method call per field. Fields are read with `.` (`hit.distance`), methods called with `:`.
 - **One thing for the whole game is an object, reached by name.** Like Lust's `Clock.hour` and Solis's `World`, `Input` and `Physics`. Keep their number small (rule 2).
 - **No new words.** Lust's own words (section 22) are fixed, and some are words only in one place (`tween … to … over`). The engine adds methods, classes, states and events, never syntax. If something truly needs a word, it's asked of Lust.
 - **Names Lust allows.** PascalCase for kinds and states, camelCase for the rest, no ALL_CAPS. One- and two-capital names (`N`, `NE`) aren't allowed (asked of Lust as L3), so spell them out: `Facing.NorthEast`. Avoid Lust's built-in objects (`Maths`, `Files`, `Time`, `Json`, `Web`, `Random`, `Rotation`, `Colour`, `Ease`).
-- **No optional arguments.** Lust has none, so a variant is its own method, base word first (rule 7): `animate` and `animateFromStart`. Often a separate setter reads better: `setFacing(Facing.North)`, then `animate(Clip.Knight.Walk)`.
+- **No optional arguments.** Lust has none, so a variant is its own method, base word first (rule 7): `animate` and `animateFromStart`. Often a separate setter reads better: `setFacing(Facing.North)`, then `animate(Clip.KnightWalk)`.
 - **Mistakes say what to do.** Lust's messages are plain and suggest the fix ("did you mean name?"). So are the engine's, before the game runs when possible, and on the line when not (rule 11).
 - **Keep up with Lust.** Lust moves fast (alpha 77 on 2026-11-19; Solis pins alpha 74). Before designing a call, check Lust's rulebook for something that already does the job, and its ENGINES.md for what changed.
 
 ## The big idea: the project's names become states
 
-The editor already knows every name a game uses: its clips, input actions, sounds, cues, modules and buses. So the editor writes them into one Lust file as states. Folders become options inside options. Game code `fetch`es them like any other state.
+The editor already knows every name a game uses: its clips, input actions, sounds, cues, modules and buses. So the editor writes them into one Lust file as states, each name with one dot: the file's name (a clip's sheet and clip joined), with its folder only where two would clash (decision 0137). Game code `fetch`es them like any other state.
 
 ```
 -- solis/project.lst, written by the editor whenever the project changes. Never edited by hand.
-state Clip = [
-    Farmer [Idle, Walk, Run, Swing],
-    Cow [Idle, Eat]
-];
+state Clip = [CowEat, CowIdle, FarmerIdle, FarmerRun, FarmerSwing, FarmerWalk];
 state Cue = [Footstep, HoeHits, Moo];
 state Action = [Move, Jump, Use, Sprint, QuickSave, QuickLoad];
-state Sound = [Sfx [Footstep, Hoe], Music [Farm]];
-state Module = [Ships [Fighter, Freighter], Crops [Wheat]];
+state Sound = [Farm, Footstep, Hoe];
+state Module = [Fighter, Freighter, Wheat];
 state Bus = [Music, Effects, Voices];
 pass Clip, Cue, Action, Sound, Module, Bus;
 end
@@ -72,23 +69,23 @@ end
 ```
 fetch "solis/project":[Clip, Action];
 
-animate(Clip.Farmer.Walk);              -- a typo is a mistake before the game runs, with "did you mean"
+animate(Clip.FarmerWalk);               -- a typo is a mistake before the game runs, with "did you mean"
 is Input:pressed(Action.Use)? then { … }
 ```
 
 What this gives the game writer:
 
-- **Typos are caught.** `Clip.Farmer.Wlak` is a mistake before anything runs, not a silent nothing.
+- **Typos are caught.** `Clip.FarmerWlak` is a mistake before anything runs, not a silent nothing.
 - **Renames are safe.** Rename `walk` in the editor and Lust points at every line that still uses the old name.
-- **`check` covers everything.** `check clip { when Farmer.Swing { … } when Farmer { … } when Cow { … } }` must handle every clip. A new clip points at every check that needs it.
-- **Folders still mean something.** `is clip == Clip.Farmer?` is true for any farmer clip, because `==` includes the options inside.
+- **`check` covers everything.** `check clip { when FarmerSwing { … } when FarmerWalk { … } … }` must handle every clip. A new clip points at every check that needs it.
+- **Folders don't nest any more** ([decision 0137](decisions/0137-the-uniformity-pass.md)): every name has one dot, and a group of names (a sheet's clips) waits on Lust letting a state's options carry values.
 - **Nothing new to learn.** It's the same states the Lust manual already teaches.
 
-File names are camelCase and state options are PascalCase, so the editor turns `sfx/footstep.ogg` into `Sound.Sfx.Footstep`. Names that can't become an option (starting with a number, holding a dash) get a clear message in the editor when the file is added, not in game code.
+File names are camelCase and state options are PascalCase, so the editor turns `sfx/footstep.solsound` into `Sound.Footstep`. Names that can't become an option (starting with a number, holding a dash) get a clear message in the editor when the file is added, not in game code.
 
 ## The guidelines
 
-1. **Inside a component, the thing's abilities are called bare.** `moveTo(place)`, `velocity()`, `playSound(Sound.Sfx.Hoe)`, as if they were the component's own. On any other thing they're methods, called with `:`: `target:push(force)`, `target:position()`. Never `moveTo(this, place)`. `this` is only for handing over the whole thing: `send Died() to this;`, `send Hit(this, 6) to target;`. A variable may share a name with an ability, so `vec3 velocity = velocity();` is fine.
+1. **Inside a component, the thing's abilities are called bare.** `moveTo(place)`, `velocity()`, `playSound(Sound.Hoe)`, as if they were the component's own. On any other thing they're methods, called with `:`: `target:push(force)`, `target:position()`. Never `moveTo(this, place)`. `this` is only for handing over the whole thing: `send Died() to this;`, `send Hit(this, 6) to target;`. A variable may share a name with an ability, so `vec3 velocity = velocity();` is fine.
 2. **Things with no owner are engine objects.** Whole-game tools live on a few named objects, like Lust's own `Maths:sqrt(x)`: `Input`, `World`, `Physics`, `Audio`, `Saves`. Keep the list short and avoid Lust's own names (`Maths`, `Files`, `Time`, `Json`, `Web`, `Random`).
 3. **Fixed choices are states, never strings.** Clips, actions, sounds, cues, modules, buses and save slots come from the project file. Strings are only for real text: what a player typed, what the game says, a name shown on screen.
 4. **Anything made in an editor reaches code through a file the editor writes.** An animator's states, switches, numbers and triggers; later a behaviour tree, a material's settings, a UI screen. Each gets a Lust file with a state for its names and a class with one method per thing code can set or ask. A new engine feature plugs in the same way, so the engine keeps growing and game code never names anything with a string.
@@ -98,7 +95,7 @@ File names are camelCase and state options are PascalCase, so the editor turns `
    - A change: a verb. Setting a value the reader names uses `set` + that noun: `setVelocity(v)` goes with `velocity()`. Other changes are plain verbs: `push(force)`, `moveTo(place)`, `despawn()`.
 6. **One question, one call.** When the engine works out several answers at once, it gives back one thing holding them all. `RayHit hit = Physics:castRay(from, direction, 10);` then `hit.found`, `hit.distance`, `hit.entity`, `hit.normal`. Never three calls for one ray.
 7. **Variants put the difference at the end of the name.** Lust has no optional arguments, so a variant is its own method, named base word first: `animate` / `animateFromStart`, `Audio:play` / `Audio:playAt` / `playSound`. Not `replayClip` next to `playClip`.
-8. **Safe to call every frame.** Asking for what is already happening does nothing: `animate(Clip.Farmer.Walk)` every tick keeps walking, it does not restart. Restarting is its own method.
+8. **Safe to call every frame.** Asking for what is already happening does nothing: `animate(Clip.FarmerWalk)` every tick keeps walking, it does not restart. Restarting is its own method.
 9. **Events say what happened, and carry states.** Past tense, PascalCase, sent to the entity it happened to: `on ClipFinished(Clip clip)`, `on CueReached(Cue cue)`, `on Landed(float speed)`. Payloads use the project's states, never a string name.
 10. **The same words in every language.** Lust `moveTo(p)`, Lua `this:moveTo(p)`, Rust `this.move_to(p)`. One table in `describe.rs` names each call once; the Rust name is the same words in snake\_case. The `Host` trait uses those names too (today `position` and `positionOf` differ).
 11. **Mistakes are loud and point at the line.** A wrong name is caught before the game runs. A dead entity, a missing component, or a clip the entity's animation file doesn't have stops with a message naming the line, never a silent nothing.
@@ -111,7 +108,7 @@ Naming at a glance:
 | What | Shape | Example |
 | --- | --- | --- |
 | Engine object | PascalCase noun | `Input`, `Physics`, `Audio` |
-| Project names | PascalCase state, folders as options | `Clip.Farmer.Walk` |
+| Project names | PascalCase state, one dot (decision 0137) | `Clip.FarmerWalk` |
 | Read a value | noun method | `velocity()` |
 | Ask yes/no | adjective or verb that reads after `is` | `is grounded()?` |
 | Set a value | `set` + noun | `setVelocity(v)` |
@@ -191,7 +188,7 @@ component Farmer {
 
     on CueReached(Cue cue) {
         is cue == Cue.HoeHits? then {
-            playSound(Sound.Sfx.Hoe);
+            playSound(Sound.Hoe);
         }
     }
 }
@@ -212,7 +209,7 @@ Every call, old and new:
 | `animStateOf(me) == "Use tool"` | `anim:current() == FarmerState.UseTool` | a state, so `check` and `==` work |
 | `jumpToAnimState(me, "Idle")` | `anim:jumpTo(FarmerState.Idle)` | takes a state, not a string |
 | `setAnimSpeed(me, 1.5)` | `anim:setPlaybackSpeed(1.5)` | `set` + noun, and can't clash with a `speed` number |
-| `playClip(me, "walk")` | `animate(Clip.Door.Open)` | for things with no animator, like a door |
+| `playClip(me, "walk")` | `animate(Clip.DoorOpen)` | for things with no animator, like a door |
 | `replayClip(me, "swing")` | `animateFromStart(...)` | variant: base word, then the difference |
 | `stopClip(me)` | `stopAnimation()` | a verb |
 | `on AnimationCue(string name)` | `on CueReached(Cue cue)` | past tense; carries a state |
@@ -231,7 +228,7 @@ Every call game code has today, under the same rules. Each old name goes in `REN
 | `facingAlong(dir)` | `face(dir)` when it's for turning; kept as a plain maths helper otherwise |
 | `nameOf(e)` | `e:name()` |
 | `find("name")` | `World:find("name")` (a name typed in the editor is real text) |
-| `spawn("ships/fighter.solasm", p)` / `despawn(e)` | `World:spawn(Module.Ships.Fighter, p)` / `e:despawn()` |
+| `spawn("ships/fighter.solasm", p)` / `despawn(e)` | `World:spawn(Module.Fighter, p)` / `e:despawn()` |
 | `time()` / `frameTime()` | `World:time()` / `World:frameTime()` |
 | `random()`, `randomRange`, `randomInt`, `setSeed` | `World:random()`, `World:randomRange(a, b)`, `World:randomInt(a, b)`, `World:setSeed(n)` (Lust reserves `Random`) |
 | `say(words)` | `World:say(words)` |
@@ -245,7 +242,7 @@ Every call game code has today, under the same rules. Each old name goes in `REN
 | `castRay`, `castRayHit`, `castRayNormal` | one call: `RayHit hit = Physics:castRay(from, dir, reach);` |
 | `moveCharacter(e, wanted)` | `e:walk(wanted)` |
 | `onGround(e)` | `e:grounded()` |
-| `playSound("sfx/x")` / `playSoundAt("sfx/x", p)` / `playSoundOn("sfx/x", e)` | `Audio:play(Sound.Sfx.X)` / `Audio:playAt(Sound.Sfx.X, p)` / `e:playSound(Sound.Sfx.X)` |
+| `playSound("sfx/x")` / `playSoundAt("sfx/x", p)` / `playSoundOn("sfx/x", e)` | `Audio:play(Sound.X)` / `Audio:playAt(Sound.X, p)` / `e:playSound(Sound.X)` |
 | `stopSoundsOn(e)` / `setSoundPlaying(e, b)` | `e:stopSounds()` / `e:setSoundPlaying(b)` |
 | `setBusVolume("music", v)` | `Audio:setVolume(Bus.Music, v)` |
 
@@ -260,7 +257,7 @@ Four Lust changes make all of this possible. I tested the rest against Lust alph
 | Engine objects with native methods (`Input:pressed(...)`) | Yes | none |
 | A native method giving back a class with fields (`RayHit`) | Yes | none |
 | Events carrying a state (`on ClipFinished(Clip clip)`) | Yes | none |
-| A native method taking or giving back a state (`animate(Clip.Farmer.Walk)`) | **No**: "a native method takes ints, floats, text…" | Lust lets natives take and give back states. Rust gets the option as a number plus its full name (`"Farmer.Walk"`); Lua gets the option as it already has it. |
+| A native method taking or giving back a state (`animate(Clip.FarmerWalk)`) | **No**: "a native method takes ints, floats, text…" | Lust lets natives take and give back states. Rust gets the option as a number plus its full name (`"Farmer.Walk"`); Lua gets the option as it already has it. |
 | Abilities on `entity` (`target:position()`) | **No**: `entity` has only `==` and `.text()` | An engine file can give `entity` native methods, checked like any other method. The syntax is open question 1 below. |
 | Abilities called bare inside a component, and `this` | **No**: today it's `me:position()` | Inside a component, the thing's abilities are called bare; a variable may share a name with one; `this` names the whole thing. `me` keeps working for a while with a message pointing to the new way. |
 | Editor-made parts as fields (`FarmerAnimator anim;`) | **No**: component fields can't hold classes, and every field needs a starting value | A component can list an editor-made part with no starting value; the engine fills it in, and the editor shows it's connected. |

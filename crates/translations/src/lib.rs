@@ -2,7 +2,7 @@
 //! [decision 0131](../../../docs/decisions/0131-translations-and-captions.md)).
 //!
 //! Each line of text has a key made once and never changed
-//! (`Shop.Welcome`), which game code names as `Text.Shop.Welcome`. Its
+//! (`Shop.Welcome`), which game code names as `Text.ShopWelcome`. Its
 //! text in each language is in Fluent files, `locale/<language>/*.ftl`, so
 //! a translator writes plurals and values in the shape their language
 //! needs; a data table's translated cells take their main-language text

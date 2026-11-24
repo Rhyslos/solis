@@ -19,9 +19,9 @@ const GUARD: &str = "fetch \"solis/project\":[Sound, Clip, Picture, Module, Scre
 component Guard {\n\
     has {\n\
         float speed = 4.0; -- [range 0 10, step 0.5, unit \"m/s\", tip \"Walking speed\"]\n\
-        Sound alertSound = Sound.Sfx.Alert;\n\
-        Clip walk = Clip.Sprites.Guard.Walk;\n\
-        Picture portrait = Picture.Portraits.GuardFace;\n\
+        Sound alertSound = Sound.Alert;\n\
+        Clip walk = Clip.GuardWalk;\n\
+        Picture portrait = Picture.GuardFace;\n\
         Module drops = Module.Coin;\n\
         Screen shows = Screen.Hud;\n\
         Level home = Level.Town;\n\
@@ -98,6 +98,8 @@ pub(crate) fn with_a_guard() -> (Workbench, EntityId) {
         path: "sfx/alert.solsound".into(),
         ..LibraryItem::default()
     }]);
+    let paths = Arc::clone(&w.open.program.as_ref().unwrap().name_paths);
+    w.open.library.set_name_paths(paths);
     (w, id)
 }
 
@@ -122,9 +124,9 @@ fn properties_shows_the_hints_and_the_pickers() {
     h.get_by_label("SEEING");
     h.get_by_label("0 to 20");
     for (label, shown) in [
-        ("Alert sound", "Sfx.Alert"),
-        ("Walk", "Sprites.Guard.Walk"),
-        ("Portrait", "Portraits.GuardFace"),
+        ("Alert sound", "Alert"),
+        ("Walk", "GuardWalk"),
+        ("Portrait", "GuardFace"),
         ("Drops", "Coin"),
         ("Shows", "Hud"),
         ("Home", "Town"),
@@ -208,34 +210,33 @@ fn a_renamed_file_is_followed_as_one_undo_step() {
     w.follow_renamed_names("sfx/alert.solsound", "sfx/warn.solsound");
     assert_eq!(
         guard_value(&w, id, "alertSound"),
-        Value::Text("Sfx.Warn".into())
+        Value::Text("Warn".into())
     );
     assert_eq!(w.document().history().undo_len(), before + 1);
-    // A folder moved takes the names inside it along.
+    // A folder moved renames nothing: names have one dot (decision 0137).
     w.follow_renamed_names("portraits", "faces");
     assert_eq!(
         guard_value(&w, id, "portrait"),
-        Value::Text("Faces.GuardFace".into())
+        Value::Text("GuardFace".into())
     );
     // A file nothing names changes nothing.
     w.follow_renamed_names("sfx/other.solsound", "sfx/else.solsound");
-    assert_eq!(w.document().history().undo_len(), before + 2);
-    w.undo();
+    assert_eq!(w.document().history().undo_len(), before + 1);
     w.undo();
     assert_eq!(
         guard_value(&w, id, "alertSound"),
-        Value::Text("Sfx.Alert".into())
+        Value::Text("Alert".into())
     );
 }
 
 /// The Guard's name fields, each given its second name.
 const PICKED: [(&str, &str); 7] = [
-    ("alertSound", "Sfx.Alarm"),
-    ("walk", "Sprites.Guard.Run"),
-    ("portrait", "Portraits.Captain"),
-    ("drops", "Loot.Gem"),
+    ("alertSound", "Alarm"),
+    ("walk", "GuardRun"),
+    ("portrait", "Captain"),
+    ("drops", "Gem"),
     ("shows", "PauseMenu"),
-    ("home", "Forest.Cave"),
+    ("home", "Cave"),
     ("hunts", "Friend"),
 ];
 

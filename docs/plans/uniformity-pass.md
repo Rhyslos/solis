@@ -84,6 +84,8 @@ Each is planned in detail when it starts, as the game stages are.
 
 **Tests:** the naming rule (clashes, names Lust can't take, every kind), the table written and read back (and fuzzed), each native finding its file by a one-dot name, a renamed file followed, the manual's examples compiling, and the samples playing (`--smoke`).
 
+*As built (U4):* every kind is written flat by `project_names::one_dot`, with each name's file under it (`-- @Module.Fighter = ships/fighter`), read back by `paths_in` into `Compiled::name_paths`, which the running code gives Luau (`path_for` in the natives that spawn, play sounds, animate and read text) and the editor's Library keeps (`LibraryFiles::set_name_paths`: a clip finds its sheet and a crop its picture through the table, not by dots). `ClipFinished` names its clip through the table; renaming follows a file by its own name, and a clip's or crop's names along with its sheet's or picture's (`KnightWalk` follows `Knight`); moving a file or a folder renames nothing. The translations' check also finds a text key in its one-dot form. `World:find` is gone from the manual and kept for the Console. Groups (`clip.sheet`) wait on Lust (data on a state's options; asked of Lust). The samples aren't whole projects, so `--smoke` can't open them; the app's tests compile and run their code.
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.

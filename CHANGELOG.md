@@ -4,6 +4,10 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Breaking
+
+- **One dot in every name** (the uniformity pass, U4; [decision 0137](docs/decisions/0137-the-uniformity-pass.md)): the project's names in game code have one dot: the file's name (`Module.Fighter` for `ships/fighter`, `Sound.Footstep`, `Level.Cave`, `Font.Lora`), a clip its sheet's and its own (`Clip.FarmerWalk`), a crop its picture's and its own (`Picture.ToolsAxe`), a text key its parts joined (`Text.ShopWelcome`). A folder joins the front only where two files share a name. Moving a file to another folder no longer renames it.
+
 ### Added
 
 - **One picture board** (the uniformity pass, U3; [decision 0137](docs/decisions/0137-the-uniformity-pass.md)): the Tileset's picture is on the same board as Atlas Crop's and Cut picture…'s, so the wheel zooms it about the pointer and the middle button moves it; its − and + are gone (the ribbon's Zoom list stays).

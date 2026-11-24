@@ -203,10 +203,10 @@ fn lend_spawning<'s>(
         native(
             scope,
             "World_spawn",
-            move |_, (_world, module, place): (LuaValue, mlua::LuaString, LuaValue)| {
-                // Module.Ships.Fighter comes as "Ships.Fighter": its file
-                // is ships/fighter (the Library ignores capitals).
-                let module = crate::project_names::path_of(&module.to_str()?);
+            move |lua, (_world, module, place): (LuaValue, mlua::LuaString, LuaValue)| {
+                // Module.Fighter comes as "Fighter": its file, as the
+                // project's names list it (ships/fighter).
+                let module = crate::project_names::path_for(lua, "Module", &module.to_str()?);
                 Ok(module
                     .zip(vec3_of(&place))
                     .and_then(|(module, place)| h.borrow_mut().spawn(&module, place))
@@ -232,7 +232,7 @@ fn lend_spawning<'s>(
                          {why}"
                     ))
                 })?;
-                let module = crate::project_names::path_of(&module.to_str()?);
+                let module = crate::project_names::path_for(lua, "Module", &module.to_str()?);
                 Ok(module
                     .zip(vec3_of(&place))
                     .and_then(|(module, place)| h.borrow_mut().spawn_with(&module, place, values))
@@ -389,9 +389,10 @@ fn lend_physics<'s>(
             scope,
             "Audio_play",
             move |lua, (_audio, event): (LuaValue, mlua::LuaString)| {
-                // Sound.Sfx.Footstep comes as "Sfx.Footstep": the event
-                // in sfx/footstep.solsound (found ignoring capitals).
-                if let Some(event) = crate::project_names::path_of(&event.to_str()?) {
+                // Sound.Footstep comes as "Footstep": the event in its
+                // file, as the project's names list it (sfx/footstep).
+                if let Some(event) = crate::project_names::path_for(lua, "Sound", &event.to_str()?)
+                {
                     let mut host = h.borrow_mut();
                     host.set_started_in(crate::states::started_in(lua));
                     host.play_sound(&event, SoundAt::Nowhere);

@@ -20,7 +20,7 @@ local error, type = error, type
 return function(text, withValues)
   local function plain(_, key)
     if type(key) ~= "string" then
-      error("solis.World:text(key) wants a line's key, such as \"Shop.Welcome\" (Text.Shop.Welcome in Lust)", 2)
+      error("solis.World:text(key) wants a line's key, such as \"Shop.Welcome\" (Text.ShopWelcome in Lust)", 2)
     end
     local t, why = text(key)
     if t == nil then error(why, 2) end
@@ -97,8 +97,12 @@ impl Lent {
         if !same {
             let made = lua.create_table()?;
             let plain_texts = texts.clone();
-            let text = lua.create_function(move |_, key: mlua::LuaString| {
+            let text = lua.create_function(move |lua, key: mlua::LuaString| {
+                // Text.ShopWelcome comes as "ShopWelcome": the line's key,
+                // as the project's names list it (Shop.Welcome); Lua gives
+                // the key itself.
                 let key = key.to_string_lossy();
+                let key = crate::project_names::path_for(lua, "Text", &key).unwrap_or(key);
                 if !plain_texts.all().has(&key) {
                     return Ok((None, Some(no_line(&plain_texts, &key))));
                 }

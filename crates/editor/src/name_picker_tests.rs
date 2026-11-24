@@ -7,19 +7,18 @@ use egui_kittest::Harness;
 use egui_kittest::kittest::Queryable as _;
 
 fn options() -> Vec<String> {
-    [
-        "Sfx",
-        "Sfx.Alarm",
-        "Sfx.Alert",
-        "Voices",
-        "Voices.GuardAlert",
-    ]
-    .map(String::from)
-    .to_vec()
+    ["Alarm", "Alert", "GuardAlert"].map(String::from).to_vec()
 }
 
 fn library() -> LibraryFiles {
-    LibraryFiles::from(vec![
+    let names = script::project_names::Names::standard().and_sounds(&[
+        "sfx/alarm",
+        "sfx/alert",
+        "voices/guardAlert",
+    ]);
+    let (text, _) = script::project_names::project_file("Test 1.0", &names);
+    let paths = script::project_names::paths_in(&[("solis/project.lst".into(), text)]);
+    let mut files = LibraryFiles::from(vec![
         LibraryItem {
             kind: LibraryKind::SoundEvent,
             name: "alert".into(),
@@ -32,7 +31,9 @@ fn library() -> LibraryFiles {
             path: "voices/guardAlert.solsound".into(),
             ..LibraryItem::default()
         },
-    ])
+    ]);
+    files.set_name_paths(std::sync::Arc::new(paths));
+    files
 }
 
 /// A sound field holding `value` (for several entities, if `mixed`); what
@@ -66,39 +67,35 @@ fn open(h: &mut Harness<'_, (Value, Vec<NameAsk>)>) {
 
 #[test]
 fn the_field_shows_the_name_it_holds() {
-    let mut h = sound("Sfx.Alert", false);
+    let mut h = sound("Alert", false);
     h.run();
-    assert_eq!(shown(&h).as_deref(), Some("Sfx.Alert"));
-    let mut h = sound("Sfx.Alert", true);
+    assert_eq!(shown(&h).as_deref(), Some("Alert"));
+    let mut h = sound("Alert", true);
     h.run();
     assert_eq!(shown(&h).as_deref(), Some("—"), "values that differ");
 }
 
 #[test]
-fn the_list_holds_names_not_folders_and_a_row_picked_is_the_value() {
-    let mut h = sound("Sfx.Alert", false);
+fn the_list_holds_every_name_and_a_row_picked_is_the_value() {
+    let mut h = sound("Alert", false);
     h.run();
     open(&mut h);
     for name in ["Alarm", "Alert", "GuardAlert"] {
         h.get_by_label(name);
     }
-    h.get_by_label("Voices");
-    assert!(
-        h.query_by_role_and_label(egui::accesskit::Role::RadioButton, "Voices")
-            .is_none(),
-        "a folder is a heading, not a row"
-    );
+    // Names have one dot (decision 0137): no folders to head the list.
+    assert!(h.query_by_label("Voices").is_none());
     h.get_by_label("GuardAlert").click();
     h.run();
     assert_eq!(
         h.state().1,
-        [NameAsk::Set(Value::Text("Voices.GuardAlert".into()))]
+        [NameAsk::Set(Value::Text("GuardAlert".into()))]
     );
 }
 
 #[test]
 fn typing_finds_names_and_says_how_many() {
-    let mut h = sound("Sfx.Alert", false);
+    let mut h = sound("Alert", false);
     h.run();
     open(&mut h);
     h.get_by_label("3 names · drag one from the Library too");
@@ -112,19 +109,19 @@ fn typing_finds_names_and_says_how_many() {
 
 #[test]
 fn play_asks_for_the_sound_s_file_and_needs_one() {
-    let mut h = sound("Sfx.Alert", false);
+    let mut h = sound("Alert", false);
     h.run();
     h.get_by_label("Play Alert sound").click();
     h.run();
     assert_eq!(h.state().1, [NameAsk::Play("sfx/alert.solsound".into())]);
     // Alarm has no file in the Library: its ▶ plays nothing.
-    let mut h = sound("Sfx.Alarm", false);
+    let mut h = sound("Alarm", false);
     h.run();
     h.get_by_label("Play Alert sound").click();
     h.run();
     assert!(h.state().1.is_empty());
     // ▶ in the list plays a row's sound and picks nothing.
-    let mut h = sound("Sfx.Alarm", false);
+    let mut h = sound("Alarm", false);
     h.run();
     open(&mut h);
     h.get_by_label("Play GuardAlert").click();
@@ -136,20 +133,11 @@ fn play_asks_for_the_sound_s_file_and_needs_one() {
 }
 
 #[test]
-fn a_picture_with_parts_is_a_name_and_a_folder_is_not() {
-    let options: Vec<String> = ["Portraits", "Portraits.Guard", "Sheet", "Sheet.Axe"]
-        .map(String::from)
-        .to_vec();
-    let rows = |is_file: &dyn Fn(&str) -> bool| -> Vec<String> {
-        (0..options.len())
-            .filter(|&at| pickable(&options, at, is_file))
-            .map(|at| options[at].clone())
-            .collect()
-    };
-    // Sheet is a picture, its Axe cut out of it; Portraits a folder.
-    assert_eq!(
-        rows(&|o| o == "Sheet"),
-        ["Portraits.Guard", "Sheet", "Sheet.Axe"]
-    );
-    assert_eq!(rows(&|_| false), ["Portraits.Guard", "Sheet.Axe"]);
+fn a_picture_and_its_parts_are_all_names() {
+    let options: Vec<String> = ["Guard", "Sheet", "SheetAxe"].map(String::from).to_vec();
+    let rows: Vec<String> = (0..options.len())
+        .filter(|&at| pickable(&options, at, |o: &str| o == "Sheet"))
+        .map(|at| options[at].clone())
+        .collect();
+    assert_eq!(rows, ["Guard", "Sheet", "SheetAxe"]);
 }

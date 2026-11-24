@@ -103,7 +103,7 @@ use std::sync::Arc;
 const GAME: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
     component Hive {\n\
         method update(float dt) {\n\
-            entity made = World:spawn(Module.Drones.Drone, [0, 0, 1]);\n\
+            entity made = World:spawn(Module.Drone, [0, 0, 1]);\n\
         }\n\
     }\n\
     component Doomed {\n\

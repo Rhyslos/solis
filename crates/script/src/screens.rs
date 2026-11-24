@@ -137,7 +137,7 @@ pub fn fonts_named(files: &[(String, String)]) -> Vec<FileUse> {
 
 /// What the markup of every `text "…"` and `button "…"` written out in
 /// `files`' screens shows and gets wrong (stage 1, text effects): the
-/// pictures its icons name (`[icon=Picture.Ui.Coin]`), and its mistakes,
+/// pictures its icons name (`[icon=Picture.Coin]`), and its mistakes,
 /// each at its `[`. Text worked out as the game runs is read then.
 pub fn text_marks(files: &[(String, String)]) -> (Vec<FileUse>, Vec<CodeProblem>) {
     let mut icons = Vec::new();
@@ -677,6 +677,7 @@ impl Screens {
             names: Default::default(),
             screens: None,
             engine_reads: Vec::new(),
+            name_paths: Default::default(),
         };
         runtime.load(&compiled, &mut crate::NoHost)?;
         let opened = opened.borrow().clone();

@@ -314,7 +314,10 @@ impl Workbench {
             &playing.world,
             cues,
             &self.open.cue_sounds,
-            &self.viewport.sheets.paths,
+            (
+                &self.viewport.sheets.paths,
+                self.open.program.as_ref().map(|p| &*p.name_paths),
+            ),
         );
         // Trigger zones (stage 1): who walked in or out since the last
         // tick, on where physics' last step left everything.

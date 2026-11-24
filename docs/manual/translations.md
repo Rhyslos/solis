@@ -7,7 +7,7 @@
 Use translations for any words a player reads: menus, signs, item names and descriptions, what characters say, and captions. Even a game in one language is worth writing this way from the start:
 
 - **Nothing is lost later.** Adding a language later means sending a spreadsheet to a translator, not hunting through code for every sentence.
-- **A misspelt key is caught before the game runs.** Game code names a line as `Text.Shop.Welcome`, one of the project's names, so `Text.Shop.Welcom` is a mistake in [Problems](problems.md) with its line, never a blank sign.
+- **A misspelt key is caught before the game runs.** Game code names a line as `Text.ShopWelcome`, one of the project's names, so `Text.ShopWelcom` is a mistake in [Problems](problems.md) with its line, never a blank sign.
 - **Plurals come out right in every language.** "1 apple, 2 apples" in English; French says "0 pomme"; Polish has three forms. Each translator writes their own language's forms.
 
 Words that aren't the game's text (a name the player typed, a number) aren't translated: show them as they are, or pass them into a line as a value (below).
@@ -42,7 +42,7 @@ Shop-Apples = { $count ->
 
 **Values and plurals.** A line can hold values, written `{ $name }`. A value that's a number can pick between forms: `{ $count -> [one] … *[other] … }`, where `*` marks the form used when no other fits. Each language has its own forms (`one`, `few`, `many`, `other`), and its translator writes the ones it needs.
 
-**In game code.** `World:text(Text.Shop.Welcome)` gives a line in the player's language. A line that takes values is a method on its group's object, `ShopText`, in `solis/texts`, taking its values in the order the main language first uses them; a number is a `float`, anything else a `string`:
+**In game code.** `World:text(Text.ShopWelcome)` gives a line in the player's language. A line that takes values is a method on its group's object, `ShopText`, in `solis/texts`, taking its values in the order the main language first uses them; a number is a `float`, anything else a `string`:
 
 ```lust
 -- shopkeeper.lst: greets whoever walks into the shop, in the player's language.
@@ -54,7 +54,7 @@ fetch "solis/zones":Entered;
 component Shopkeeper {
     -- Someone walked in: welcome them, and say how many apples are left.
     on Entered(entity who) {
-        World:say(World:text(Text.Shop.Welcome));
+        World:say(World:text(Text.ShopWelcome));
         World:say(ShopText:apples(3, "Mira"));
     }
 }
@@ -98,7 +98,7 @@ function Shopkeeper:on_Entered(who)
 end
 ```
 
-On a screen, show a line with `text World:text(Text.Shop.Welcome);`. Text effects inside a line (`[wave]`, `[colour=…]`) are read after it's translated, so each language carries its own.
+On a screen, show a line with `text World:text(Text.ShopWelcome);`. Text effects inside a line (`[wave]`, `[colour=…]`) are read after it's translated, so each language carries its own.
 
 **Data tables.** Mark a [data table](data-tables.md)'s text column **Translated** (right-click its heading). Each of its cells then has a key, `Items.IronSword.description`, listed in the Translations tab; its main-language words stay in the table, and the other languages' go in `locale/<code>/items.ftl`. Game code reading `Items:row(Item.IronSword).description` gets it in the player's language.
 

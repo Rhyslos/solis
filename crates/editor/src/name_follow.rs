@@ -44,33 +44,40 @@ fn item_at(path: &str) -> LibraryItem {
 /// folder), and the old and new option.
 pub(crate) fn renamed(from: &str, to: &str) -> Option<(Vec<NameKind>, String, String)> {
     let (old, new) = (item_at(from), item_at(to));
-    if old.kind != LibraryKind::Other {
-        let (kind, old) = names::name_of(&old)?;
-        let (same, new) = names::name_of(&new)?;
-        return (kind == same && old != new).then(|| (vec![kind], old, new));
+    // A folder renames nothing: names have one dot (decision 0137).
+    if old.kind == LibraryKind::Other {
+        return None;
     }
-    // A folder: every kind whose names are paths.
-    let old = script::project_names::option_of(from)?;
-    let new = script::project_names::option_of(to)?;
-    let kinds = vec![
-        NameKind::Sound,
-        NameKind::Clip,
-        NameKind::Picture,
-        NameKind::Module,
-        NameKind::Level,
-        NameKind::Font,
-    ];
-    (old != new).then_some((kinds, old, new))
+    // A file's name with one dot, by its own name (a clash of two files'
+    // names is said when the names are written again).
+    let name = |item: &LibraryItem| -> Option<(NameKind, String)> {
+        if let Some(screen) = names::screen_of(item) {
+            return Some(screen);
+        }
+        let (kind, stem) = names::stem_of(item)?;
+        let file = stem.rsplit('/').next().unwrap_or(&stem);
+        let option = script::project_names::one_dot(&[(String::new(), file.to_owned())])
+            .pop()
+            .flatten()?;
+        Some((kind, option))
+    };
+    let (kind, old) = name(&old)?;
+    let (same, new) = name(&new)?;
+    (kind == same && old != new).then(|| (vec![kind], old, new))
 }
 
-/// `value` with `old` (or a name inside it) made `new`, if it names it.
-fn followed(value: &str, old: &str, new: &str) -> Option<String> {
+/// `value` with `old` made `new`, if it names it; for a clip or a crop
+/// (`parts`), also a name of one of its parts (`KnightWalk` follows
+/// `Knight` to `HeroWalk`: decision 0137, names have one dot).
+fn followed(value: &str, old: &str, new: &str, parts: bool) -> Option<String> {
     if value.eq_ignore_ascii_case(old) {
         return Some(new.to_owned());
     }
     let inside = value.get(old.len()..)?;
-    (value[..old.len()].eq_ignore_ascii_case(old) && inside.starts_with('.'))
-        .then(|| format!("{new}{inside}"))
+    (parts
+        && value[..old.len()].eq_ignore_ascii_case(old)
+        && inside.starts_with(|c: char| c.is_ascii_uppercase()))
+    .then(|| format!("{new}{inside}"))
 }
 
 impl Workbench {
@@ -97,7 +104,10 @@ impl Workbench {
                     };
                     if let Some(value) = kinds
                         .contains(&kind)
-                        .then(|| followed(now, &old, &new))
+                        .then(|| {
+                            let parts = matches!(kind, NameKind::Clip | NameKind::Picture);
+                            followed(now, &old, &new, parts)
+                        })
                         .flatten()
                     {
                         edits.push(Edit::SetField {
@@ -132,22 +142,14 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_file_or_folder_moved_renames_its_names() {
+    fn a_file_renamed_renames_its_name_and_a_move_doesnt() {
         assert_eq!(
             renamed("sfx/alert.solsound", "sfx/alarm.solsound"),
-            Some((
-                vec![NameKind::Sound],
-                "Sfx.Alert".into(),
-                "Sfx.Alarm".into()
-            ))
+            Some((vec![NameKind::Sound], "Alert".into(), "Alarm".into()))
         );
-        assert_eq!(
-            renamed("coin.module.lst", "loot/coin.module.lst"),
-            Some((vec![NameKind::Module], "Coin".into(), "Loot.Coin".into()))
-        );
-        let (kinds, old, new) = renamed("sfx", "effects").unwrap();
-        assert!(kinds.contains(&NameKind::Sound) && kinds.contains(&NameKind::Picture));
-        assert_eq!((old.as_str(), new.as_str()), ("Sfx", "Effects"));
+        // Names have one dot: moving a file to another folder keeps it.
+        assert_eq!(renamed("coin.module.lst", "loot/coin.module.lst"), None);
+        assert_eq!(renamed("sfx", "effects"), None, "a folder renames nothing");
         assert_eq!(
             renamed("a.solsound", "a.png"),
             None,
@@ -165,29 +167,34 @@ mod tests {
     }
 
     #[test]
-    fn a_name_and_the_names_inside_it_follow() {
+    fn a_name_and_its_parts_names_follow() {
         assert_eq!(
-            followed("Sfx.Alert", "Sfx.Alert", "Sfx.Alarm").as_deref(),
-            Some("Sfx.Alarm")
+            followed("Alert", "Alert", "Alarm", false).as_deref(),
+            Some("Alarm")
         );
         assert_eq!(
-            followed("sfx.alert", "Sfx.Alert", "Sfx.Alarm").as_deref(),
-            Some("Sfx.Alarm")
+            followed("alert", "Alert", "Alarm", false).as_deref(),
+            Some("Alarm")
         );
         assert_eq!(
-            followed("Sfx.Alert", "Sfx", "Effects").as_deref(),
-            Some("Effects.Alert")
+            followed("KnightWalk", "Knight", "Hero", true).as_deref(),
+            Some("HeroWalk"),
+            "a sheet's clips"
         );
         assert_eq!(
-            followed("Sfxs.Alert", "Sfx", "Effects"),
+            followed("ToolsAxe", "Tools", "Kit", true).as_deref(),
+            Some("KitAxe")
+        );
+        assert_eq!(
+            followed("CoinPurse", "Coin", "Gold", false),
             None,
-            "only whole names"
+            "a module's alone"
         );
         assert_eq!(
-            followed("Tools.Axe", "Tools", "Kit").as_deref(),
-            Some("Kit.Axe"),
-            "a picture's crops"
+            followed("Knightly", "Knight", "Hero", true),
+            None,
+            "only whole parts"
         );
-        assert_eq!(followed("Sf", "Sfx", "Effects"), None);
+        assert_eq!(followed("Kn", "Knight", "Hero", true), None);
     }
 }

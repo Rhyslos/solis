@@ -131,7 +131,7 @@ fn a_sound_plays_on_letters_or_on_words() {
 
 #[test]
 fn an_icon_is_a_letter_that_types_out() {
-    let t = TypeOut::of(&parse("5 [icon=Picture.Ui.Coin]"), 10.0);
+    let t = TypeOut::of(&parse("5 [icon=Picture.Coin]"), 10.0);
     assert_eq!(t.moments.len(), 3);
     assert!(t.moments[2].letter && t.moments[2].word);
 }

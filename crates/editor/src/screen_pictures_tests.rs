@@ -16,9 +16,15 @@ fn items(icons: &str) -> String {
 }
 
 fn program(screen: &str) -> Arc<script::Compiled> {
+    // The project's names, for an icon to find its picture by (decision
+    // 0137: `Picture.ToolsAxe` is the crop Axe of sprites/tools.png).
+    let mut names = script::project_names::Names::standard();
+    names.pictures = vec!["sprites/tools".into(), "sprites/tools/Axe".into()];
+    let (project, _) = script::project_names::project_file("Test 1.0", &names);
     let code = script::Code {
         files: vec![
             ("main.lst".to_string(), "end\n".to_string()),
+            ("solis/project.lst".to_string(), project),
             ("ui/items.lst".to_string(), screen.to_string()),
         ],
         lua: Vec::new(),
@@ -258,12 +264,12 @@ fn sheets_handed_over_again_get_the_pictures_made_again() {
 
 #[test]
 fn an_icon_in_text_shows_the_picture_or_crop_its_name_stands_for() {
-    // Stage 1, text effects: `[icon=Picture.Sprites.Tools.Axe]` is the crop
+    // Stage 1, text effects: `[icon=Picture.ToolsAxe]` is the crop
     // Axe of sprites/tools.png; a name that stands for nothing is a problem
     // at its line, and markup mistakes are listed with it.
     let mut w = Workbench::new(info());
     w.set_program(Some(program(&items(
-        "text \"An [icon=Picture.Sprites.Tools.Axe] axe\";\n            text \"A [icon=Picture.Sprites.Spade] spade [glow]\";",
+        "text \"An [icon=Picture.ToolsAxe] axe\";\n            text \"A [icon=Picture.Spade] spade [glow]\";",
     ))));
     with_tools(&mut w, Some(&[("Axe", [0, 0, 16, 16])]));
     w.refresh_screen_pictures();
@@ -271,15 +277,13 @@ fn an_icon_in_text_shows_the_picture_or_crop_its_name_stands_for() {
     assert_eq!(problems.len(), 1, "{problems:?}");
     assert_eq!(problems[0].line, 6);
     assert!(
-        problems[0]
-            .message
-            .contains("no picture Picture.Sprites.Spade"),
+        problems[0].message.contains("no picture Picture.Spade"),
         "{}",
         problems[0]
     );
     let pictures = w.open.screen_pictures.pictures.clone().unwrap();
     assert_eq!(
-        pictures.get("Picture.Sprites.Tools.Axe").unwrap().size,
+        pictures.get("Picture.ToolsAxe").unwrap().size,
         [16, 16],
         "packed under its project name"
     );
@@ -288,11 +292,8 @@ fn an_icon_in_text_shows_the_picture_or_crop_its_name_stands_for() {
     assert_eq!(w.status().problems, 2);
     // A whole picture by its own name.
     assert_eq!(
-        w.open
-            .library
-            .icon_picture("Picture.Sprites.Tools")
-            .as_deref(),
+        w.open.library.icon_picture("Picture.Tools").as_deref(),
         Some("sprites/tools.png")
     );
-    assert_eq!(w.open.library.icon_picture("Sprites.Tools"), None);
+    assert_eq!(w.open.library.icon_picture("Tools"), None);
 }

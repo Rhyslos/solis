@@ -115,6 +115,7 @@ fn names() -> Names {
         .and_screens(&["PauseMenu", "Hud", "DroneHealth", "Where", "Hotbar", "Talk"])
         .and_actions(&["Interact", "Use", "QuickSave", "QuickLoad", "Pause", "Fire"]);
     names.pictures = vec![
+        "sprites/tools".into(),
         "sprites/tools/Axe".into(),
         "sprites/tools/Hoe".into(),
         "sprites/tools/Can".into(),
@@ -214,7 +215,7 @@ fn engine_files(code: &str) -> Vec<(String, String)> {
             path: "data/items".into(),
             table: crate::tables::tests::items(120),
         };
-        let first = |_| "Sprites.Tools.Axe".to_string();
+        let first = |_| "ToolsAxe".to_string();
         files.extend(crate::table_code::table_file(MADE_BY, "solis", &items, &first).0);
     }
     files

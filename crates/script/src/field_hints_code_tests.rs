@@ -36,7 +36,7 @@ component Guard {\n\
     has {\n\
         float speed = 4.0; -- [range 0 10, step 0.5, unit \"m/s\", tip \"Walking speed\"]\n\
         float sightRange = 8.0; -- [unit \"m\", group \"Seeing\"]\n\
-        Sound alertSound = Sound.Sfx.Alert;\n\
+        Sound alertSound = Sound.Alert;\n\
         Module drops = Module.Coin; -- [tip \"Left behind\"]\n\
         Level home = Level.Town; -- [range 0 1]\n\
         string notes = \"\"; -- [multiline, hidden]\n\
@@ -58,7 +58,7 @@ fn lust_hints_and_pickers_reach_the_schema() {
     assert_eq!(guard.field("sightRange").unwrap().hint.group, "Seeing");
     let alert = guard.field("alertSound").unwrap();
     assert_eq!(alert.hint.offers, Offer::Names(NameKind::Sound));
-    assert!(matches!(&alert.kind, FieldKind::Choice(o) if o.contains(&"Sfx.Alert".to_string())));
+    assert!(matches!(&alert.kind, FieldKind::Choice(o) if o.contains(&"Alert".to_string())));
     assert_eq!(
         guard.field("drops").unwrap().hint.offers,
         Offer::Names(NameKind::Module)
@@ -110,7 +110,7 @@ fn hints_change_with_new_code() {
 fn lua_hints_are_a_fifth_entry_and_the_project_s_names_are_kinds() {
     let lua = "local Guard = component(\"Guard\", {\n\
         { \"speed\", \"float\", 4.0, nil, { range = { 0, 10 }, step = 0.5, unit = \"m/s\", tip = \"Walking speed\" } },\n\
-        { \"alertSound\", \"Sound\", \"Sfx.Alert\" },\n\
+        { \"alertSound\", \"Sound\", \"Alert\" },\n\
         { \"says\", \"string\", \"\", nil, { multiline = true, colour = 3 } },\n\
     })\n\
     function Guard:update(dt) end\n";
@@ -121,8 +121,8 @@ fn lua_hints_are_a_fifth_entry_and_the_project_s_names_are_kinds() {
     assert_eq!((&*speed.unit, &*speed.tip), (" m/s", "Walking speed"));
     let alert = guard.field("alertSound").unwrap();
     assert_eq!(alert.hint.offers, Offer::Names(NameKind::Sound));
-    assert_eq!(alert.default, Value::Text("Sfx.Alert".into()));
-    assert!(matches!(&alert.kind, FieldKind::Choice(o) if o.contains(&"Sfx.Step".to_string())));
+    assert_eq!(alert.default, Value::Text("Alert".into()));
+    assert!(matches!(&alert.kind, FieldKind::Choice(o) if o.contains(&"Step".to_string())));
     assert!(guard.field("says").unwrap().hint.multiline);
     assert_eq!(
         compiled.hint_problems.len(),

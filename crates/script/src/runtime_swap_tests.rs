@@ -29,6 +29,7 @@ fn chunk(main: &str) -> Compiled {
             names: Default::default(),
             screens: None,
             engine_reads: Vec::new(),
+            name_paths: Default::default(),
         },
         Err(problems) => panic!("{}", problems[0]),
     }

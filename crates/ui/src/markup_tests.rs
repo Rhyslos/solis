@@ -50,13 +50,13 @@ fn colours_are_the_screen_s_words_or_hex() {
 
 #[test]
 fn icons_stand_in_the_text_as_one_character() {
-    let m = parse("Costs 5 [icon=Picture.Ui.Coin] each");
+    let m = parse("Costs 5 [icon=Picture.Coin] each");
     assert_eq!(m.plain, format!("Costs 5 {ICON} each"));
     assert_eq!(
         m.icons,
         [Icon {
             at: 8,
-            name: "Picture.Ui.Coin".into()
+            name: "Picture.Coin".into()
         }]
     );
 }
@@ -142,7 +142,7 @@ fn mistakes_say_what_to_write() {
     };
     says("[color=red]x", "[colour=");
     says("[colour=gold]x", "isn't a colour");
-    says("[icon=Coin]", "Picture.Ui.Coin");
+    says("[icon=Coin]", "Picture.Coin");
     says("[pause]", "seconds");
     says("[pause 999]", "seconds");
     says("[speed fast]", "[speed 2]");
@@ -183,9 +183,9 @@ fn written_back_it_reads_the_same() {
         "Oh! [wave]hello[/wave] [colour=#ff8800]red [b]roses[/b][/colour]?",
         "[wave]a[b]b[/wave]c[/b]",
         "[b][i]both[/i][/b] and [i][b]both[/b][/i]",
-        "Costs 5 [icon=Picture.Ui.Coin] [[each]",
+        "Costs 5 [icon=Picture.Coin] [[each]",
         "Well[pause 0.5]... [speed 2]fast[speed 1][pause 1]",
-        "[shake]shaking [icon=Picture.Ui.Skull][/shake]",
+        "[shake]shaking [icon=Picture.Skull][/shake]",
         "",
     ] {
         let m = parse(text);

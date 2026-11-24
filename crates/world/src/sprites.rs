@@ -88,7 +88,7 @@ impl World {
         let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity) else {
             return;
         };
-        // Game code names a clip as an option (`Clip.Farmer.Walk`, which
+        // Game code names a clip as an option (`Clip.FarmerWalk`, which
         // asks for "Walk"): the sheet's own name for it, found ignoring
         // capitals.
         let named = sprite

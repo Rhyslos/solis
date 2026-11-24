@@ -93,7 +93,7 @@ pub struct Compiled {
     /// `Changed`, when the game declares it.
     pub state_events: std::collections::BTreeMap<String, String>,
     /// The game's text keys its code and screens use (stage 1,
-    /// translations), in small letters: `Text.Shop.Welcome`,
+    /// translations), in small letters: `Text.ShopWelcome`,
     /// `ShopText:welcome`, `"Shop.Welcome"` in Lua. For the check of lines
     /// nothing uses.
     pub texts_used: Vec<String>,
@@ -103,6 +103,9 @@ pub struct Compiled {
     /// The Lust components holding fields the engine reads
     /// ([`crate::engine_fields`]: `Facing facing`, `Look look`).
     pub engine_reads: Vec<crate::engine_fields::Watched>,
+    /// The file each of the project's names stands for (`Module.Fighter`
+    /// to `ships/fighter`), read from `solis/project.lst` (decision 0137).
+    pub name_paths: std::sync::Arc<crate::project_names::NamePaths>,
 }
 
 /// The text keys `files` (the game's code) use, in small letters: those
@@ -560,6 +563,7 @@ fn compile_here(
         state_events: std::collections::BTreeMap::new(),
         components: reach,
         engine_reads: Vec::new(),
+        name_paths: Default::default(),
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
@@ -579,6 +583,7 @@ fn compile_here(
     };
     compiled.schemas = runtime.schemas();
     compiled.engine_reads = crate::engine_fields::found(&code.files);
+    compiled.name_paths = std::sync::Arc::new(crate::project_names::paths_in(&code.files));
     // The kinds its code reads of other entities, copied each tick.
     compiled.components.reads = crate::readings::kinds_read(
         compiled.lust.as_ref().map(|chunk| chunk.code.as_str()),

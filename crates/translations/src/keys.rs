@@ -2,7 +2,7 @@
 //! changed. A key is a group and a name, more parts if wanted, each a name
 //! Lust can use: `Shop.Welcome`, `Menu.Options.Volume`,
 //! `Items.IronSword.description`. Game code names it as an option of
-//! `Text` (`Text.Shop.Welcome`), so a misspelt key is a mistake before
+//! `Text` (`Text.ShopWelcome`), so a misspelt key is a mistake before
 //! the game runs.
 //!
 //! In a Fluent file, a key's dots are dashes: `Shop-Welcome = Welcome!`

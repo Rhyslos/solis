@@ -1,14 +1,16 @@
 //! The project's own names as Lust states ([decision 0065](../../../docs/decisions/0065-engine-api-guidelines.md)):
 //! `solis/project.lst`, written by the editor whenever the project's files
-//! change, so game code names a module as `Module.Ships.Fighter`, not
-//! as text. A typo is then a mistake before the game runs, and a renamed
-//! file points at every line still using the old name.
+//! change, so game code names a module as `Module.Fighter`, not as text.
+//! A typo is then a mistake before the game runs, and a renamed file
+//! points at every line still using the old name.
 //!
-//! Folders become options inside options: `ships/fighter.solassembly` is
-//! `Module.Ships.Fighter`. Each part's first letter is made a capital
-//! (Lust's options start with one); the rest is kept as it is. Natives get
-//! the full name back (`"Ships.Fighter"`) and find the file from it,
-//! ignoring capitals as the Library does.
+//! Every name has one dot ([decision 0137](../../../docs/decisions/0137-the-uniformity-pass.md),
+//! [`one_dot`]): `ships/fighter.module.lst` is `Module.Fighter`, a clip
+//! its sheet's name and its own (`Clip.FarmerWalk`), with folders in front
+//! only where two would clash. Its first letter is made a capital (Lust's
+//! options start with one). Under each state, Solis writes the file each
+//! name stands for, which it reads back ([`paths_in`]) so natives find the
+//! file from the name (`path_for`).
 
 use std::collections::BTreeMap;
 
@@ -19,15 +21,6 @@ pub const STANDARD_BUSES: &[&str] = &["Master", "Music", "Effects", "Voice", "Am
 /// The option a project has when it has none of its own (Lust's states
 /// need one): `Module.None`, which makes nothing.
 pub const NO_OPTION: &str = "None";
-
-/// One level of a state: options, each with the options inside it (none
-/// for a file).
-#[derive(Debug, Default)]
-struct Level {
-    options: BTreeMap<String, (String, Level)>,
-    /// Whether this option is a file itself (and not only a folder).
-    file: bool,
-}
 
 /// The project's names, as Solis finds them, for [`project_file`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -200,7 +193,8 @@ pub const KIT_ACTIONS: [&str; 8] = [
 /// for the first line.
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
-    let module = state_text("Module", &names.modules, "module", &mut notes);
+    let files = |paths: &[String]| paths.iter().map(|p| file_entry(p)).collect::<Vec<_>>();
+    let module = flat_text("Module", &files(&names.modules), "module", &mut notes);
     let mut actions = names.actions.clone();
     for kit in KIT_ACTIONS {
         if !actions.iter().any(|a| a.eq_ignore_ascii_case(kit)) {
@@ -208,54 +202,66 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
         }
     }
     let action = names_text("Action", &actions, "input action", true, &mut notes);
-    let sound = state_text("Sound", &names.sounds, "sound event", &mut notes);
+    let sound = flat_text("Sound", &files(&names.sounds), "sound event", &mut notes);
     let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
-    let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
+    let clips: Vec<_> = names.clips.iter().map(|p| part_entry(p)).collect();
+    let clip = flat_text("Clip", &clips, "sprite clip", &mut notes);
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
     let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
-    let picture = state_text("Picture", &names.pictures, "picture", &mut notes);
+    // A picture, or a part cut out of one (a crop: the picture's path,
+    // then the crop's name).
+    let pictures: Vec<_> = (names.pictures.iter())
+        .map(|p| {
+            let crop = p
+                .rsplit_once('/')
+                .is_some_and(|(picture, _)| names.pictures.iter().any(|q| q == picture));
+            if crop { part_entry(p) } else { file_entry(p) }
+        })
+        .collect();
+    let picture = flat_text("Picture", &pictures, "picture", &mut notes);
     let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
     let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
-    let level = state_text("Level", &names.levels, "level", &mut notes);
-    let font = state_text("Font", &names.fonts, "font", &mut notes);
-    let keys: Vec<String> = names.texts.iter().map(|k| k.replace('.', "/")).collect();
-    let text_state = state_text("Text", &keys, "text key", &mut notes);
+    let level = flat_text("Level", &files(&names.levels), "level", &mut notes);
+    let font = flat_text("Font", &files(&names.fonts), "font", &mut notes);
+    // A text key's parts are all its own: `Shop.Welcome` is ShopWelcome.
+    let keys: Vec<_> = (names.texts.iter())
+        .map(|k| (String::new(), k.replace('.', "/"), k.clone()))
+        .collect();
+    let text_state = flat_text("Text", &keys, "text key", &mut notes);
     let language = names_text("Language", &names.languages, "language", true, &mut notes);
     let look = names_text("Look", &names.looks, "look", true, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
-         -- The project's modules, folders as options inside options: World:spawn(Module.Ships.Fighter, place)\n\
-         -- for ships/fighter.\n\
+         -- The project's modules, by their files' names: World:spawn(Module.Fighter, place) for\n\
+         -- ships/fighter. Each name's file is listed under it, for Solis.\n\
          {module}\n\n\
          -- The project's input actions (Edit > Input actions…): Input:pressed(Action.Jump).\n\
          {action}\n\n\
-         -- The project's sound events, folders as options inside options: Audio:play(Sound.Sfx.Footstep)\n\
-         -- for sfx/footstep.\n\
+         -- The project's sound events, by their files' names: Audio:play(Sound.Footstep) for\n\
+         -- sfx/footstep.\n\
          {sound}\n\n\
          -- The Mixer's buses: Audio:setVolume(Bus.Music, 0.5).\n\
          {bus}\n\n\
-         -- The sprites' clips, by their sheets: animate(Clip.Sprites.Farmer.Walk).\n\
+         -- The sprites' clips, their sheet's name and their own: animate(Clip.FarmerWalk).\n\
          {clip}\n\n\
          -- The clips' events: on CueReached(Cue cue) {{ is cue == Cue.Footstep? … }}.\n\
          {cue}\n\n\
          -- The game's screens (files in ui/): showScreen(Screen.PauseMenu) for ui/pauseMenu.lst.\n\
          {screen}\n\n\
-         -- The project's pictures, folders as options inside options, and the parts cut out of\n\
-         -- them with Atlas Crop inside their pictures: Picture.Sprites.Tools for sprites/tools.png,\n\
-         -- and Picture.Sprites.Tools.Axe for its Axe.\n\
+         -- The project's pictures, and the parts cut out of them with Atlas Crop named after\n\
+         -- their picture: Picture.Tools for sprites/tools.png, and Picture.ToolsAxe for its Axe.\n\
          {picture}\n\n\
          -- The project's tags (Project settings > Tags): is hasTag(Tag.Enemy)?, World:nearest(Tag.Enemy, place).\n\
          {tag}\n\n\
          -- The game's timers, each named where code starts it: startTimer(Timer.DoorOpens, 2.0).\n\
          {timer}\n\n\
-         -- The project's levels, folders as options inside options: Level.Forest.Cave for\n\
-         -- forest/cave.sollevel.\n\
+         -- The project's levels: Level.Cave for forest/cave.sollevel.\n\
          {level}\n\n\
-         -- The project's fonts (TrueType and OpenType files), folders as options inside options:\n\
-         -- Font.Fonts.Lora for fonts/Lora.ttf.\n\
+         -- The project's fonts (TrueType and OpenType files): Font.Lora for fonts/Lora.ttf.\n\
          {font}\n\n\
-         -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.Shop.Welcome).\n\
+         -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.ShopWelcome) for\n\
+         -- Shop.Welcome.\n\
          {text_state}\n\n\
          -- The project's languages (Project settings > Languages): Screens:setLanguage(Language.Nb).\n\
          {language}\n\n\
@@ -279,31 +285,48 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
 /// order, or none where it can't be one (a name Lust can't take, or two
 /// looks that would still be called the same).
 pub fn look_names(looks: &[(String, String)]) -> Vec<Option<String>> {
-    let joined = |parts: &[&str], look: &str| -> Option<String> {
+    let named: Vec<(String, String)> = looks
+        .iter()
+        .map(|(path, look)| {
+            let (folders, file) = path.rsplit_once('/').unwrap_or(("", path));
+            (folders.to_owned(), format!("{file}/{look}"))
+        })
+        .collect();
+    one_dot(&named)
+}
+
+/// The project's names with one dot ([decision 0137](../../../docs/decisions/0137-the-uniformity-pass.md)):
+/// each given as its folders (`heroes`, empty for none) and its own parts
+/// (`knight/walk`: a file, or a file and a part of it), named by its own
+/// parts joined (`KnightWalk`), with its folders in front only where two
+/// would otherwise be called the same (`HeroesKnightWalk`). The answer is
+/// each one's name, in the same order, or none where Lust can't take it or
+/// two would still be called the same.
+pub fn one_dot(names: &[(String, String)]) -> Vec<Option<String>> {
+    let joined = |parts: &mut dyn Iterator<Item = &str>| -> Option<String> {
         let mut name = String::new();
-        for part in parts.iter().copied().chain(std::iter::once(look)) {
+        for part in parts.filter(|p| !p.is_empty()) {
             name.push_str(&option_name(part)?);
         }
         option_name(&name)
     };
-    let short: Vec<Option<String>> = looks
+    let short: Vec<Option<String>> = names
         .iter()
-        .map(|(path, look)| joined(&[path.rsplit('/').next().unwrap_or(path)], look))
+        .map(|(_, own)| joined(&mut own.split('/')))
         .collect();
-    let clashes = |name: &str, path: &str, names: &[Option<String>]| {
-        names.iter().zip(looks).any(|(other, (other_path, _))| {
-            other_path != path
+    let clashes = |i: usize, name: &str, list: &[Option<String>]| {
+        list.iter().enumerate().any(|(j, other)| {
+            j != i
+                && names[j] != names[i]
                 && other
                     .as_deref()
                     .is_some_and(|o| o.eq_ignore_ascii_case(name))
         })
     };
-    let long: Vec<Option<String>> = looks
-        .iter()
-        .zip(&short)
-        .map(|((path, look), name)| match name {
-            Some(name) if clashes(name, path, &short) => {
-                joined(&path.split('/').collect::<Vec<_>>(), look)
+    let long: Vec<Option<String>> = (names.iter().enumerate())
+        .map(|(i, (folders, own))| match &short[i] {
+            Some(name) if clashes(i, name, &short) => {
+                joined(&mut folders.split('/').chain(own.split('/')))
             }
             name => name.clone(),
         })
@@ -312,71 +335,129 @@ pub fn look_names(looks: &[(String, String)]) -> Vec<Option<String>> {
         .enumerate()
         .map(|(i, name)| {
             let name = name.as_ref()?;
-            let twice = long
-                .iter()
-                .enumerate()
-                .any(|(j, o)| j != i && o.as_deref().is_some_and(|o| o.eq_ignore_ascii_case(name)));
+            let twice = long.iter().enumerate().any(|(j, o)| {
+                j != i
+                    && names[j] != names[i]
+                    && o.as_deref().is_some_and(|o| o.eq_ignore_ascii_case(name))
+            });
             (!twice).then(|| name.clone())
         })
         .collect()
 }
 
-/// One state's line: `state Module = [Crate, Ships [Fighter]];`.
-fn state_text(state: &str, paths: &[String], what: &str, notes: &mut Vec<String>) -> String {
-    let mut top = Level::default();
-    let mut paths: Vec<&String> = paths.iter().collect();
-    paths.sort();
-    paths.dedup();
-    // Paths the same but for capitals name the same option.
-    let mut seen: BTreeMap<String, &String> = BTreeMap::new();
-    'paths: for path in paths {
-        if let Some(first) = seen.get(&path.to_lowercase()) {
-            notes.push(format!(
-                "Two {what} files, {first} and {path}, have the same name but for capitals, so game code \
-                 can't tell them apart. Rename one to use it from code."
-            ));
-            continue;
+/// The project's names of one kind with one dot (decision 0137), and
+/// the file each stands for: `state Module = [Crate, Fighter];`, then a
+/// line Solis reads back for each (`-- @Module.Fighter = ships/fighter`),
+/// which game code never sees. `entries` is each name's folders, its own
+/// parts and the path or key it stands for (as [`one_dot`] takes them).
+fn flat_text(
+    state: &str,
+    entries: &[(String, String, String)],
+    what: &str,
+    notes: &mut Vec<String>,
+) -> String {
+    let mut entries: Vec<&(String, String, String)> = entries.iter().collect();
+    entries.sort_by(|a, b| a.2.cmp(&b.2));
+    entries.dedup_by(|a, b| a.2 == b.2);
+    let asked: Vec<(String, String)> = entries
+        .iter()
+        .map(|(folders, own, _)| (folders.clone(), own.clone()))
+        .collect();
+    let mut options: Vec<(String, &str)> = Vec::new();
+    for (name, (_, _, path)) in one_dot(&asked).into_iter().zip(&entries) {
+        match name {
+            Some(name) => options.push((name, path.as_str())),
+            None => notes.push(format!(
+                "The {what} {path} can't be named in game code: its name must start with a \
+                 letter and hold only letters, digits and _, and no other {what} may be called \
+                 the same. Rename it to use it from code."
+            )),
         }
-        let mut parts = Vec::new();
-        for part in path.split('/') {
-            match option_name(part) {
-                Some(name) => parts.push(name),
-                None => {
-                    notes.push(format!(
-                        "The {what} {path} can't be named in game code: each part of its path must start \
-                         with a letter, hold only letters, digits and _, and not be one \
-                         of Lust's own objects (Maths, Files, Time, Json, Web, Random). Rename it to use it \
-                         from code."
-                    ));
-                    continue 'paths;
-                }
-            }
-        }
-        seen.insert(path.to_lowercase(), path);
-        let mut level = &mut top;
-        for name in parts {
-            level = &mut level
-                .options
-                .entry(name.to_lowercase())
-                .or_insert_with(|| (name.clone(), Level::default()))
-                .1;
-        }
-        level.file = true;
     }
-    let mut options = Vec::new();
-    let what = (what, state == PARTS_INSIDE);
-    write_level(&top, "", what, notes, &mut options);
-    if options.is_empty() {
-        options.push(NO_OPTION.to_string());
+    options.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut text = if options.is_empty() {
+        format!("state {state} = [{NO_OPTION}];")
+    } else {
+        let list: Vec<&str> = options.iter().map(|(name, _)| name.as_str()).collect();
+        format!("state {state} = [{}];", list.join(", "))
+    };
+    for (name, path) in &options {
+        text.push_str(&format!("\n{PATH_MARK}{state}.{name} = {path}"));
     }
-    format!("state {state} = [{}];", options.join(", "))
+    text
 }
 
-/// A state of plain names. `exact`: each must already be an option as it
-/// is (`Jump`; an input action, which game code asks for by its exact
-/// name), else it's left out with a note. Otherwise it's made one as a
-/// path's part is (the `UI` bus is `Bus.Ui`), and found again ignoring
-/// capitals.
+/// How a line naming an option's file starts in `solis/project.lst`.
+const PATH_MARK: &str = "-- @";
+
+/// Each option's file (or key), as `solis/project.lst` lists them under
+/// its states: `Module.Fighter` to `ships/fighter` (decision 0137).
+pub type NamePaths = BTreeMap<String, String>;
+
+/// The options' files in `files` (the game's code): read from the lines
+/// `flat_text` writes in `solis/project.lst`; none if it has none.
+pub fn paths_in(files: &[(String, String)]) -> NamePaths {
+    let path = format!("{}/project.lst", level::lust_data::ENGINE_FOLDER);
+    let Some((_, text)) = files.iter().find(|(p, _)| *p == path) else {
+        return NamePaths::new();
+    };
+    text.lines()
+        .filter_map(|line| line.trim().strip_prefix(PATH_MARK))
+        .filter_map(|rest| rest.split_once(" = "))
+        .map(|(option, path)| (option.trim().to_owned(), path.trim().to_owned()))
+        .collect()
+}
+
+/// The file (or key) the option `option` of `state` stands for
+/// (`"Fighter"` of `Module`: `ships/fighter`), from `paths`; `None` for
+/// [`NO_OPTION`] or a name it doesn't have.
+pub fn path_in(paths: &NamePaths, state: &str, option: &str) -> Option<String> {
+    (option != NO_OPTION && !option.is_empty())
+        .then(|| paths.get(&format!("{state}.{option}")).cloned())
+        .flatten()
+}
+
+/// The option of `state` standing for `path` (`ships/fighter`: `Fighter`),
+/// from `paths`, matched ignoring capitals as the Library finds files.
+pub fn option_in(paths: &NamePaths, state: &str, path: &str) -> Option<String> {
+    let prefix = format!("{state}.");
+    paths.iter().find_map(|(option, p)| {
+        option
+            .strip_prefix(&prefix)
+            .filter(|_| p.eq_ignore_ascii_case(path))
+            .map(str::to_owned)
+    })
+}
+
+/// The file a native's name of `state` stands for, from the names the
+/// running code was compiled with (a native is given `Module.Fighter` as
+/// `"Fighter"`): `ships/fighter`. `None` for [`NO_OPTION`] or a name it
+/// doesn't have.
+pub(crate) fn path_for(lua: &mlua::Lua, state: &str, option: &str) -> Option<String> {
+    let paths = lua.app_data_ref::<std::sync::Arc<NamePaths>>()?;
+    path_in(&paths, state, option)
+}
+
+/// A path split as [`flat_text`] takes it: its folders and its file
+/// (`ships/fighter`: `ships`, `fighter`).
+fn file_entry(path: &str) -> (String, String, String) {
+    let (folders, file) = path.rsplit_once('/').unwrap_or(("", path));
+    (folders.to_owned(), file.to_owned(), path.to_owned())
+}
+
+/// A path whose last part is a part of the file before it (a clip of a
+/// sheet, a crop of a picture), split as [`flat_text`] takes it:
+/// `sprites/farmer/walk` is `sprites`, `farmer/walk`.
+fn part_entry(path: &str) -> (String, String, String) {
+    let (file, part) = path.rsplit_once('/').unwrap_or(("", path));
+    let (folders, stem) = file.rsplit_once('/').unwrap_or(("", file));
+    (
+        folders.to_owned(),
+        format!("{stem}/{part}"),
+        path.to_owned(),
+    )
+}
+
 fn names_text(
     state: &str,
     names: &[String],
@@ -405,44 +486,6 @@ fn names_text(
         options.push(NO_OPTION.to_string());
     }
     format!("state {state} = [{}];", options.join(", "))
-}
-
-/// The state whose files hold named parts of their own: a picture's
-/// crops are options inside it (`Picture.Sprites.Tools.Axe` in
-/// `Picture.Sprites.Tools`), so a picture with options inside is no
-/// mistake.
-const PARTS_INSIDE: &str = "Picture";
-
-/// The options of one level, written: a file is its name, a folder its
-/// name and the options inside. A name both a file and a folder keeps the
-/// folder, with a note, unless files hold parts (`what`'s second).
-fn write_level(
-    level: &Level,
-    at: &str,
-    (what, parts): (&str, bool),
-    notes: &mut Vec<String>,
-    out: &mut Vec<String>,
-) {
-    for (name, inner) in level.options.values() {
-        let path = if at.is_empty() {
-            name.clone()
-        } else {
-            format!("{at}.{name}")
-        };
-        if inner.options.is_empty() {
-            out.push(name.clone());
-            continue;
-        }
-        if inner.file && !parts {
-            notes.push(format!(
-                "The {what} {path} has the same name as a folder beside it, so game code can't name it. \
-                 Rename one to use it from code."
-            ));
-        }
-        let mut inside = Vec::new();
-        write_level(inner, &path, (what, parts), notes, &mut inside);
-        out.push(format!("{name} [{}]", inside.join(", ")));
-    }
 }
 
 /// Each state's options in a project file, by the state's name: every
@@ -649,26 +692,36 @@ mod tests {
             notes.is_empty(),
             "a picture holding crops is no mistake: {notes:?}"
         );
+        assert!(text.contains("state Level = [Cave, Town];"), "{text}");
         assert!(
-            text.contains("state Level = [Forest [Cave], Town];"),
+            text.contains("state Picture = [GuardFace, Tools, ToolsAxe];"),
             "{text}"
         );
-        assert!(
-            text.contains("state Picture = [Portraits [GuardFace], Sprites [Tools [Axe]]];"),
-            "{text}"
+        // Each name's file is written for Solis to read back.
+        let paths = paths_in(&[("solis/project.lst".into(), text.clone())]);
+        assert_eq!(
+            path_in(&paths, "Picture", "ToolsAxe").as_deref(),
+            Some("sprites/tools/Axe")
         );
+        assert_eq!(
+            path_in(&paths, "Level", "Cave").as_deref(),
+            Some("forest/cave")
+        );
+        assert_eq!(
+            option_in(&paths, "Level", "FOREST/cave").as_deref(),
+            Some("Cave")
+        );
+        assert_eq!(path_in(&paths, "Level", NO_OPTION), None);
         // Fonts too (stage 1, text layout), and none is Font.None.
         assert!(text.contains("state Font = [None];"), "{text}");
         let mut with_fonts = Names::standard();
         with_fonts.fonts = vec!["fonts/Lora".into(), "Pixel".into()];
         let (text, _) = project_file("Test 1.0", &with_fonts);
-        assert!(
-            text.contains("state Font = [Fonts [Lora], Pixel];"),
-            "{text}"
-        );
-        // A module both a file and a folder is still said.
-        let (_, notes) = project_file("Test 1.0", &modules(&["ships", "ships/fighter"]));
-        assert_eq!(notes.len(), 1, "{notes:?}");
+        assert!(text.contains("state Font = [Lora, Pixel];"), "{text}");
+        // A module and a folder of the same name are no clash any more.
+        let (text, notes) = project_file("Test 1.0", &modules(&["ships", "ships/fighter"]));
+        assert!(notes.is_empty(), "{notes:?}");
+        assert!(text.contains("state Module = [Fighter, Ships];"), "{text}");
     }
 
     #[test]
@@ -679,10 +732,7 @@ mod tests {
         let (text, _) = project_file("Test 1.0", &names);
         let files = vec![("solis/project.lst".to_string(), text)];
         let states = states_in(&files);
-        assert_eq!(
-            states["Sound"],
-            ["Music", "Music.Farm", "Sfx", "Sfx.Footstep", "Sfx.Hoe"]
-        );
+        assert_eq!(states["Sound"], ["Farm", "Footstep", "Hoe"]);
         assert_eq!(states["Tag"], ["Enemy"]);
         assert_eq!(states["Level"], ["None"]);
         assert!(states_in(&[("main.lst".into(), "state X = [A];".into())]).is_empty());
@@ -760,6 +810,47 @@ mod tests {
     }
 
     #[test]
+    fn every_kind_of_name_has_one_dot() {
+        let named = |list: &[(&str, &str)]| {
+            one_dot(
+                &list
+                    .iter()
+                    .map(|(f, o)| ((*f).to_string(), (*o).to_string()))
+                    .collect::<Vec<_>>(),
+            )
+            .into_iter()
+            .map(|n| n.unwrap_or_default())
+            .collect::<Vec<_>>()
+        };
+        // A module, a clip, a crop and a text key.
+        assert_eq!(
+            named(&[
+                ("ships", "fighter"),
+                ("sprites", "farmer/walk"),
+                ("sprites", "tools/Axe"),
+                ("", "Shop/Welcome")
+            ]),
+            ["Fighter", "FarmerWalk", "ToolsAxe", "ShopWelcome"]
+        );
+        // Folders join only where two would clash, however deep.
+        assert_eq!(
+            named(&[
+                ("ships/big", "fighter"),
+                ("drones", "fighter"),
+                ("", "crate")
+            ]),
+            ["ShipsBigFighter", "DronesFighter", "Crate"]
+        );
+        // The same name given twice is one name, not a clash.
+        assert_eq!(
+            named(&[("ships", "fighter"), ("ships", "fighter")]),
+            ["Fighter", "Fighter"]
+        );
+        // Names Lust can't take.
+        assert_eq!(named(&[("", "big-ship"), ("", "2d")]), ["", ""]);
+    }
+
+    #[test]
     fn looks_are_a_state_game_code_checks() {
         let names = Names::standard().and_looks(&["KnightMain", "KnightMana"]);
         let (text, notes) = project_file("Test 1.0", &names);
@@ -785,13 +876,15 @@ mod tests {
     fn cropped_pictures_are_options_under_their_pictures() {
         let mut names = Names::standard();
         names.pictures = vec![
+            "sprites/tools".into(),
             "sprites/tools/Axe".into(),
             "sprites/tools/Hoe".into(),
+            "hero".into(),
             "hero/Face".into(),
         ];
         let (text, notes) = project_file("Test 1.0", &names);
         assert!(
-            text.contains("state Picture = [Hero [Face], Sprites [Tools [Axe, Hoe]]];"),
+            text.contains("state Picture = [Hero, HeroFace, Tools, ToolsAxe, ToolsHoe];"),
             "{text}"
         );
         assert!(notes.is_empty(), "{notes:?}");
@@ -813,7 +906,7 @@ mod tests {
         );
         assert!(notes.is_empty(), "{notes:?}");
         assert!(
-            text.contains("state Module = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
+            text.contains("state Module = [Crate, Fighter, Freighter, Wheat];"),
             "{text}"
         );
         assert!(text.ends_with(
@@ -850,22 +943,15 @@ mod tests {
             ]),
         );
         assert!(
-            text.contains("state Module = [Dock [Crane], Fighter, Ok, Ships [A, B], Ufo];"),
+            text.contains("state Module = [A, B, Crane, Dock, Ok, Ufo];"),
             "{text}"
         );
+        // Each that can't be named is said once: a digit first, a dash, one
+        // of Lust's own objects, and two that would be called the same.
         assert_eq!(notes.len(), 5, "{notes:?}");
-        assert!(notes.iter().any(|n| n.contains("2fast")));
-        assert!(notes.iter().any(|n| n.contains("big-ship")));
-        assert!(
-            notes
-                .iter()
-                .any(|n| n.contains("Fighter and fighter") && n.contains("capitals"))
-        );
-        assert!(
-            notes
-                .iter()
-                .any(|n| n.contains("Dock") && n.contains("folder"))
-        );
+        for said in ["2fast", "big-ship", "time", " fighter ", " Fighter "] {
+            assert!(notes.iter().any(|n| n.contains(said)), "{said}: {notes:?}");
+        }
     }
 
     #[test]
@@ -889,8 +975,7 @@ mod tests {
             ("solis/project.lst".to_string(), text),
             (
                 "main.lst".to_string(),
-                "fetch \"solis/project\":Module;\nModule a = Module.Ships.Fighter;\nend\n"
-                    .to_string(),
+                "fetch \"solis/project\":Module;\nModule a = Module.Fighter;\nend\n".to_string(),
             ),
         ];
         lust::check("main.lst", &files).unwrap();

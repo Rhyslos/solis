@@ -40,11 +40,12 @@ fetch "solis/physics":[Physics, RayHit];
 
 component Kicker {
     has {
+        -- The ball to kick: picked in the Kicker's Properties.
+        entity ball = nothing;
         int kicked = 0;
     }
 
     method update(float dt) {
-        entity ball = World:find("Ball");
         is kicked == 0? then {
             ball:push([5, 0, 2]);
             kicked = 1;
@@ -66,6 +67,8 @@ use glam::Vec3;
 use script::{Context, RustComponent};
 
 pub struct Kicker {
+    /// The ball to kick: picked in the Kicker's Properties.
+    ball: Option<reflect::EntityId>,
     kicked: i64,
 }
 
@@ -73,7 +76,7 @@ impl RustComponent for Kicker {
     fn update(&mut self, cx: &mut Context<'_>, _dt: f64) {
         let me = cx.me();
         if self.kicked == 0 {
-            if let Some(ball) = cx.host().find("Ball") {
+            if let Some(ball) = self.ball {
                 cx.host().push(ball, Vec3::new(5.0, 0.0, 2.0));
             }
             self.kicked = 1;
@@ -92,13 +95,13 @@ impl RustComponent for Kicker {
 
 ```lua
 local Kicker = component("Kicker", {
+    { "ball", "entity" },
     { "kicked", "int", 0 },
 })
 
 function Kicker:update(dt)
-    local ball = solis.World:find("Ball")
     if self.kicked == 0 then
-        solis.entity.push(ball, vec3(5, 0, 2))
+        solis.entity.push(self.ball, vec3(5, 0, 2))
         self.kicked = 1
     end
     -- Is anything below, within 2 metres?

@@ -160,7 +160,19 @@ fn compiled(main: &str, lua: &[(&str, &str)]) -> Compiled {
         names: Default::default(),
         screens: None,
         engine_reads: Vec::new(),
+        name_paths: std::sync::Arc::new(shop_paths()),
     }
+}
+
+/// The shop's text keys' files, as the project's names list them.
+fn shop_paths() -> crate::project_names::NamePaths {
+    let (names, _) = crate::text_code::TextNames::of(&shop(), &[]);
+    let project = crate::project_names::Names {
+        texts: names.keys.clone(),
+        ..crate::project_names::Names::standard()
+    };
+    let (text, _) = crate::project_names::project_file("Test 1.0", &project);
+    crate::project_names::paths_in(&[("solis/project.lst".into(), text)])
 }
 
 const LUST_SIGN: &str = "fetch \"solis/project\":[Text, Language];\n\
@@ -169,7 +181,7 @@ fetch \"solis/texts\":ShopText;\n\
 fetch \"solis/tables/data/items\":[Items, Item];\n\
 component Sign {\n    has {\n        string hello = \"\";\n        string apples = \"\";\n        string apple = \"\";\n    }\n\
 \x20   method update(float dt) {\n\
-\x20       hello = World:text(Text.Shop.Welcome);\n\
+\x20       hello = World:text(Text.ShopWelcome);\n\
 \x20       apples = ShopText:apples(3, \"Ada\");\n\
 \x20       apple = Items:row(Item.Apple).name;\n\
 \x20   }\n}\npass Sign;\nend\n";
@@ -209,7 +221,7 @@ fn lust_reads_text_in_the_players_language() {
 
 #[test]
 fn a_misspelt_key_or_a_value_left_out_fails_before_the_game_runs() {
-    let misspelt = LUST_SIGN.replace("Text.Shop.Welcome", "Text.Shop.Welcom");
+    let misspelt = LUST_SIGN.replace("Text.ShopWelcome", "Text.ShopWelcom");
     let problems = checked(&misspelt).unwrap_err();
     assert!(problems[0].message.contains("Welcom"), "{}", problems[0]);
     let short = LUST_SIGN.replace("ShopText:apples(3, \"Ada\")", "ShopText:apples(3)");

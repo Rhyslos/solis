@@ -2,7 +2,7 @@
 //! `float speed = 4.0; -- [range 0 10, unit "m/s"]`. Lust has no
 //! attributes on fields yet; once it has, moving to them is taking away
 //! the `--`. Also each field's written type, so a field of one of the
-//! project's names (`Sound alertSound = Sound.Sfx.Alert;`) gets a picker.
+//! project's names (`Sound alertSound = Sound.Alert;`) gets a picker.
 //!
 //! Hints change nothing about how the game runs: they're put on the
 //! schemas the editor shows, and a mistake in one is listed in Problems
@@ -163,7 +163,7 @@ mod tests {
                     component Guard {\n\
                     \x20   has {\n\
                     \x20       float speed = 4.0; -- [range 0 10, step 0.5, unit \"m/s\", tip \"Walking speed\"]\n\
-                    \x20       Sound alertSound = Sound.Sfx.Alert; -- [range 0 1, group \"Noise\"]\n\
+                    \x20       Sound alertSound = Sound.Alert; -- [range 0 1, group \"Noise\"]\n\
                     \x20       string says = \"\"; -- [multiline, colour]\n\
                     \x20   }\n\
                     }\n";

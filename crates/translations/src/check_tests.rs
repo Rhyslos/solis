@@ -29,7 +29,7 @@ fn project() -> Translations {
 fn missing_lines_are_counted_for_each_language() {
     let mut used = HashSet::new();
     note_uses(
-        "World:text(Text.Shop.Bye); ShopText:welcome(\"Ada\"); Text.Shop.Old",
+        "World:text(Text.ShopBye); ShopText:welcome(\"Ada\"); Text.ShopOld",
         &project().code_keys(),
         &mut used,
     );
@@ -90,7 +90,7 @@ fn keys_nothing_uses_are_said_and_tables_cells_are_always_used() {
 fn a_longer_name_isnt_a_use() {
     let mut used = HashSet::new();
     note_uses(
-        "Text.Shop.Byebye; Text.Shop.Welcome2",
+        "Text.ShopByebye; Text.ShopWelcome2",
         &["Shop.Bye".into(), "Shop.Welcome".into()],
         &mut used,
     );

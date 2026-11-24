@@ -77,13 +77,13 @@ An Aseprite file needs no cutting: its frames are its cells, numbered from 0 as 
 
 **Edit clips…** in the file's Properties makes `walker.clips.lst` beside `walker.aseprite` (or opens the one there), for what Aseprite doesn't have: a clip's speed, events on frames, directions and clips of your own. A tag's frames stay Aseprite's, so saving there keeps both in step: to change them in Solis, **Copy** the clip and change the copy. Events typed in Aseprite (a cel's user data) work like events added here.
 
-**How a tag's name becomes a clip's name.** The clip keeps the tag's name as it is (`walk`, `Walk NE`). Game code names a clip by its file's path and the tag, each part with its first letter made a capital: `sprites/walker.aseprite`'s `walk` is `Clip.Sprites.Walker.Walk`. A name of all capitals keeps only its first (`IDLE` is `Idle`). A tag whose name holds a space or a dash, or starts with a digit, plays and edits as usual but can't be named in game code, and the Console says so when the names are written: rename the tag in Aseprite (`WalkNE`), or give the clip a direction instead ([Directions](#directions)), which is what directions are for.
+**How a tag's name becomes a clip's name.** The clip keeps the tag's name as it is (`walk`, `Walk NE`). Game code names a clip by its file's path and the tag, each part with its first letter made a capital: `sprites/walker.aseprite`'s `walk` is `Clip.WalkerWalk`. A name of all capitals keeps only its first (`IDLE` is `Idle`). A tag whose name holds a space or a dash, or starts with a digit, plays and edits as usual but can't be named in game code, and the Console says so when the names are written: rename the tag in Aseprite (`WalkNE`), or give the clip a direction instead ([Directions](#directions)), which is what directions are for.
 
 ### Saving and undo
 Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### In game code
-Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.Sprites.Farmer.Walk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
+Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.FarmerWalk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
 
 ```lust
 fetch "solis/project":[Clip, Cue];
@@ -103,8 +103,8 @@ component Farmer {
 
     -- Back to standing once the hoe swing is done.
     on ClipFinished(Clip clip) {
-        is clip == Clip.Sprites.Farmer.Hoe? then {
-            animate(Clip.Sprites.Farmer.Idle);
+        is clip == Clip.FarmerHoe? then {
+            animate(Clip.FarmerIdle);
         }
     }
 }
@@ -132,7 +132,7 @@ impl RustComponent for Farmer {
             // Count the footsteps as they land.
             "CueReached" if named == "Footstep" => self.steps += 1,
             // Back to standing once the hoe swing is done.
-            "ClipFinished" if named == "Sprites.Farmer.Hoe" => {
+            "ClipFinished" if named == "FarmerHoe" => {
                 let me = cx.me();
                 cx.host().play_clip(me, "idle", false);
             }
@@ -159,14 +159,14 @@ end
 
 -- Back to standing once the hoe swing is done.
 function Farmer:on_ClipFinished(clip)
-    if clip == "Sprites.Farmer.Hoe" then
-        solis.entity.animate(self.me, "Sprites.Farmer.Idle")
+    if clip == "FarmerHoe" then
+        solis.entity.animate(self.me, "FarmerIdle")
     end
 end
 ```
 
-- `animate(Clip.Sprites.Farmer.Walk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
-- `animateFromStart(Clip.Sprites.Farmer.Hoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
+- `animate(Clip.FarmerWalk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
+- `animateFromStart(Clip.FarmerHoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
 - `stopAnimation()` stops it where it is; `animate` with the same clip carries on from there.
 - `setFlip(across, down)` mirrors the sprite (its **Flip across** and **Flip up** settings): `setFlip(true, false)` faces it the other way. So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well:
 
@@ -179,7 +179,7 @@ end
           -- Face the way the player pushes.
           bool walkingLeft = Input:axis(Action.Move).x < 0;
           setFlip(walkingLeft, false);
-          animate(Clip.Sprites.Hero.Run);
+          animate(Clip.HeroRun);
       }
   }
 
@@ -212,12 +212,12 @@ end
       -- Face the way the player pushes.
       local walkingLeft = solis.Input:axis("Move").x < 0
       solis.entity.setFlip(self.me, walkingLeft, false)
-      solis.entity.animate(self.me, "Sprites.Hero.Run")
+      solis.entity.animate(self.me, "HeroRun")
   end
   ```
 
   It's safe to call every tick, and like the other calls it lands at the end of the tick.
-- In Lua: `solis.entity.animate(e, "Sprites.Farmer.Walk")`, `solis.entity.animateFromStart(e, …)`, `solis.entity.stopAnimation(e)` and `solis.entity.setFlip(e, true, false)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again), `stop_clip` and `set_flip(entity, true, false)`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
+- In Lua: `solis.entity.animate(e, "FarmerWalk")`, `solis.entity.animateFromStart(e, …)`, `solis.entity.stopAnimation(e)` and `solis.entity.setFlip(e, true, false)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again), `stop_clip` and `set_flip(entity, true, false)`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
 
 #### Facing and looks
 Which way a sprite faces and which look it wears aren't calls: they're values the component holds, and Solis follows them. Give the component a field `Facing facing` or `Look look` in its `has` block, set it with `=`, and as each tick ends the entity's sprite turns or changes clothes to match. A field is the plain way to say what something *is*: the component reads its own facing back whenever it likes, it shows in Properties while the game runs, and saved games keep it with the component's other values.
@@ -243,9 +243,9 @@ component Knight {
         is push:length() > 0? then {
             -- Turn the way the player pushes: the walk plays that row.
             facing = nearestFacing([push.x, push.y]);
-            animate(Clip.Sprites.Knight.Walk);
+            animate(Clip.KnightWalk);
         } or {
-            animate(Clip.Sprites.Knight.Idle);
+            animate(Clip.KnightIdle);
         }
         -- Mana armour while charged.
         is charged? then {
@@ -267,8 +267,8 @@ The component's field is the sprite's facing and look from the game's first tick
 ```text
 -- Before: a clip for every action, direction and look.
 check facing {
-    when North { animate(Clip.Sprites.Knight.WalkNorthMain); }
-    when NorthEast { animate(Clip.Sprites.Knight.WalkNorthEastMain); }
+    when North { animate(Clip.KnightWalkNorthMain); }
+    when NorthEast { animate(Clip.KnightWalkNorthEastMain); }
     -- … six more directions, then all eight again for the mana look,
     -- then the same for idle, swing, hurt and the other actions.
 }
@@ -279,7 +279,7 @@ Now the clip is named once and the facing and the look are values beside it, so 
 ```text
 -- After: one clip; the facing and the look choose its frames.
 facing = nearestFacing([push.x, push.y]);
-animate(Clip.Sprites.Knight.Walk);
+animate(Clip.KnightWalk);
 ```
 
 Two mistakes are said in the Console, once a play for each entity, and change nothing:

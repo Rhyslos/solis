@@ -4,7 +4,7 @@
 
 ## When to use it
 
-Artists often draw many small pictures on one sheet: every item in a game, every icon of a HUD. Atlas Crop marks each one as a **crop** with a name, so game code and screens can use just that part of the sheet: `Picture.Sprites.Tools.Axe`. The picture itself is never changed, so the artist keeps drawing on the same sheet and every crop follows.
+Artists often draw many small pictures on one sheet: every item in a game, every icon of a HUD. Atlas Crop marks each one as a **crop** with a name, so game code and screens can use just that part of the sheet: `Picture.ToolsAxe`. The picture itself is never changed, so the artist keeps drawing on the same sheet and every crop follows.
 
 For a sprite that plays clips, use [sprites](sprites.md) and [sprite animation](sprite-animation.md) instead; for ground made of tiles, a [tileset](tilesets.md).
 
@@ -17,7 +17,7 @@ For a sprite that plays clips, use [sprites](sprites.md) and [sprite animation](
 5. Click a crop, on the picture or in the Crops list (its size and place beside its name), to pick it: its frame turns the [accent colour](concepts.md#the-window) and thicker, while the others stay a darker grey; the ribbon's **Delete**, **Delete crop** or the Delete key over the picture removes it. **Zoom** in the ribbon's Grid group shows the picture at a chosen size (the wheel zooms too). Every change is saved at once, and **Ctrl+Z** over the tab undoes it. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 6. Later, double-click the `.atlas.lst` file in the Library to open its picture's crops again.
 
-Game code names each crop by its picture's path and its name, from `solis/project.lst`: `fetch "solis/project":Picture;` then `Picture.Sprites.Tools.Axe` for `sprites/tools.png`'s Axe. A [screen](screens.md) shows one with `image "sprites/tools.png#Axe";`: the picture's path, `#`, and the crop's name.
+Game code names each crop by its picture's path and its name, from `solis/project.lst`: `fetch "solis/project":Picture;` then `Picture.ToolsAxe` for `sprites/tools.png`'s Axe. A [screen](screens.md) shows one with `image "sprites/tools.png#Axe";`: the picture's path, `#`, and the crop's name.
 
 ## Settings
 

@@ -61,7 +61,7 @@ The module is saved as a file, `chicken.module.lst`, and shows in the Library wi
 - **Problem:** I undid *Make module* and the file is still in the Library. **Why:** undo changes the level, not files. **Fix:** delete the module in the Library if you don't want it.
 - **Problem:** copies in another level didn't change. **Why:** saving a module updates the copies in the open level at once; other levels show the change when they're opened. Nothing to fix: their copies follow the module as soon as they're read.
 - A level file stores each copy as one block naming its module, plus only the settings that differ, so copies keep files small and Git merges them easily. The module's own file is a Lust data file you can read: a part per entity, a line per setting.
-- **Assemblies:** Solis called modules *assemblies* until this version. Opening an older project renames each `.solassembly` file a `.module.lst` beside it, keeping its ID, so every copy and every spawn in game code still finds it; the older file is kept in the backups ([Backups and upgrades](backups-and-upgrades.md)). In game code, `Assembly.Ships.Fighter` is now `Module.Ships.Fighter` ([Game code](game-code.md#making-and-removing-entities)).
+- **Assemblies:** Solis called modules *assemblies* until this version. Opening an older project renames each `.solassembly` file a `.module.lst` beside it, keeping its ID, so every copy and every spawn in game code still finds it; the older file is kept in the backups ([Backups and upgrades](backups-and-upgrades.md)). In game code, `Assembly.Ships.Fighter` is now `Module.Fighter` ([Game code](game-code.md#making-and-removing-entities)).
 - A model's parts keep their links through a new export from Blender, as long as the parts keep their names.
 
 ## Related
