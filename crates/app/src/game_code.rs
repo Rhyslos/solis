@@ -107,6 +107,9 @@ pub struct Animation {
     /// The game's text: its keys, languages and lines with values, for
     /// `solis/project.lst` and `solis/texts.lst` (stage 1, translations).
     pub texts: script::text_code::TextNames,
+    /// The clips files' looks, as game code names them (`KnightMana`;
+    /// Fixes 3).
+    pub looks: Vec<String>,
 }
 
 impl Animation {
@@ -124,6 +127,7 @@ impl Animation {
             pictures: sheets.picture_names(),
             tables: sheets.table_names(),
             texts,
+            looks: sheets.look_names().into_iter().map(|l| l.name).collect(),
         }
     }
 }
@@ -280,6 +284,7 @@ impl GameCode {
             pictures,
             tables,
             texts,
+            looks,
         } = animation;
         // The settings beside the project file (input actions, buses): the
         // files' own folder for a project made now, the one holding an
@@ -305,6 +310,7 @@ impl GameCode {
                 .collect(),
             clips: clips.to_vec(),
             cues: cues.to_vec(),
+            looks: looks.clone(),
             // Every picture, with the parts cut out of it inside it
             // (decision 0127): Picture.Sprites.Tools and
             // Picture.Sprites.Tools.Axe.

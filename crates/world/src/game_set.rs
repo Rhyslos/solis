@@ -14,6 +14,8 @@
 //! | The clip a sprite plays, and how far in | `Sprite`: clip, playing, time | `animate`, `animateFromStart`, `stopAnimation`, an animator, the clip moving on |
 //! | How fast a sprite's clip plays | `Sprite`: speed | an animator, each tick |
 //! | A sprite mirrored | `Sprite`: flip_x, flip_y | `setFlip` |
+//! | Which way a sprite faces | `Sprite`: facing | a component's `facing` field, an animator facing by a parameter |
+//! | The look a sprite wears | `Sprite`: look | a component's `look` field |
 //! | A sound on or off | `AudioSource`: playing | `setSoundPlaying` |
 //! | The state an animator is in, by name | `Animator`: state | an animator, each tick; `Animators:jumpTo` |
 //! | How fast an animator plays | `Animator`: speed | `Animators:setPlaybackSpeed` |
@@ -65,6 +67,10 @@ pub(crate) enum Part {
     SpriteSpeed,
     /// A Sprite mirrored across and down.
     Flip,
+    /// Which way a Sprite faces (Fixes 3).
+    Facing,
+    /// The look a Sprite wears (Fixes 3).
+    Look,
     /// An AudioSource on or off.
     Sounding,
     /// The state an Animator is in, by name.
@@ -79,10 +85,12 @@ pub(crate) enum Part {
 
 impl Part {
     /// Every part.
-    pub(crate) const ALL: [Self; 8] = [
+    pub(crate) const ALL: [Self; 10] = [
         Self::Playback,
         Self::SpriteSpeed,
         Self::Flip,
+        Self::Facing,
+        Self::Look,
         Self::Sounding,
         Self::AnimatorState,
         Self::AnimatorSpeed,
@@ -97,6 +105,8 @@ impl Part {
             Self::Playback => (Sprite::NAME, &["clip", "playing", "time"]),
             Self::SpriteSpeed => (Sprite::NAME, &["speed"]),
             Self::Flip => (Sprite::NAME, &["flip_x", "flip_y"]),
+            Self::Facing => (Sprite::NAME, &["facing"]),
+            Self::Look => (Sprite::NAME, &["look"]),
             Self::Sounding => (AudioSource::NAME, &["playing"]),
             Self::AnimatorState => (Animator::NAME, &["state"]),
             Self::AnimatorSpeed => (Animator::NAME, &["speed"]),
@@ -121,6 +131,8 @@ pub(crate) struct GameSet {
     playback: Option<Playback>,
     sprite_speed: Option<f32>,
     flip: Option<[bool; 2]>,
+    facing: Option<String>,
+    look: Option<String>,
     sounding: Option<bool>,
     animator_state: Option<String>,
     animator_speed: Option<f32>,
@@ -139,6 +151,8 @@ impl GameSet {
         self.playback = Some(Playback::of(sprite));
         self.sprite_speed = Some(sprite.speed);
         self.flip = Some([sprite.flip_x, sprite.flip_y]);
+        self.facing = Some(sprite.facing.clone());
+        self.look = Some(sprite.look.clone());
     }
 
     /// Takes in an AudioSource's part.
@@ -192,6 +206,8 @@ impl GameSet {
             Part::Playback => self.playback == other.playback,
             Part::SpriteSpeed => self.sprite_speed == other.sprite_speed,
             Part::Flip => self.flip == other.flip,
+            Part::Facing => self.facing == other.facing,
+            Part::Look => self.look == other.look,
             Part::Sounding => self.sounding == other.sounding,
             Part::AnimatorState => self.animator_state == other.animator_state,
             Part::AnimatorSpeed => self.animator_speed == other.animator_speed,
@@ -225,6 +241,18 @@ impl GameSet {
                 {
                     sprite.flip_x = across;
                     sprite.flip_y = down;
+                }
+            }
+            Part::Facing => {
+                if let (Some(facing), Ok(mut sprite)) =
+                    (&self.facing, ecs.get::<&mut Sprite>(entity))
+                {
+                    sprite.facing.clone_from(facing);
+                }
+            }
+            Part::Look => {
+                if let (Some(look), Ok(mut sprite)) = (&self.look, ecs.get::<&mut Sprite>(entity)) {
+                    sprite.look.clone_from(look);
                 }
             }
             Part::Sounding => {

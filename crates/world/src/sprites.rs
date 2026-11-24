@@ -140,6 +140,37 @@ impl World {
         }
     }
 
+    /// Turns `id`'s Sprite to face `facing` (`NorthEast`; a component's
+    /// `facing` field, Fixes 3): a clip with directions plays the row
+    /// nearest it, keeping its place. A word that isn't one of the eight
+    /// changes nothing; the same as it is changes nothing.
+    pub fn set_facing(&mut self, id: EntityId, facing: &str) {
+        let known = animation::clips_file::Facing::named(facing)
+            .is_some_and(|f| f != animation::clips_file::Facing::Any);
+        if known
+            && let Some(&entity) = self.by_id.get(&id)
+            && let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity)
+            && sprite.facing != facing
+        {
+            facing.clone_into(&mut sprite.facing);
+            self.touched = true;
+        }
+    }
+
+    /// Dresses `id`'s Sprite in its clips file's look named `look` (a
+    /// component's `look` field, Fixes 3; empty for the main one): every
+    /// clip plays in it, keeping its place. The same as it is changes
+    /// nothing.
+    pub fn set_look(&mut self, id: EntityId, look: &str) {
+        if let Some(&entity) = self.by_id.get(&id)
+            && let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity)
+            && sprite.look != look
+        {
+            look.clone_into(&mut sprite.look);
+            self.touched = true;
+        }
+    }
+
     /// Mirrors `id`'s Sprite (game code's `setFlip`): `across` left for
     /// right, `down` upside down. The same as it is changes nothing.
     pub fn set_flip(&mut self, id: EntityId, across: bool, down: bool) {

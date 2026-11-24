@@ -208,6 +208,53 @@ end
   It's safe to call every tick, and like the other calls it lands at the end of the tick.
 - In Lua: `solis.entity.animate(e, "Sprites.Farmer.Walk")`, `solis.entity.animateFromStart(e, …)`, `solis.entity.stopAnimation(e)` and `solis.entity.setFlip(e, true, false)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again), `stop_clip` and `set_flip(entity, true, false)`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
 
+#### Facing and looks
+Which way a sprite faces and which look it wears aren't calls: they're values the component holds, and Solis follows them. Give the component a field `Facing facing` or `Look look` in its `has` block, set it with `=`, and as each tick ends the entity's sprite turns or changes clothes to match. A field is the plain way to say what something *is*: the component reads its own facing back whenever it likes, it shows in Properties while the game runs, and saved games keep it with the component's other values.
+
+- **`Facing facing`** turns the sprite: `facing = Facing.NorthEast;`. `Facing` is in `solis/animation`, with the eight ways (`North`, `NorthEast`, `East`, `SouthEast`, `South`, `SouthWest`, `West`, `NorthWest`), up the screen being North. A clip with [directions](#directions) plays the row nearest it, keeping its place, so turning mid-walk doesn't restart the step. `nearestFacing(way)` gives the facing nearest a way on the screen, such as which way the player pushes.
+- **`Look look`** dresses the sprite in one of its clips file's [looks](#looks): `look = Look.KnightMana;`. Each look is named by its clips file's name and its own, joined (`knight.clips.lst`'s Mana is `Look.KnightMana`; files of the same name in different folders add the folder in front, `Look.HeroesKnightMana`). Solis writes them into `solis/project.lst` with the clips, so a misspelt look is a mistake before the game runs.
+
+```lust
+fetch "solis/input":Input;
+fetch "solis/project":[Action, Clip, Look];
+fetch "solis/animation":Facing;
+get "solis/animation":nearestFacing;
+
+component Knight {
+    has {
+        Facing facing = Facing.South;
+        Look look = Look.KnightMain;
+        bool charged = false;
+    }
+
+    method update(float dt) {
+        vec3 push = Input:axis(Action.Move);
+        is push:length() > 0? then {
+            -- Turn the way the player pushes: the walk plays that row.
+            facing = nearestFacing([push.x, push.y]);
+            animate(Clip.Sprites.Knight.Walk);
+        } or {
+            animate(Clip.Sprites.Knight.Idle);
+        }
+        -- Mana armour while charged.
+        is charged? then {
+            look = Look.KnightMana;
+        } or {
+            look = Look.KnightMain;
+        }
+    }
+}
+
+pass Knight;
+end
+```
+
+The component's field is the sprite's facing and look from the game's first tick: its starting value wins over the Sprite's own **Facing** and **Look** in Properties. Set it only while moving: `nearestFacing` of no way at all is South.
+
+Two mistakes are said in the Console, once a play for each entity, and change nothing:
+- **A look from another clips file**, `look = Look.OrcRed;` on the knight: the Console names the file the look belongs to and the looks this sprite can wear.
+- **A facing on a sprite whose animator turns it**: a state that [faces by a parameter](animators.md) sets the facing itself each tick, so set the animator's direction parameter instead.
+
 A clip's place is part of the game: the same inputs give the same frames every time, and a saved game comes back on the same frame.
 
 ## Settings

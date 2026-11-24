@@ -115,6 +115,10 @@ pub struct Runtime {
     /// Each component's fields as its tables hold them, for copies other
     /// entities read (Fixes 2).
     layouts: Rc<crate::readings::Layouts>,
+    /// The components holding fields the engine reads, and what this
+    /// core read of them as the last tick ended (decision 0136).
+    engine_reads: Vec<crate::engine_fields::Watched>,
+    engine_seen: crate::engine_fields::Seen,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -155,6 +159,8 @@ impl Runtime {
             left_out: std::collections::BTreeSet::new(),
             views: None,
             layouts: Rc::default(),
+            engine_reads: Vec::new(),
+            engine_seen: Default::default(),
         })
     }
 
@@ -442,6 +448,8 @@ impl Runtime {
         self.queue.borrow_mut().clear();
         let (lust, classes) = self.prepare(code, host)?;
         self.commit(lust, classes);
+        self.engine_reads.clone_from(&code.engine_reads);
+        self.engine_seen.clear();
         Ok(())
     }
 
@@ -499,6 +507,7 @@ impl Runtime {
         // The objects keep their values by name (decision 0080).
         let objects_before = self.object_values();
         self.commit(lust, classes);
+        self.engine_reads.clone_from(&code.engine_reads);
         if let Some(program) = &self.lust {
             for (object, field) in program.objects.set_values(&self.luau, &objects_before) {
                 swapped.notes.push(format!(
@@ -862,6 +871,12 @@ impl Runtime {
 
     /// Ends a tick in phases; whether it ran past its budget (the rest of
     /// it waited, and events still waiting are dropped).
+    /// The fields the engine reads (a sprite's facing and look) that
+    /// changed since the last tick ended, or whose component started.
+    pub(crate) fn engine_reads(&mut self) -> Vec<crate::game::Change> {
+        crate::engine_fields::changes(&self.engine_reads, &self.running, &mut self.engine_seen)
+    }
+
     pub(crate) fn finish_tick(&self) -> bool {
         let over = self.luau.clock.over();
         self.luau.clock.stop();

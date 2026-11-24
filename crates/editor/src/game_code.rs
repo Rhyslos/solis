@@ -361,6 +361,12 @@ pub(crate) struct ViewCache {
     /// The game's text in the player's language (stage 1, translations):
     /// made again when the text or the language changes.
     pub(crate) texts: Option<translations::Texts>,
+    /// The clips files' looks by their names in game code (Fixes 3), and
+    /// the clips they were worked out from.
+    looks: (usize, Arc<Vec<crate::sprite_sheets::LookName>>),
+    /// The entities whose facing or look game code was told was wrong
+    /// (`true` for a look), each said once a play.
+    told_sprites: std::collections::HashSet<(EntityId, bool)>,
 }
 
 impl ViewCache {
@@ -386,6 +392,15 @@ impl ViewCache {
     pub(crate) fn set_texts(&mut self, texts: translations::Texts) {
         if self.texts.as_ref().is_none_or(|t| !t.same(&texts)) {
             self.texts = Some(texts);
+        }
+    }
+
+    /// Works out the looks' names again when the editor's clips files
+    /// change (Fixes 3).
+    pub(crate) fn set_looks(&mut self, sheets: &crate::sprite_sheets::SpriteSheets) {
+        let from = Arc::as_ptr(&sheets.clip_sets) as usize;
+        if self.looks.0 != from {
+            self.looks = (from, Arc::new(sheets.look_names()));
         }
     }
 
@@ -496,6 +511,61 @@ impl<'a> PlayWorld<'a> {
 }
 
 impl PlayWorld<'_> {
+    /// A component's `facing` field changed (Fixes 3): its sprite turns,
+    /// unless its animator turns it, which game code is told once.
+    fn set_facing(&mut self, which: EntityId, facing: &str) {
+        if self.world.animator_turns(which) {
+            if self.cache.told_sprites.insert((which, false)) {
+                self.said.push(format!(
+                    "{}'s facing was set to Facing.{facing}, but its animator's state faces by a \
+                     direction parameter and turns it back. Set the animator's parameter instead \
+                     (anim:setFacing(way)), or play a state without Faces by.",
+                    self.world.name_of(which)
+                ));
+            }
+            return;
+        }
+        self.world.set_facing(which, facing);
+    }
+
+    /// A component's `look` field changed (Fixes 3): its sprite wears it,
+    /// if the look is its clips file's; otherwise game code is told once,
+    /// with the looks it could wear.
+    fn set_look(&mut self, which: EntityId, look: &str) {
+        let looks = Arc::clone(&self.cache.looks.1);
+        let sheet = self.world.sprite_sheet(which);
+        let found = looks.iter().find(|l| l.name == look);
+        match found {
+            Some(l) if l.clips.is_some() && l.clips == sheet => {
+                let name = if l.look == 0 { "" } else { l.own.as_str() };
+                self.world.set_look(which, name);
+            }
+            _ => {
+                if !self.cache.told_sprites.insert((which, true)) {
+                    return;
+                }
+                let own: Vec<String> = looks
+                    .iter()
+                    .filter(|l| l.clips.is_some() && l.clips == sheet)
+                    .map(|l| format!("Look.{}", l.name))
+                    .collect();
+                let theirs = found.map_or_else(
+                    || "isn't a look of any clips file".to_owned(),
+                    |l| format!("is a look of {}", l.path),
+                );
+                let wears = if own.is_empty() {
+                    "its sprite plays no clips file with looks".to_owned()
+                } else {
+                    format!("its sprite can wear {}", own.join(", "))
+                };
+                self.said.push(format!(
+                    "{}'s look was set to Look.{look}, which {theirs}: {wears}.",
+                    self.world.name_of(which)
+                ));
+            }
+        }
+    }
+
     /// The maps at play by their files' paths, made again only when one
     /// changed (the first entity showing each file, by ID).
     fn maps(&mut self) -> Arc<HashMap<String, Arc<tiles::TileMap>>> {
@@ -664,6 +734,8 @@ impl GameWorld for PlayWorld<'_> {
                     self.world.play_clip(which, clip, again);
                 }
                 Change::StopClip(which) => self.world.stop_clip(which),
+                Change::Facing(which, ref facing) => self.set_facing(which, facing),
+                Change::Look(which, ref look) => self.set_look(which, look),
                 Change::Flip(which, across, down) => self.world.set_flip(which, across, down),
                 Change::Solid(which, solid) => self.world.set_solid(which, solid),
                 Change::Visible(which, shown) => self.world.set_visible(which, shown),

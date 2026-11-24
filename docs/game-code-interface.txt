@@ -44,6 +44,7 @@ animation: method entity:animateFromStart(Clip clip) native;
 animation: method entity:stopAnimation() native;
 animation: method entity:setVisible(bool shown) native;
 animation: method entity:setFlip(bool across, bool down) native;
+animation: method Facing nearestFacing(vec2 way) native;
 animation: object Animators: method setNumber(entity owner, string name, float value) native;
 animation: object Animators: method setSwitch(entity owner, string name, bool on) native;
 animation: object Animators: method fire(entity owner, string name) native;
@@ -128,6 +129,11 @@ zones: event EnteredZone(entity zone);
 zones: event LeftZone(entity zone);
 timers: event TimerFinished(Timer which);
 screens: event TypingFinished(Screen which);
+
+## Fields the engine reads from a Lust component (set with =)
+
+Facing facing
+Look look
 
 ## Lua (solis.<name>)
 
@@ -242,6 +248,7 @@ solis.entity.turnTo
 solis.entity.velocity
 solis.entity.walk
 solis.facingAlong
+solis.nearestFacing
 solis.send
 
 ## Each data table's, in Lua (solis.<Table>, such as solis.Items)

@@ -295,6 +295,17 @@ impl World {
         }
     }
 
+    /// Whether `id`'s animator turns its sprite now: its state faces by a
+    /// direction parameter (Fixes 3), so a facing set another way is
+    /// turned back.
+    pub fn animator_turns(&self, id: EntityId) -> bool {
+        self.by_id.get(&id).is_some_and(|&entity| {
+            self.ecs
+                .get::<&Running>(entity)
+                .is_ok_and(|running| running.of.facing(&running.run).is_some())
+        })
+    }
+
     /// Every running animator's parameters, by entity ID (for saves).
     pub fn animator_values(&self) -> Vec<(EntityId, Vec<(String, ParamValue)>)> {
         let mut all: Vec<(EntityId, Vec<(String, ParamValue)>)> = self

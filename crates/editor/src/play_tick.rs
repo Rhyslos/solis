@@ -295,6 +295,7 @@ impl Workbench {
         playing.world.start_maps();
         // Game code names maps by their files' paths (decision 0079).
         playing.view.set_map_paths(&self.viewport.sheets);
+        playing.view.set_looks(&self.viewport.sheets);
         playing.view.set_tables(&self.viewport.sheets);
         // 2D physics (decision 0071): pixels to metres, and which
         // terrains are solid, as they are now.

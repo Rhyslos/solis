@@ -522,3 +522,35 @@ fn a_look_of_another_size_is_noted() {
         "{notes:?}"
     );
 }
+
+/// Every clips file's looks are named for game code by their file's name
+/// and their own, sorted, each with its file and place (Fixes 3).
+#[test]
+fn looks_are_named_for_game_code_by_file_and_look() {
+    let (mut sheets, clips) = cut_knight(4);
+    let picture = AssetId::random();
+    let FramesState::Read(file, _) = sheets.frames.get_mut("knight.clips.lst").unwrap() else {
+        panic!("read");
+    };
+    Arc::make_mut(file).looks.push(animation::clips_file::Look {
+        name: "Mana".into(),
+        picture,
+    });
+    sheets.frames.insert(
+        "broken.clips.lst".into(),
+        FramesState::Failed("damaged".into()),
+    );
+    let names: Vec<(String, Option<AssetId>, usize, String)> = sheets
+        .look_names()
+        .into_iter()
+        .map(|l| (l.name, l.clips, l.look, l.own))
+        .collect();
+    assert_eq!(
+        names,
+        [
+            ("KnightMain".into(), Some(clips), 0, "Main".into()),
+            ("KnightMana".into(), Some(clips), 1, "Mana".into()),
+        ]
+    );
+    assert!(SpriteSheets::default().look_names().is_empty());
+}

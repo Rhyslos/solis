@@ -8,6 +8,7 @@ pub mod code;
 pub mod component_code;
 mod convert;
 pub mod describe;
+pub mod engine_fields;
 pub mod events;
 mod exact_maths;
 mod field_hints;

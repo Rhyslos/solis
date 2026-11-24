@@ -28,6 +28,9 @@ pub(super) struct TestWorld {
     /// States changed, what's kept past them, spawns and despawns, as
     /// they landed (stage 1, states).
     pub(super) state_changes: Vec<Change>,
+    /// Sprites turned and dressed by the fields the engine reads, as they
+    /// landed (Fixes 3).
+    pub(super) sprite_changes: Vec<Change>,
     /// Whether to keep none of those (a scale case's thousands a tick).
     pub(super) quiet: bool,
     /// The entities' index, made once.
@@ -143,6 +146,9 @@ impl GameWorld for TestWorld {
             }
             if let Change::Tag(..) = change {
                 self.tag_changes.push(change.clone());
+            }
+            if let Change::Facing(..) | Change::Look(..) = change {
+                self.sprite_changes.push(change.clone());
             }
             if let Change::State(_)
             | Change::KeepStarted(..)

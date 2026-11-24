@@ -150,6 +150,21 @@ pub struct SpriteSheets {
     pub cut_looks: HashMap<(String, usize), CutPicture>,
 }
 
+/// A clips file's look as game code names it (Fixes 3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LookName {
+    /// Its name in game code: `KnightMana` (`Look.KnightMana`).
+    pub name: String,
+    /// Its clips file's asset ID, once the Library has given it one.
+    pub clips: Option<AssetId>,
+    /// Its clips file's path in the assets.
+    pub path: String,
+    /// Its place in the file's looks: 0 is the main one.
+    pub look: usize,
+    /// Its own name in the file: `Mana`.
+    pub own: String,
+}
+
 /// A clips file's picture (a PNG or JPEG) cut into its cells.
 #[derive(Debug, Clone, PartialEq)]
 pub struct CutPicture {
@@ -364,6 +379,47 @@ impl SpriteSheets {
         cues.sort();
         cues.dedup();
         (clips, cues)
+    }
+
+    /// Every clips file's looks as game code names them (`KnightMana`,
+    /// [`script::project_names::look_names`]), sorted by name: each with
+    /// its clips file's asset ID and path and the look's place in its
+    /// list (0 the main one). Looks that can't be named are left out; the
+    /// project's names file notes them.
+    pub fn look_names(&self) -> Vec<LookName> {
+        let mut files: Vec<(&String, &animation::clips_file::ClipsFile)> = (self.frames.iter())
+            .filter_map(|(path, state)| match state {
+                FramesState::Read(file, _) => Some((path, &**file)),
+                FramesState::Failed(_) => None,
+            })
+            .collect();
+        files.sort_by(|a, b| a.0.cmp(b.0));
+        let ids: HashMap<&String, AssetId> = self.paths.iter().map(|(id, p)| (p, *id)).collect();
+        let mut looks = Vec::new();
+        for (path, file) in files {
+            for (i, look) in file.looks.iter().enumerate() {
+                looks.push((path, i, look.name.clone()));
+            }
+        }
+        let asked: Vec<(String, String)> = looks
+            .iter()
+            .map(|(path, _, look)| (reflect::data_files::path_stem(path), look.clone()))
+            .collect();
+        let mut named: Vec<LookName> = script::project_names::look_names(&asked)
+            .into_iter()
+            .zip(looks)
+            .filter_map(|(name, (path, look, own))| {
+                Some(LookName {
+                    name: name?,
+                    clips: ids.get(path).copied(),
+                    path: path.clone(),
+                    look,
+                    own,
+                })
+            })
+            .collect();
+        named.sort_by(|a, b| a.name.cmp(&b.name));
+        named
     }
 
     /// The sheet with asset ID `id` (an Aseprite file, or a clips file
