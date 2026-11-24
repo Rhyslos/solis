@@ -1,6 +1,6 @@
 # The uniformity pass
 
-Asked for by the project lead on 2026-11-23, to go over with them before it's built. It comes after Fixes 3 and before dialogue. It's a big rework, and better done now, while there are no projects to move.
+Asked for by the project lead on 2026-11-23, to go over with them before it's built; their answers are [decision 0137](../decisions/0137-the-uniformity-pass.md). It comes after Fixes 3 and before dialogue. It's a big rework, and better done now, while there are no projects to move.
 
 ## What they asked
 
@@ -46,6 +46,22 @@ Research into recurring complaints about other engines (kept outside the repo, w
    - **Game code:** every engine call and project name in [the interface file](../game-code-interface.txt) and the manual's examples, grouped by shape (dotted names, methods, events, data files' classes), checked against the [guidelines](../game-api-guidelines.md) and Lust's own rulebook.
 2. **Proposals as questions.** A recommended shape for each with a before and after, side by side, asked one choice at a time (CLAUDE.md, "Choices come as questions"). The look's proposals are mock-ups first.
 3. **A decision**, then the guidelines and `docs/design/g-layout/` are updated, and the rework is built in milestones of the usual size: shared widgets first, then each panel moved onto them; the calls renamed with the manual, the sample games and the interface file in the same pull requests.
+
+## Decided (2026-11-24)
+
+The project lead answered every question the same day: [decision 0137](../decisions/0137-the-uniformity-pass.md) has the answers. Two differ from the proposals: moving and turning stay calls (physics moves things too), and checkboxes and toggles are chosen by how heavy a setting feels, with a field hint for game code's own fields. Reading another entity's component, `despawn` and the zone events stay as they are.
+
+### The milestones
+
+Built in this order, one pull request each, the manual, the sample games and the interface file moved in the same pull request as what they show:
+- **U1 Buttons and fields:** the shared button (plain and filled), text box, number box (with a slider when a field has a range) and in-place rename; every panel moved onto them.
+- **U2 Switches and pickers:** checkboxes and toggles by weight, the `toggle` and `checkbox` field hints; the name picker for longer lists (a Sprite's Look first); the facing pad in Properties and for an animator's direction parameter.
+- **U3 One picture board:** the Tileset's picture on the shared board.
+- **U4 One dot:** every kind of the project's names with one dot, folders only on a clash, groups as values; the manual and samples moved; `World:find` out of the manual.
+- **U5 Setting with `=`:** the setters on a component's own entity as fields the engine reads (the sprite's, the sound's, the screen's, tags, visible, solid, velocity), then the game-wide objects' (`Screens.textSize`, `Window.fullscreen`, `Audio`, `World`).
+- **U6 Making with `new`:** the classes Solis writes for modules, sounds, timers and shots, and `new` replacing the spawning, playing, firing and timer calls.
+
+Each is planned in detail when it starts, as the game stages are.
 
 ## The audit (2026-11-24)
 

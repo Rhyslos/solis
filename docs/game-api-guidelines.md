@@ -29,6 +29,15 @@ Added 2026-11-23, after reading Lust's own rulebook ([LUST.md](https://github.co
 - **Names have one dot.** Kind, then one name: `Clip.KnightWalk`, `Module.Fighter`, `Text.ShopWelcome`, like Lust's own states. Folders join the name only where two would clash.
 - **Name it, then read it.** `Item sword = Item.IronSword;` then `sword.price`, never a chain.
 
+**What the project lead settled on 2026-11-24 ([decision 0137](decisions/0137-the-uniformity-pass.md)), on top of those:**
+
+- **Making is `new`, through a class Solis writes** for each module, sound, timer and shot: `entity ship = new Fighter { position = gate, speed = 9 };`, `new Horn { at = gate };`.
+- **Setting is a field the engine reads,** as `facing` and `look` are, **except moving and turning**, which stay calls (`moveTo`, `turnTo`, `face`). Another entity's settings stay methods on it (`orc:setVisible(false)`) until Lust can write to another thing's component.
+- **Another entity's component is a method,** `orc:health()`, read once into a name: `Health theirs = orc:health();` then `theirs.hp`, never `orc:health().hp`.
+- **`despawn` stays a call** on the entity.
+- **One dot in every name,** folders in front only on a clash; a group (a clip's sheet) is a value of the name, not a folder in it.
+- **No names typed as text** in the manual: `World:find` is for the Console.
+
 - **Read it out loud.** Lust reads like plain sentences: `is hp <= 0? then { … }`, `tween hp to 0 over 0.5;`, `send Hit(this, 6) to target;`. A call should too: `hero:knight().hasKey`, `World:the(Component.Quest)`. If it needs a comment to explain what it says, rename it.
 - **States are the big idea.** A fixed set of choices is a state, so that `check` covers it. `check` must handle every option, so a new option points at every line that needs it. Design calls to give and take states, so game code can write `check state { when Walking { … } }` and Lust finds what's missing. Folders are options inside options, and `==` includes them.
 - **Things end with their state.** In Lust, what's made during a state ends when the state does. Solis already follows this for timers, tweens and sounds (decision 0126). Anything new that game code starts and that keeps going (a clip, a sound, a wait) should end with the option it started in, unless kept.
