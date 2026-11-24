@@ -361,7 +361,7 @@ impl FramesEditor {
     /// picked row, keeping their times and events.
     pub fn swap_cell(&mut self, cell: u32) -> bool {
         let name = self.clip.clone();
-        let facing = self.facing;
+        let facing = self.row_facing();
         let picked = self.selected.clone();
         if picked.is_empty() {
             return false;
@@ -375,6 +375,34 @@ impl FramesEditor {
                         }
                     }
                 });
+            }
+        })
+    }
+
+    /// The row the picked facing's frames are in: a mirrored clip's west
+    /// side is its east side's row.
+    pub fn row_facing(&self) -> Facing {
+        (self.file.clips.iter().find(|c| c.name == self.clip))
+            .map_or(self.facing, |c| c.drawn_from(self.facing).0)
+    }
+
+    /// Turns the chosen clip's (made here) same frames in every direction
+    /// on or off.
+    pub fn set_same_frames(&mut self, same: bool) -> bool {
+        let name = self.clip.clone();
+        self.change(|f| {
+            if let Some(c) = f.clip_mut(&name) {
+                c.set_same_frames(same);
+            }
+        })
+    }
+
+    /// Turns the chosen clip's (made here) mirrored west side on or off.
+    pub fn set_mirror(&mut self, mirror: bool) -> bool {
+        let name = self.clip.clone();
+        self.change(|f| {
+            if let Some(c) = f.clip_mut(&name) {
+                c.set_mirror(mirror);
             }
         })
     }
@@ -406,7 +434,7 @@ impl FramesEditor {
     /// here).
     pub fn set_ms(&mut self, ms: u32) -> bool {
         let name = self.clip.clone();
-        let facing = self.facing;
+        let facing = self.row_facing();
         let picked = self.selected.clone();
         let ms = ms.clamp(1, clips_file::MAX_MS);
         self.change(|f| {
@@ -432,7 +460,7 @@ impl FramesEditor {
             return false;
         };
         let name = self.clip.clone();
-        let facing = self.facing;
+        let facing = self.row_facing();
         let picked: Vec<(usize, u32)> = self
             .selected
             .iter()
@@ -473,13 +501,13 @@ impl FramesEditor {
     /// time Aseprite gives it, and picks them.
     pub fn add_frames(&mut self, sheet: &SpriteSheet, frames: &[u32]) -> bool {
         let name = self.clip.clone();
-        let facing = self.facing;
+        let facing = self.row_facing();
         let Some(len) = self
             .file
             .clips
             .iter()
             .find(|c| c.name == name)
-            .map(|c| c.frames_of(self.facing, |_| 1).len())
+            .map(|c| c.frames_of(self.row_facing(), |_| 1).len())
         else {
             return false;
         };
@@ -515,7 +543,7 @@ impl FramesEditor {
     /// Takes the picked frames out of the chosen clip (made here).
     pub fn delete_frames(&mut self) -> bool {
         let name = self.clip.clone();
-        let facing = self.facing;
+        let facing = self.row_facing();
         let picked = self.selected.clone();
         let changed = self.change(|f| {
             if let Some(c) = f.clip_mut(&name) {
@@ -541,7 +569,7 @@ impl FramesEditor {
     /// their order, and keeps them picked.
     pub fn move_frames(&mut self, to: usize) -> bool {
         let name = self.clip.clone();
-        let facing = self.facing;
+        let facing = self.row_facing();
         let picked = self.selected.clone();
         let mut placed = Vec::new();
         let changed = self.change(|f| {

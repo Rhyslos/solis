@@ -276,3 +276,31 @@ fn each_row_s_frames_are_its_own_with_shared_or_own_times() {
     });
     assert_eq!(cells_of(&attack, Facing::South), [7], "made when edited");
 }
+
+#[test]
+fn turning_either_setting_off_and_on_again_gives_the_clip_back() {
+    let knight = knight();
+    let walk = knight.clips[0].clone();
+    let mut changed = walk.clone();
+    changed.set_same_frames(false);
+    assert!(changed.timings.is_empty());
+    assert!(
+        changed.ways.iter().all(|w| w.timings.len() == 2),
+        "each row its own copy"
+    );
+    changed.set_same_frames(true);
+    assert_eq!(changed, walk);
+    changed.set_mirror(false);
+    assert_eq!(
+        cells_of(&changed, Facing::NorthWest),
+        [30, 31],
+        "a copy of NorthEast"
+    );
+    assert_eq!(
+        changed.drawn_from(Facing::West),
+        (Facing::West, false),
+        "its own row now"
+    );
+    changed.set_mirror(true);
+    assert_eq!(changed, walk);
+}

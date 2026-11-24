@@ -326,8 +326,8 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
         .clips
         .iter()
         .find(|c| c.name == clip.name)
-        .map(|c| c.directions);
-    if let Some(directions) = own {
+        .map(|c| (c.directions, c.same_frames, c.mirror));
+    if let Some((directions, same, mirror)) = own {
         crate::widgets::rows::section_caps(ui, "Directions").on_hover_text(
             "How many ways the clip faces: a row of frames for each, and a sprite plays the \
              one nearest the way it faces",
@@ -338,6 +338,9 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
             changed |= editor.set_directions(picked);
         }
         ui.add_space(4.0);
+        if directions > 1 {
+            changed |= direction_settings(ui, editor, same, mirror);
+        }
     }
     if clip.from_aseprite {
         ui.label(
@@ -566,7 +569,14 @@ fn direction_rows(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, own: &
                     rect.min + egui::vec2(3.0, 2.0),
                     egui::vec2(24.0, 24.0),
                 );
-                crate::sheet_view::draw_frame(&painter, thumb, sheet, atlas, frame.frame as usize);
+                crate::sheet_view::draw_frame_flipped(
+                    &painter,
+                    thumb,
+                    sheet,
+                    atlas,
+                    frame.frame as usize,
+                    flipped,
+                );
             }
             let label = if flipped {
                 format!("flipped {}", frame.frame)
@@ -1225,6 +1235,8 @@ struct CellsDrag(Vec<u32>);
 const CELL_TILE: f32 = 44.0;
 /// The preview's width on the Cells page.
 const PREVIEW_W: f32 = 300.0;
+/// The facing pad's step between arrows.
+const PAD_STEP: f32 = 26.0;
 
 /// The Cells page (Fixes 3, the mock-up's frame (a)): the chosen clip's
 /// picked row playing at the left; at the right the sheet's cells, each
@@ -1254,15 +1266,22 @@ fn preview_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) {
     let area = ui.max_rect();
     let painter = ui.painter_at(area);
     painter.rect_filled(area, 0.0, theme::field().gamma_multiply(0.6));
-    let own = f.editor.file.clips.iter().find(|c| c.name == f.editor.clip);
-    let clip = match own {
+    let own = f
+        .editor
+        .file
+        .clips
+        .iter()
+        .find(|c| c.name == f.editor.clip)
+        .cloned();
+    let clip = match &own {
         Some(own) => Some(row_clip(own, f.editor.facing, sheet)),
         None => f.editor.clips(sheet).get(&f.editor.clip).cloned(),
     };
     let Some(clip) = clip else {
         return;
     };
-    let facing = own.map_or(Facing::Any, |_| f.editor.facing);
+    let facing = own.as_ref().map_or(Facing::Any, |_| f.editor.facing);
+    let flipped = own.as_ref().is_some_and(|c| c.drawn_from(facing).1);
     let label = if facing == Facing::Any {
         clip.name.clone()
     } else {
@@ -1275,17 +1294,64 @@ fn preview_part(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet) {
         egui::FontId::proportional(12.0),
         theme::text(),
     );
-    let at = clip
-        .at(f.editor.time)
-        .map(|m| m.frame as usize)
+    let at = (clip.at(f.editor.time).map(|m| m.frame as usize))
         .or(clip.frames.first().map(|fr| fr.frame as usize));
+    let pad = PAD_STEP * 3.0;
     if let (Some(frame), Some(atlas)) = (at, f.atlas) {
-        let side = (area.width() - 48.0).min(area.height() - 80.0).max(16.0);
-        let shown = egui::Rect::from_center_size(
-            area.center() - egui::vec2(0.0, 10.0),
-            egui::vec2(side, side),
+        let side = (area.width() - 48.0)
+            .min(area.height() - pad - 64.0)
+            .max(16.0);
+        let middle = egui::pos2(area.center().x, area.top() + 36.0 + side / 2.0);
+        let shown = egui::Rect::from_center_size(middle, egui::vec2(side, side));
+        crate::sheet_view::draw_frame_flipped(&painter, shown, sheet, atlas, frame, flipped);
+    }
+    // The facing pad: the clip's directions round a dot, the picked one
+    // lit; a click plays that direction (a mirrored one flipped).
+    let Some(own) = own.filter(|c| c.directions > 1) else {
+        return;
+    };
+    let centre = egui::pos2(area.center().x, area.bottom() - pad / 2.0 - 12.0);
+    painter.circle_filled(centre, 6.0, theme::button_border());
+    for &way in own.facings() {
+        let [dx, dy] = match way {
+            Facing::North => [0.0, -1.0],
+            Facing::NorthEast => [1.0, -1.0],
+            Facing::East => [1.0, 0.0],
+            Facing::SouthEast => [1.0, 1.0],
+            Facing::South => [0.0, 1.0],
+            Facing::SouthWest => [-1.0, 1.0],
+            Facing::West => [-1.0, 0.0],
+            Facing::NorthWest => [-1.0, -1.0],
+            Facing::Any => continue,
+        };
+        let rect = egui::Rect::from_center_size(
+            centre + egui::vec2(dx, dy) * PAD_STEP,
+            egui::vec2(PAD_STEP - 4.0, PAD_STEP - 4.0),
         );
-        crate::sheet_view::draw_frame(&painter, shown, sheet, atlas, frame);
+        let response = ui.interact(
+            rect,
+            ui.id().with(("pad", way.name())),
+            egui::Sense::click(),
+        );
+        let lit = way == facing;
+        if lit {
+            painter.rect_filled(rect, 4.0, theme::kind::SPRITE);
+        } else if response.hovered() {
+            painter.rect_filled(rect, 4.0, theme::field());
+        }
+        painter.text(
+            rect.center(),
+            egui::Align2::CENTER_CENTER,
+            arrow(way),
+            egui::FontId::proportional(13.0),
+            if lit { Color32::WHITE } else { theme::text() },
+        );
+        response.widget_info(|| {
+            egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, lit, way.name())
+        });
+        if response.clicked() {
+            f.editor.pick_row(Some(way));
+        }
     }
 }
 
@@ -1408,4 +1474,41 @@ fn cell_tile(
         *cells = vec![n];
     }
     false
+}
+
+/// A clip with directions' two settings: the same frames in every
+/// direction, and the west side mirrored.
+fn direction_settings(ui: &mut Ui, editor: &mut FramesEditor, same: bool, mirror: bool) -> bool {
+    let mut changed = false;
+    let settings = [
+        (
+            "Same frames in every direction",
+            "Every direction has these frames' times and events, so turning mid-walk keeps its \
+             step. Off: each direction has its own.",
+            same,
+        ),
+        (
+            "Mirror the west side",
+            "The west side is the east side flipped. Off: draw every direction, for a character \
+             that isn't the same both ways.",
+            mirror,
+        ),
+    ];
+    for (i, (name, hint, mut on)) in settings.into_iter().enumerate() {
+        ui.horizontal(|ui| {
+            ui.label(name);
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if crate::widgets::toggle::toggle(ui, &mut on, name).changed() {
+                    changed |= if i == 0 {
+                        editor.set_same_frames(on)
+                    } else {
+                        editor.set_mirror(on)
+                    };
+                }
+            });
+        });
+        ui.label(RichText::new(hint).size(11.0).color(theme::text_weak()));
+        ui.add_space(6.0);
+    }
+    changed
 }
