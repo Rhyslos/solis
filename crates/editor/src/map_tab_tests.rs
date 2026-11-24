@@ -58,6 +58,9 @@ fn tab_painting(
         .with_size(vec2(1440.0, 400.0))
         .build_ui_state(
             move |ui, s: &mut TabState| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 // The columns' headers are in the editor's own fonts.
                 if !crate::test_support::fonts_ready(ui.ctx()) {
                     return;
@@ -186,6 +189,9 @@ fn a_tileset_s_properties_ask_to_add_and_remove_terrains() {
         .with_size(vec2(360.0, 400.0))
         .build_ui_state(
             |ui, s: &mut (Tileset, Vec<TerrainEdit>)| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let asked = tileset_properties(ui, "sprites/farm.tileset.lst", &s.0, &[]);
                 s.1.extend(asked);
             },
@@ -219,6 +225,9 @@ fn a_map_file_s_properties_choose_its_tileset() {
         .with_size(vec2(360.0, 300.0))
         .build_ui_state(
             move |ui, s: &mut FileState| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 if let Some(out) = map_file_properties(ui, "farm.tilemap.lst", &s.0, &tilesets, &[])
                 {
                     s.1 = Some(out);

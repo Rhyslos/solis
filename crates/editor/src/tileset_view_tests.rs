@@ -52,6 +52,9 @@ fn harness(with_picture: bool) -> Harness<'static, State> {
         .with_size(vec2(1100.0, 700.0))
         .build_ui_state(
             move |ui, s: &mut State| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 if let (Some(art), None) = (&s.art, &s.texture) {
                     let (size, rgba) = crate::tile_view::atlas_rgba(art);
                     let image = egui::ColorImage::from_rgba_unmultiplied(

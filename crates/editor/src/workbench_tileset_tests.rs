@@ -403,6 +403,9 @@ fn dragging_a_terrain_s_colour_in_properties_is_one_step_and_one_save() {
         .with_size(egui::vec2(460.0, 640.0))
         .build_ui_state(
             |ui, w: &mut Workbench| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 let sheets = Arc::clone(&w.viewport.sheets);
                 let Some(TilesetState::Read(set, notes)) = sheets.tilesets.get(FARM_SET) else {
                     return;

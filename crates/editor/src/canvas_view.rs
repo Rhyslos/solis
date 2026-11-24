@@ -315,9 +315,7 @@ fn preview_values(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[crate::screen_ti
                     }
                 }
             }
-            if ui
-                .add_enabled(tried, egui::Button::new("Back to the starting values"))
-                .clicked()
+            if crate::widgets::button::plain_if(ui, tried, "Back to the starting values").clicked()
             {
                 doc.preview.clear();
                 doc.redraw = true;

@@ -12,6 +12,9 @@ fn harness(picked: Vec<usize>) -> Harness<'static, (ScreenDoc, bool)> {
         .with_size(egui::vec2(420.0, 900.0))
         .build_ui_state(
             |ui, (doc, changed): &mut (ScreenDoc, bool)| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 *changed |= screen_properties(ui, doc, &Default::default());
             },
             (doc, false),
@@ -123,6 +126,9 @@ fn a_tie_is_chosen_from_the_entity_s_components() {
         .with_size(egui::vec2(420.0, 900.0))
         .build_ui_state(
             move |ui, (doc, changed): &mut (ScreenDoc, bool)| {
+                if !crate::test_support::fonts_ready(ui.ctx()) {
+                    return;
+                }
                 *changed |= screen_properties(ui, doc, &game);
             },
             (doc, false),
