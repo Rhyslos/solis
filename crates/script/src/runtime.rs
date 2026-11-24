@@ -880,7 +880,12 @@ impl Runtime {
     /// The fields the engine reads (a sprite's facing and look) that
     /// changed since the last tick ended, or whose component started.
     pub(crate) fn engine_reads(&mut self) -> Vec<crate::game::Change> {
-        crate::engine_fields::changes(&self.engine_reads, &self.running, &mut self.engine_seen)
+        crate::engine_fields::changes(
+            &self.engine_reads,
+            &self.running,
+            &mut self.engine_seen,
+            &self.luau.lua,
+        )
     }
 
     pub(crate) fn finish_tick(&self) -> bool {

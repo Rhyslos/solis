@@ -178,8 +178,12 @@ event Resumed();
 event Quit();
 
 component Pauser {
+    has {
+        Screen screen = Screen.PauseMenu;
+    }
+
     on Resumed() {
-        hideScreen(Screen.PauseMenu);
+        screen = Screen.None;
     }
 }
 
@@ -223,12 +227,12 @@ end
 - The `{ }` may also change the screen's own fields (a tab picked, say). It can't change the game: send an event for that.
 - What a button sends reaches the game at the start of the next tick, before the components' `update`s.
 
-**Showing and hiding screens from game code.** Every entity can show one screen at a time. Its calls take the screen by name, from `solis/project.lst` (fetch `Screen` from `"solis/project"`):
+**Showing and hiding screens from game code.** Every entity can show one screen at a time, named from `solis/project.lst` (fetch `Screen` from `"solis/project"`). A component shows one on its own entity by holding **`Screen screen`** in its `has` block and setting it: `screen = Screen.PauseMenu;` shows that screen, `screen = Screen.None;` hides it, both at the end of the tick, and an entity without a Screen component is given one ([decision 0137](../decisions/0137-the-uniformity-pass.md)). On another entity, and to ask, there are calls:
 
 | Call | What it does |
 |---|---|
-| `showScreen(Screen.PauseMenu)` | Shows that screen on the entity's Screen component, at the end of the tick. An entity without one is given one. |
-| `hideScreen(Screen.PauseMenu)` | Hides it, at the end of the tick, if the entity shows that screen. |
+| `target:showScreen(Screen.PauseMenu)` | Shows that screen on that entity's Screen component, at the end of the tick. |
+| `target:hideScreen(Screen.PauseMenu)` | Hides it, at the end of the tick, if the entity shows that screen. |
 | `screenShown(Screen.PauseMenu)` | Whether the entity shows that screen, as the tick started. |
 
 In Lua they're `solis.entity.showScreen(self.me, "PauseMenu")`, `solis.entity.hideScreen(…)` and `solis.entity.screenShown(…)` (the screen's name as text), and a button's event arrives in `on_Resumed`. In Rust, through the component's host: `cx.host().show_screen(cx.me(), "PauseMenu", true)` (`false` hides it) and `cx.host().screen_shown(cx.me(), "PauseMenu")`.
@@ -251,15 +255,19 @@ fetch "solis/project":[Action, Screen];
 event Resumed();
 
 component Pauser {
+    has {
+        Screen screen = Screen.None;
+    }
+
     method update(float dt) {
         is Input:pressed(Action.Pause)? then {
-            showScreen(Screen.PauseMenu);
+            screen = Screen.PauseMenu;
             World:setGameSpeed(0);
         }
     }
 
     on Resumed() {
-        hideScreen(Screen.PauseMenu);
+        screen = Screen.None;
         World:setGameSpeed(1);
     }
 }
@@ -448,7 +456,7 @@ The **Screen** component:
 | Setting | What it does |
 |---|---|
 | Screen | Which screen: a file in the Library's `ui` folder, by its name (`ui/hud.lst` is **Hud**). |
-| Shown | Whether it's on screen. Game code shows and hides screens with `showScreen` and `hideScreen`. |
+| Shown | Whether it's on screen. Game code shows and hides screens with a component's `screen` field, or `showScreen` and `hideScreen` on another entity. |
 | Order | Which screen is on top when several are shown: higher is on top. |
 | Glow | A soft light round everything on the screen, in each piece's own colour, this many pixels out (on its design size). 0 for none. |
 | Outline | A line just outside everything on the screen, this thick. 0 for none. |

@@ -1893,10 +1893,18 @@ impl Game {
             })
             .collect();
         if !read.is_empty() {
+            // Each entity's in the order they're read: stable, so the
+            // same on any number of cores.
             read.sort_by_key(|c| match c {
-                Change::Facing(e, _) => (Some(*e), 0),
-                Change::Look(e, _) => (Some(*e), 1),
-                _ => (None, 2),
+                Change::Facing(e, _)
+                | Change::Look(e, _)
+                | Change::PlayClip(e, ..)
+                | Change::Flip(e, ..)
+                | Change::Visible(e, _)
+                | Change::Solid(e, _)
+                | Change::SoundPlaying(e, _)
+                | Change::ShowScreen(e, ..) => Some(*e),
+                _ => None,
             });
             world.borrow_mut().apply(&read);
         }

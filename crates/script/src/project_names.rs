@@ -207,7 +207,11 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let clips: Vec<_> = names.clips.iter().map(|p| part_entry(p)).collect();
     let clip = flat_text("Clip", &clips, "sprite clip", &mut notes);
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
-    let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
+    // `Screen.None` is always there: a component's `screen = Screen.None;`
+    // hides its Screen (decision 0137).
+    let mut screens = vec![NO_OPTION.to_owned()];
+    screens.extend(names.screens.iter().filter(|s| *s != NO_OPTION).cloned());
+    let screen = names_text("Screen", &screens, "screen", false, &mut notes);
     // A picture, or a part cut out of one (a crop: the picture's path,
     // then the crop's name).
     let pictures: Vec<_> = (names.pictures.iter())
@@ -894,7 +898,7 @@ mod tests {
     fn the_game_s_screens_are_a_state_of_their_names() {
         let names = Names::standard().and_screens(&["PauseMenu", "Hud", "HUD"]);
         let (text, notes) = project_file("Test 1.0", &names);
-        assert!(text.contains("state Screen = [PauseMenu, Hud];"), "{text}");
+        assert!(text.contains("state Screen = [None, PauseMenu, Hud];"), "{text}");
         assert_eq!(notes.len(), 1, "HUD is all capitals: {notes:?}");
     }
 

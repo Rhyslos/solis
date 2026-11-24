@@ -91,6 +91,7 @@ fetch "solis/animation":[CueReached, ClipFinished];
 
 component Farmer {
     has {
+        Clip animation = Clip.FarmerIdle;
         int steps = 0;
     }
 
@@ -104,7 +105,7 @@ component Farmer {
     -- Back to standing once the hoe swing is done.
     on ClipFinished(Clip clip) {
         is clip == Clip.FarmerHoe? then {
-            animate(Clip.FarmerIdle);
+            animation = Clip.FarmerIdle;
         }
     }
 }
@@ -165,21 +166,24 @@ function Farmer:on_ClipFinished(clip)
 end
 ```
 
-- `animate(Clip.FarmerWalk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
+- **`Clip animation`** in a component's `has` block is the clip its entity's sprite plays: `animation = Clip.FarmerWalk;`. Solis reads it as each tick ends ([decision 0137](../decisions/0137-the-uniformity-pass.md)). Setting the clip that's playing, or has finished, carries on as it is, so it's safe to set every tick; another clip starts from its beginning. On another entity, call `target:animate(Clip.FarmerWalk)`.
 - `animateFromStart(Clip.FarmerHoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
-- `stopAnimation()` stops it where it is; `animate` with the same clip carries on from there.
-- `setFlip(across, down)` mirrors the sprite (its **Flip across** and **Flip up** settings): `setFlip(true, false)` faces it the other way. So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well:
+- `stopAnimation()` stops it where it is; setting the same clip carries on from there.
+- **`bool flipped`** mirrors the sprite across (its **Flip across** setting), and **`bool flippedDown`** upside down: `flipped = true;` faces it the other way. So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well (on another entity, `target:setFlip(across, down)`):
 
   ```lust
   fetch "solis/input":Input;
   fetch "solis/project":[Action, Clip];
 
   component Runner {
+      has {
+          Clip animation = Clip.HeroRun;
+          bool flipped = false;
+      }
+
       method update(float dt) {
           -- Face the way the player pushes.
-          bool walkingLeft = Input:axis(Action.Move).x < 0;
-          setFlip(walkingLeft, false);
-          animate(Clip.HeroRun);
+          flipped = Input:axis(Action.Move).x < 0;
       }
   }
 
@@ -216,7 +220,7 @@ end
   end
   ```
 
-  It's safe to call every tick, and like the other calls it lands at the end of the tick.
+  It's safe to set every tick, and like every field Solis reads, it lands at the end of the tick.
 - In Lua: `solis.entity.animate(e, "FarmerWalk")`, `solis.entity.animateFromStart(e, …)`, `solis.entity.stopAnimation(e)` and `solis.entity.setFlip(e, true, false)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again), `stop_clip` and `set_flip(entity, true, false)`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
 
 #### Facing and looks
@@ -233,6 +237,7 @@ get "solis/animation":nearestFacing;
 
 component Knight {
     has {
+        Clip animation = Clip.KnightIdle;
         Facing facing = Facing.South;
         Look look = Look.KnightMain;
         bool charged = false;
@@ -243,9 +248,9 @@ component Knight {
         is push:length() > 0? then {
             -- Turn the way the player pushes: the walk plays that row.
             facing = nearestFacing([push.x, push.y]);
-            animate(Clip.KnightWalk);
+            animation = Clip.KnightWalk;
         } or {
-            animate(Clip.KnightIdle);
+            animation = Clip.KnightIdle;
         }
         -- Mana armour while charged.
         is charged? then {
@@ -279,7 +284,7 @@ Now the clip is named once and the facing and the look are values beside it, so 
 ```text
 -- After: one clip; the facing and the look choose its frames.
 facing = nearestFacing([push.x, push.y]);
-animate(Clip.KnightWalk);
+animation = Clip.KnightWalk;
 ```
 
 Two mistakes are said in the Console, once a play for each entity, and change nothing:

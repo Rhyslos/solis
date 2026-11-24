@@ -4926,7 +4926,7 @@ After 121 ticks:
 </section>
 <section id="game-code--hiding-entities-and-turning-colliders-off">
 <h3>Hiding entities and turning colliders off<a class="anchor" href="#game-code--hiding-entities-and-turning-colliders-off" aria-label="Link to this section">#</a></h3>
-<p>A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. Two calls switch those off and on again, on any entity:</p>
+<p>A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. A component switches its own entity's off and on with two fields Solis reads (<a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0137-the-uniformity-pass.md" target="_blank" rel="noopener">decision 0137<span class="out" aria-hidden="true">↗</span></a>), <strong><code>bool solid</code></strong> and <strong><code>bool visible</code></strong>; on another entity, call <code>target:setSolid(false)</code> and <code>target:setVisible(false)</code>:</p>
 <pre data-lang="lust"><code><span class="tk-c">-- orc.lst: an orc that falls and stops blocking the way.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 
@@ -4934,30 +4934,27 @@ After 121 ticks:
 
 <span class="tk-k">component</span> <span class="tk-n">Orc</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
-        <span class="tk-t">bool</span> fallen = <span class="tk-v">false</span><span class="tk-p">;</span>
+        <span class="tk-t">bool</span> solid = <span class="tk-v">true</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
     <span class="tk-f">on</span> <span class="tk-n">Died</span><span class="tk-p">() {</span>
-        fallen = <span class="tk-v">true</span><span class="tk-p">;</span>
-        setSolid<span class="tk-p">(</span><span class="tk-v">false</span><span class="tk-p">);</span>
+        solid = <span class="tk-v">false</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Glow</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
-        <span class="tk-t">bool</span> lit = <span class="tk-v">true</span><span class="tk-p">;</span>
-    <span class="tk-p">}</span>
-
-    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
-        setVisible<span class="tk-p">(</span>lit<span class="tk-p">);</span>
+        <span class="tk-t">bool</span> visible = <span class="tk-v">true</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
 <span class="tk-k">pass</span> <span class="tk-n">Died</span><span class="tk-p">,</span> <span class="tk-n">Orc</span><span class="tk-p">,</span> <span class="tk-n">Glow</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
+<p>The glow's <code>visible</code> is a setting in Properties too: untick it to start the glow hidden, or let other code of the glow's set it.</p>
 <ul>
-<li><strong><code>setSolid(false)</code></strong> takes the entity's collider out of the way: nothing bumps into it, <a href="#physics">rays</a> pass through it, and <a href="#trigger-zones">trigger zones</a> don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). <code>setSolid(true)</code> turns it back on.</li>
-<li><strong><code>setVisible(false)</code></strong> hides the entity <strong>and everything under it</strong>, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. <code>setVisible(true)</code> shows it again; a child of a hidden entity can't show on its own.</li>
+<li><strong><code>solid = false;</code></strong> takes the entity's collider out of the way: nothing bumps into it, <a href="#physics">rays</a> pass through it, and <a href="#trigger-zones">trigger zones</a> don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor).</li>
+<li><strong><code>visible = false;</code></strong> hides the entity <strong>and everything under it</strong>, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. <code>visible = true;</code> shows it again; a child of a hidden entity can't show on its own.</li>
+<li><strong>From the first tick:</strong> a component's field is its entity's from the game's first tick, so <code>bool solid = false;</code> starts it out of the way.</li>
 <li><strong>When:</strong> like a move, both happen at the end of the tick.</li>
 <li><strong>They last:</strong> both are saved in <a href="#save-games">save games</a>, kept when you edit the level while playing, and gone when you press <strong>Stop</strong>, like everything else the game did. Your level's files never change for them.</li>
 </ul>
@@ -5224,7 +5221,7 @@ After 121 ticks:
 <li><code>Audio:play(Sound.Theme)</code> plays it the same everywhere: music, the interface.</li>
 <li><code>Audio:playAt(Sound.Footstep, place)</code> plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is <strong>In the world</strong>).</li>
 <li><code>playSound(Sound.Engine)</code> plays it on the component's entity and follows it as it moves: an engine, a voice (<code>target:playSound(…)</code> on another). <code>stopSounds()</code> stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use <code>setSoundPlaying</code> for that).</li>
-<li><code>setSoundPlaying(playing)</code> turns the entity's <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> (a sound that keeps playing: an engine, a campfire) on or off.</li>
+<li><strong><code>bool sounding</code></strong>, a field of a component's, turns its entity's <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> (a sound that keeps playing: an engine, a campfire) on or off (on another entity, <code>target:setSoundPlaying(on)</code>).</li>
 <li><code>Audio:setVolume(Bus.Music, volume)</code> sets a <a href="#mixer">bus</a> for the rest of the play (the buses are the Mixer's, as <code>state Bus</code> in <code>solis/project.lst</code>; the UI bus is <code>Bus.Ui</code>, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.</li>
 </ul>
 <p>In Lua they're <code>solis.Audio:playAt(&quot;Footstep&quot;, solis.entity.position(self.me))</code> and so on (the option's name as text; <code>&quot;sfx/footstep&quot;</code> works too). In Rust, through the component's host: <code>cx.host().play_sound(&quot;sfx/footstep&quot;, SoundAt::Place(place))</code>, and <code>cx.host().set_bus_volume(&quot;Music&quot;, 0.5)</code>.</p>
@@ -5246,6 +5243,19 @@ After 121 ticks:
 </section>
 <section id="game-code--what-the-engine-offers">
 <h3>What the engine offers<a class="anchor" href="#game-code--what-the-engine-offers" aria-label="Link to this section">#</a></h3>
+<p><strong>Fields Solis reads.</strong> A Lust component sets these on its own entity by holding them in its <code>has</code> block and setting them with <code>=</code>; Solis reads them as each tick ends (<a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0137-the-uniformity-pass.md" target="_blank" rel="noopener">decision 0137<span class="out" aria-hidden="true">↗</span></a>). On another entity, use the calls below.</p>
+<div class="table-wrap"><table>
+<thead><tr><th>Field</th><th>What it sets</th></tr></thead>
+<tbody>
+<tr><td><code>Clip animation</code></td><td>The clip the entity's Sprite plays (<a href="#sprite-animation--in-game-code">Animating sprites</a>).</td></tr>
+<tr><td><code>Facing facing</code>, <code>Look look</code></td><td>Which way the Sprite faces, and the look it wears (<a href="#sprite-animation--facing-and-looks">Facing and looks</a>).</td></tr>
+<tr><td><code>bool flipped</code>, <code>bool flippedDown</code></td><td>The Sprite mirrored across, and upside down.</td></tr>
+<tr><td><code>bool visible</code></td><td>Hidden (false) or shown, with everything under it.</td></tr>
+<tr><td><code>bool solid</code></td><td>Its collider in the way, or not.</td></tr>
+<tr><td><code>bool sounding</code></td><td>Its AudioSource on or off.</td></tr>
+<tr><td><code>Screen screen</code></td><td>The screen its Screen shows; <code>Screen.None</code> hides it (<a href="#screens">Game screens</a>).</td></tr>
+</tbody>
+</table></div>
 <div class="table-wrap"><table>
 <thead><tr><th>In</th><th>Method</th><th>What it does</th></tr></thead>
 <tbody>
@@ -5984,8 +5994,12 @@ After 121 ticks:
 <span class="tk-k">event</span> <span class="tk-n">Quit</span><span class="tk-p">();</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Pauser</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Screen</span> screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
     <span class="tk-f">on</span> <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
-        hideScreen<span class="tk-p">(</span><span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">);</span>
+        screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -6023,12 +6037,12 @@ After 121 ticks:
 <li>The <code>{ }</code> may also change the screen's own fields (a tab picked, say). It can't change the game: send an event for that.</li>
 <li>What a button sends reaches the game at the start of the next tick, before the components' <code>update</code>s.</li>
 </ul>
-<p><strong>Showing and hiding screens from game code.</strong> Every entity can show one screen at a time. Its calls take the screen by name, from <code>solis/project.lst</code> (fetch <code>Screen</code> from <code>&quot;solis/project&quot;</code>):</p>
+<p><strong>Showing and hiding screens from game code.</strong> Every entity can show one screen at a time, named from <code>solis/project.lst</code> (fetch <code>Screen</code> from <code>&quot;solis/project&quot;</code>). A component shows one on its own entity by holding <strong><code>Screen screen</code></strong> in its <code>has</code> block and setting it: <code>screen = Screen.PauseMenu;</code> shows that screen, <code>screen = Screen.None;</code> hides it, both at the end of the tick, and an entity without a Screen component is given one (<a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0137-the-uniformity-pass.md" target="_blank" rel="noopener">decision 0137<span class="out" aria-hidden="true">↗</span></a>). On another entity, and to ask, there are calls:</p>
 <div class="table-wrap"><table>
 <thead><tr><th>Call</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td><code>showScreen(Screen.PauseMenu)</code></td><td>Shows that screen on the entity's Screen component, at the end of the tick. An entity without one is given one.</td></tr>
-<tr><td><code>hideScreen(Screen.PauseMenu)</code></td><td>Hides it, at the end of the tick, if the entity shows that screen.</td></tr>
+<tr><td><code>target:showScreen(Screen.PauseMenu)</code></td><td>Shows that screen on that entity's Screen component, at the end of the tick.</td></tr>
+<tr><td><code>target:hideScreen(Screen.PauseMenu)</code></td><td>Hides it, at the end of the tick, if the entity shows that screen.</td></tr>
 <tr><td><code>screenShown(Screen.PauseMenu)</code></td><td>Whether the entity shows that screen, as the tick started.</td></tr>
 </tbody>
 </table></div>
@@ -6047,15 +6061,19 @@ After 121 ticks:
 <span class="tk-k">event</span> <span class="tk-n">Resumed</span><span class="tk-p">();</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Pauser</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Screen</span> screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is</span> <span class="tk-o">Input</span><span class="tk-p">:</span>pressed<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Pause</span><span class="tk-p">)</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            showScreen<span class="tk-p">(</span><span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">);</span>
+            screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">;</span>
             <span class="tk-o">World</span><span class="tk-p">:</span>setGameSpeed<span class="tk-p">(</span><span class="tk-v">0</span><span class="tk-p">);</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
     <span class="tk-f">on</span> <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
-        hideScreen<span class="tk-p">(</span><span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">);</span>
+        screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
         <span class="tk-o">World</span><span class="tk-p">:</span>setGameSpeed<span class="tk-p">(</span><span class="tk-v">1</span><span class="tk-p">);</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -6220,7 +6238,7 @@ After 121 ticks:
 <thead><tr><th>Setting</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td>Screen</td><td>Which screen: a file in the Library's <code>ui</code> folder, by its name (<code>ui/hud.lst</code> is <strong>Hud</strong>).</td></tr>
-<tr><td>Shown</td><td>Whether it's on screen. Game code shows and hides screens with <code>showScreen</code> and <code>hideScreen</code>.</td></tr>
+<tr><td>Shown</td><td>Whether it's on screen. Game code shows and hides screens with a component's <code>screen</code> field, or <code>showScreen</code> and <code>hideScreen</code> on another entity.</td></tr>
 <tr><td>Order</td><td>Which screen is on top when several are shown: higher is on top.</td></tr>
 <tr><td>Glow</td><td>A soft light round everything on the screen, in each piece's own colour, this many pixels out (on its design size). 0 for none.</td></tr>
 <tr><td>Outline</td><td>A line just outside everything on the screen, this thick. 0 for none.</td></tr>
@@ -7349,6 +7367,7 @@ Shop-Apples = { $count -&gt;
 
 <span class="tk-k">component</span> <span class="tk-n">Farmer</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Clip</span> animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">;</span>
         <span class="tk-t">int</span> steps = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
@@ -7362,7 +7381,7 @@ Shop-Apples = { $count -&gt;
     <span class="tk-c">-- Back to standing once the hoe swing is done.</span>
     <span class="tk-f">on</span> <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
         <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">);</span>
+            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -7417,24 +7436,27 @@ Shop-Apples = { $count -&gt;
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><p><code>animate(Clip.FarmerWalk)</code> plays a clip on the component's entity (<code>target:animate(…)</code> on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.</p>
+<li><p><strong><code>Clip animation</code></strong> in a component's <code>has</code> block is the clip its entity's sprite plays: <code>animation = Clip.FarmerWalk;</code>. Solis reads it as each tick ends (<a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0137-the-uniformity-pass.md" target="_blank" rel="noopener">decision 0137<span class="out" aria-hidden="true">↗</span></a>). Setting the clip that's playing, or has finished, carries on as it is, so it's safe to set every tick; another clip starts from its beginning. On another entity, call <code>target:animate(Clip.FarmerWalk)</code>.</p>
 </li>
 <li><p><code>animateFromStart(Clip.FarmerHoe)</code> plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.</p>
 </li>
-<li><p><code>stopAnimation()</code> stops it where it is; <code>animate</code> with the same clip carries on from there.</p>
+<li><p><code>stopAnimation()</code> stops it where it is; setting the same clip carries on from there.</p>
 </li>
-<li><p><code>setFlip(across, down)</code> mirrors the sprite (its <strong>Flip across</strong> and <strong>Flip up</strong> settings): <code>setFlip(true, false)</code> faces it the other way. So you draw a run facing right only once, and one <code>Run</code> clip does both ways, instead of a <code>RunLeft</code> as well:</p>
+<li><p><strong><code>bool flipped</code></strong> mirrors the sprite across (its <strong>Flip across</strong> setting), and <strong><code>bool flippedDown</code></strong> upside down: <code>flipped = true;</code> faces it the other way. So you draw a run facing right only once, and one <code>Run</code> clip does both ways, instead of a <code>RunLeft</code> as well (on another entity, <code>target:setFlip(across, down)</code>):</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/input&quot;</span><span class="tk-p">:</span><span class="tk-n">Input</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Action</span><span class="tk-p">,</span> <span class="tk-n">Clip</span><span class="tk-p">];</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Runner</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Clip</span> animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroRun</span><span class="tk-p">;</span>
+        <span class="tk-t">bool</span> flipped = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-c">-- Face the way the player pushes.</span>
-        <span class="tk-t">bool</span> walkingLeft = <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Move</span><span class="tk-p">).</span>x &lt; <span class="tk-v">0</span><span class="tk-p">;</span>
-        setFlip<span class="tk-p">(</span>walkingLeft<span class="tk-p">,</span> <span class="tk-v">false</span><span class="tk-p">);</span>
-        animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroRun</span><span class="tk-p">);</span>
+        flipped = <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Move</span><span class="tk-p">).</span>x &lt; <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -7464,7 +7486,7 @@ Shop-Apples = { $count -&gt;
     solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>animate<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;HeroRun&quot;</span><span class="tk-p">)</span>
 <span class="tk-k">end</span></code></pre>
 </div>
-<p>It's safe to call every tick, and like the other calls it lands at the end of the tick.</p>
+<p>It's safe to set every tick, and like every field Solis reads, it lands at the end of the tick.</p>
 </li>
 <li><p>In Lua: <code>solis.entity.animate(e, &quot;FarmerWalk&quot;)</code>, <code>solis.entity.animateFromStart(e, …)</code>, <code>solis.entity.stopAnimation(e)</code> and <code>solis.entity.setFlip(e, true, false)</code>; a function called <code>on_CueReached(cue)</code> or <code>on_ClipFinished(clip)</code> reacts to the events, with the names as text. In Rust: <code>cx.host().play_clip(entity, &quot;walk&quot;, false)</code> (<code>true</code> to start it again), <code>stop_clip</code> and <code>set_flip(entity, true, false)</code>, and the events arrive in <code>handle</code> named <code>CueReached</code> and <code>ClipFinished</code>.</p>
 </li>
@@ -7482,6 +7504,7 @@ Shop-Apples = { $count -&gt;
 
 <span class="tk-k">component</span> <span class="tk-n">Knight</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Clip</span> animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">;</span>
         <span class="tk-n">Facing</span> facing = <span class="tk-o">Facing</span><span class="tk-p">.</span><span class="tk-s">South</span><span class="tk-p">;</span>
         <span class="tk-n">Look</span> look = <span class="tk-o">Look</span><span class="tk-p">.</span><span class="tk-s">KnightMain</span><span class="tk-p">;</span>
         <span class="tk-t">bool</span> charged = <span class="tk-v">false</span><span class="tk-p">;</span>
@@ -7492,9 +7515,9 @@ Shop-Apples = { $count -&gt;
         <span class="tk-f">is</span> push<span class="tk-p">:</span>length<span class="tk-p">()</span> &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             <span class="tk-c">-- Turn the way the player pushes: the walk plays that row.</span>
             facing = nearestFacing<span class="tk-p">([</span>push<span class="tk-p">.</span>x<span class="tk-p">,</span> push<span class="tk-p">.</span>y<span class="tk-p">]);</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightWalk</span><span class="tk-p">);</span>
+            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightWalk</span><span class="tk-p">;</span>
         <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">);</span>
+            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
         <span class="tk-c">-- Mana armour while charged.</span>
         <span class="tk-f">is</span> charged<span class="tk-f">? then</span> <span class="tk-p">{</span>
@@ -7519,7 +7542,7 @@ check facing {
 <p>Now the clip is named once and the facing and the look are values beside it, so the table is gone:</p>
 <pre data-lang="text"><code>-- After: one clip; the facing and the look choose its frames.
 facing = nearestFacing([push.x, push.y]);
-animate(Clip.KnightWalk);</code></pre>
+animation = Clip.KnightWalk;</code></pre>
 <p>Two mistakes are said in the Console, once a play for each entity, and change nothing:</p>
 <ul>
 <li><strong>A look from another clips file</strong>, <code>look = Look.OrcRed;</code> on the knight: the Console names the file the look belongs to and the looks this sprite can wear.</li>

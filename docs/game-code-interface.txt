@@ -134,6 +134,13 @@ screens: event TypingFinished(Screen which);
 
 Facing facing
 Look look
+Clip animation
+bool flipped
+bool flippedDown
+bool visible
+bool solid
+bool sounding
+Screen screen
 
 ## Lua (solis.<name>)
 

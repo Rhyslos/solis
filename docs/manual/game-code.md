@@ -703,7 +703,7 @@ Everything game code does in one tick happens in this order, the same on every c
 
 ## Hiding entities and turning colliders off
 
-A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. Two calls switch those off and on again, on any entity:
+A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. A component switches its own entity's off and on with two fields Solis reads ([decision 0137](../decisions/0137-the-uniformity-pass.md)), **`bool solid`** and **`bool visible`**; on another entity, call `target:setSolid(false)` and `target:setVisible(false)`:
 
 ```lust
 -- orc.lst: an orc that falls and stops blocking the way.
@@ -713,22 +713,17 @@ event Died();
 
 component Orc {
     has {
-        bool fallen = false;
+        bool solid = true;
     }
 
     on Died() {
-        fallen = true;
-        setSolid(false);
+        solid = false;
     }
 }
 
 component Glow {
     has {
-        bool lit = true;
-    }
-
-    method update(float dt) {
-        setVisible(lit);
+        bool visible = true;
     }
 }
 
@@ -736,8 +731,11 @@ pass Died, Orc, Glow;
 end
 ```
 
-- **`setSolid(false)`** takes the entity's collider out of the way: nothing bumps into it, [rays](physics.md) pass through it, and [trigger zones](trigger-zones.md) don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). `setSolid(true)` turns it back on.
-- **`setVisible(false)`** hides the entity **and everything under it**, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. `setVisible(true)` shows it again; a child of a hidden entity can't show on its own.
+The glow's `visible` is a setting in Properties too: untick it to start the glow hidden, or let other code of the glow's set it.
+
+- **`solid = false;`** takes the entity's collider out of the way: nothing bumps into it, [rays](physics.md) pass through it, and [trigger zones](trigger-zones.md) don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor).
+- **`visible = false;`** hides the entity **and everything under it**, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. `visible = true;` shows it again; a child of a hidden entity can't show on its own.
+- **From the first tick:** a component's field is its entity's from the game's first tick, so `bool solid = false;` starts it out of the way.
 - **When:** like a move, both happen at the end of the tick.
 - **They last:** both are saved in [save games](save-games.md), kept when you edit the level while playing, and gone when you press **Stop**, like everything else the game did. Your level's files never change for them.
 
@@ -1027,7 +1025,7 @@ end
 - `Audio:play(Sound.Theme)` plays it the same everywhere: music, the interface.
 - `Audio:playAt(Sound.Footstep, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
 - `playSound(Sound.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use `setSoundPlaying` for that).
-- `setSoundPlaying(playing)` turns the entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
+- **`bool sounding`**, a field of a component's, turns its entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off (on another entity, `target:setSoundPlaying(on)`).
 - `Audio:setVolume(Bus.Music, volume)` sets a [bus](mixer.md) for the rest of the play (the buses are the Mixer's, as `state Bus` in `solis/project.lst`; the UI bus is `Bus.Ui`, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
 In Lua they're `solis.Audio:playAt("Footstep", solis.entity.position(self.me))` and so on (the option's name as text; `"sfx/footstep"` works too). In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
@@ -1048,6 +1046,18 @@ Game code reads the player's controls as named actions, never keys: `Input:axis(
 Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocity`, `setVelocity`), and looks along lines with `Physics:castRay`, which gives back a `RayHit`. Characters with a **CharacterBody** are moved with `walk` and asked `grounded`: see [Characters and cameras](characters-and-cameras.md), which also has the ready-made character controller and cameras in `solis/kit/`.
 
 ## What the engine offers
+
+**Fields Solis reads.** A Lust component sets these on its own entity by holding them in its `has` block and setting them with `=`; Solis reads them as each tick ends ([decision 0137](../decisions/0137-the-uniformity-pass.md)). On another entity, use the calls below.
+
+| Field | What it sets |
+|---|---|
+| `Clip animation` | The clip the entity's Sprite plays ([Animating sprites](sprite-animation.md#in-game-code)). |
+| `Facing facing`, `Look look` | Which way the Sprite faces, and the look it wears ([Facing and looks](sprite-animation.md#facing-and-looks)). |
+| `bool flipped`, `bool flippedDown` | The Sprite mirrored across, and upside down. |
+| `bool visible` | Hidden (false) or shown, with everything under it. |
+| `bool solid` | Its collider in the way, or not. |
+| `bool sounding` | Its AudioSource on or off. |
+| `Screen screen` | The screen its Screen shows; `Screen.None` hides it ([Game screens](screens.md)). |
 
 | In | Method | What it does |
 |---|---|---|

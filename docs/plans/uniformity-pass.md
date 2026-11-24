@@ -86,6 +86,27 @@ Each is planned in detail when it starts, as the game stages are.
 
 *As built (U4):* every kind is written flat by `project_names::one_dot`, with each name's file under it (`-- @Module.Fighter = ships/fighter`), read back by `paths_in` into `Compiled::name_paths`, which the running code gives Luau (`path_for` in the natives that spawn, play sounds, animate and read text) and the editor's Library keeps (`LibraryFiles::set_name_paths`: a clip finds its sheet and a crop its picture through the table, not by dots). `ClipFinished` names its clip through the table; renaming follows a file by its own name, and a clip's or crop's names along with its sheet's or picture's (`KnightWalk` follows `Knight`); moving a file or a folder renames nothing. The translations' check also finds a text key in its one-dot form. `World:find` is gone from the manual and kept for the Console. Groups (`clip.sheet`) wait on Lust (data on a state's options; asked of Lust). The samples aren't whole projects, so `--smoke` can't open them; the app's tests compile and run their code.
 
+### U5 in detail: setting with `=` (planned 2026-11-24)
+
+**What changes for a game writer:** what a component sets on its own entity is a field in its `has` block, set with `=`, which Solis reads as each tick ends, as Fixes 3's `facing` and `look` are:
+
+| Field | Was | Does |
+| --- | --- | --- |
+| `Clip animation` | `animate(Clip.KnightWalk)` | the clip the sprite plays; setting the one playing carries on, as `animate` did |
+| `bool flipped`, `bool flippedDown` | `setFlip(across, down)` | the sprite mirrored across, and upside down |
+| `bool visible` | `setVisible(shown)` | hidden (false) or shown, with everything under it |
+| `bool solid` | `setSolid(solid)` | its collider in the way or not |
+| `bool sounding` | `setSoundPlaying(playing)` | its AudioSource on or off |
+| `Screen screen` | `showScreen(…)`, `hideScreen(…)` | the screen its Screen shows; `Screen.None` hides it |
+
+Moving and turning stay calls (decision 0137), and so does every one of these on **another** entity (`orc:setVisible(false)`), until Lust can write to another thing's component. `animateFromStart` and `stopAnimation` stay calls: starting again and stopping are things that happen, not values. The game-wide settings (`Screens:setTextSize`, `Window:setFullscreen`, `Audio:setVolume`, `World:setGameSpeed`) become fields of those objects in a second part, U5b, since the objects are the engine's own (`object Screens { has { float textSize; … } }`, read as each tick ends).
+
+**How:** `engine_fields::Read` gains the six, each with its kind (a state's option, or a yes or no), read as each tick ends like `facing`, landing as the changes the calls made (`PlayClip`, `Flip`, `Visible`, `Solid`, `SoundPlaying`, `ShowScreen`). The manual teaches the fields for a component's own entity and the calls for another's; the interface file lists the fields.
+
+**Tests:** each field lands from the first tick and on each change and not otherwise, the same on four cores; a component holding `flipped` alone leaves `flippedDown` false; the manual's examples compile.
+
+*As built (U5, first part):* the six fields are `engine_fields::Read`'s, read with `facing` and `look` (a state's option or a yes or no, kept as text), landing as the changes the calls made, in each entity's order; `flipped` and `flippedDown` land together as one `Flip`, and `Screen.None` hides the screen last shown. `Screen.None` is now always the first of `state Screen`. The manual teaches the fields for a component's own entity (Animating sprites, Game code's hiding and colliders and its reference, Game screens) and the calls for another's. The game-wide objects' settings are U5b.
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.

@@ -26,17 +26,48 @@ pub enum Read {
     Facing,
     /// `Look look`: which of its clips file's looks the sprite wears.
     Look,
+    /// `Clip animation`: the clip its sprite plays (U5; was `animate`).
+    Animation,
+    /// `bool flipped`: its sprite mirrored across (was `setFlip`).
+    Flipped,
+    /// `bool flippedDown`: its sprite upside down.
+    FlippedDown,
+    /// `bool visible`: shown, or hidden with everything under it (was
+    /// `setVisible`).
+    Visible,
+    /// `bool solid`: its collider in the way (was `setSolid`).
+    Solid,
+    /// `bool sounding`: its AudioSource on (was `setSoundPlaying`).
+    Sounding,
+    /// `Screen screen`: the screen its Screen shows, `Screen.None` none
+    /// (was `showScreen` and `hideScreen`).
+    Screen,
 }
 
 impl Read {
     /// Every field the engine reads.
-    pub const ALL: [Self; 2] = [Self::Facing, Self::Look];
+    pub const ALL: [Self; 9] = [
+        Self::Facing,
+        Self::Look,
+        Self::Animation,
+        Self::Flipped,
+        Self::FlippedDown,
+        Self::Visible,
+        Self::Solid,
+        Self::Sounding,
+        Self::Screen,
+    ];
 
     /// The type written before the field's name.
     pub fn kind(self) -> &'static str {
         match self {
             Self::Facing => "Facing",
             Self::Look => "Look",
+            Self::Animation => "Clip",
+            Self::Screen => "Screen",
+            Self::Flipped | Self::FlippedDown | Self::Visible | Self::Solid | Self::Sounding => {
+                "bool"
+            }
         }
     }
 
@@ -45,14 +76,13 @@ impl Read {
         match self {
             Self::Facing => "facing",
             Self::Look => "look",
-        }
-    }
-
-    /// The change that sets it on the entity.
-    fn change(self, entity: EntityId, value: String) -> Change {
-        match self {
-            Self::Facing => Change::Facing(entity, value),
-            Self::Look => Change::Look(entity, value),
+            Self::Animation => "animation",
+            Self::Flipped => "flipped",
+            Self::FlippedDown => "flippedDown",
+            Self::Visible => "visible",
+            Self::Solid => "solid",
+            Self::Sounding => "sounding",
+            Self::Screen => "screen",
         }
     }
 }
@@ -93,14 +123,30 @@ pub fn found(files: &[(String, String)]) -> Vec<Watched> {
     watched
 }
 
-/// What a core last read of each running component's fields.
+/// What a core last read of each running component's fields: the value,
+/// as text (`NorthEast`, `true`), with the component that holds it.
 pub(crate) type Seen = HashMap<(EntityId, Read), (String, String)>;
+
+/// A field's value as text: a state's option or a yes or no.
+fn text_of(value: &LuaValue) -> Option<String> {
+    match value {
+        LuaValue::String(s) => s.to_str().ok().map(|s| s.to_string()),
+        LuaValue::Boolean(b) => Some(b.to_string()),
+        _ => None,
+    }
+}
 
 /// Reads the `watched` fields of the `running` components and gives back
 /// a change for each that isn't what was `seen` last (by entity and field,
 /// with the component that holds it), keeping what was read for next
-/// time. A component gone, or stopped holding one, is forgotten.
-pub(crate) fn changes(watched: &[Watched], running: &RunningMap, seen: &mut Seen) -> Vec<Change> {
+/// time. A component gone, or stopped holding one, is forgotten. `lua`
+/// finds a clip's file (its names, as the code was compiled with them).
+pub(crate) fn changes(
+    watched: &[Watched],
+    running: &RunningMap,
+    seen: &mut Seen,
+    lua: &mlua::Lua,
+) -> Vec<Change> {
     if watched.is_empty() {
         seen.clear();
         return Vec::new();
@@ -111,23 +157,57 @@ pub(crate) fn changes(watched: &[Watched], running: &RunningMap, seen: &mut Seen
         let Instance::Lust(table) = &component.instance else {
             continue;
         };
+        let mut flip: Option<(bool, bool)> = None;
         for one in watched.iter().filter(|w| w.component == *name) {
-            let Ok(LuaValue::String(value)) = table.raw_get::<LuaValue>(one.read.field()) else {
+            let Some(value) = table
+                .raw_get::<LuaValue>(one.read.field())
+                .ok()
+                .as_ref()
+                .and_then(text_of)
+            else {
                 continue;
             };
-            let Ok(value) = value.to_str() else {
-                continue;
-            };
-            let value = value.to_string();
-            if value.is_empty() || value == crate::project_names::NO_OPTION {
-                continue;
-            }
             let key = (*entity, one.read);
-            let read = (name.clone(), value);
-            if seen.get(&key) != Some(&read) {
-                changes.push(one.read.change(*entity, read.1.clone()));
-            }
+            let before = seen.get(&key).map(|(_, v)| v.clone());
+            let read = (name.clone(), value.clone());
+            let changed = seen.get(&key) != Some(&read);
             now.insert(key, read);
+            if !changed {
+                continue;
+            }
+            let on = value == "true";
+            match one.read {
+                Read::Facing | Read::Look
+                    if value.is_empty() || value == crate::project_names::NO_OPTION => {}
+                Read::Facing => changes.push(Change::Facing(*entity, value)),
+                Read::Look => changes.push(Change::Look(*entity, value)),
+                Read::Animation => {
+                    let clip = crate::project_names::path_for(lua, "Clip", &value)
+                        .and_then(|p| p.rsplit('/').next().map(str::to_owned));
+                    if let Some(clip) = clip {
+                        changes.push(Change::PlayClip(*entity, clip, false));
+                    }
+                }
+                Read::Flipped | Read::FlippedDown => flip = Some((false, false)),
+                Read::Visible => changes.push(Change::Visible(*entity, on)),
+                Read::Solid => changes.push(Change::Solid(*entity, on)),
+                Read::Sounding => changes.push(Change::SoundPlaying(*entity, on)),
+                Read::Screen if value == crate::project_names::NO_OPTION => {
+                    if let Some(shown) = before.filter(|b| b != crate::project_names::NO_OPTION) {
+                        changes.push(Change::ShowScreen(*entity, shown, false));
+                    }
+                }
+                Read::Screen => changes.push(Change::ShowScreen(*entity, value, true)),
+            }
+        }
+        // The two flips land together, as `setFlip` set them.
+        if flip.is_some() {
+            let is_on = |read: Read| now.get(&(*entity, read)).is_some_and(|(_, v)| v == "true");
+            changes.push(Change::Flip(
+                *entity,
+                is_on(Read::Flipped),
+                is_on(Read::FlippedDown),
+            ));
         }
     }
     *seen = now;

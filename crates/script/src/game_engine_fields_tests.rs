@@ -171,3 +171,84 @@ fn nearest_facing_rounds_a_way_to_one_of_eight() {
     assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
     assert_eq!(world.said, ["North SouthWest South East"]);
 }
+
+/// The fields that set what the calls did (U5, decision 0137): a door
+/// that opens on its third tick (its clip, its collider, its screen) and
+/// hides on its fifth, flipped from the start.
+#[test]
+fn a_component_s_own_settings_are_fields_solis_reads() {
+    let main = "fetch \"solis/project\":[Clip, Screen];\n\
+        component Door {\n\
+            has {\n\
+                Clip animation = Clip.DoorShut;\n\
+                bool flipped = true;\n\
+                bool visible = true;\n\
+                bool solid = true;\n\
+                Screen screen = Screen.None;\n\
+                int ticks = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                ticks = ticks + 1;\n\
+                is ticks == 3? then {\n\
+                    animation = Clip.DoorOpen;\n\
+                    solid = false;\n\
+                    screen = Screen.Hint;\n\
+                }\n\
+                is ticks == 5? then {\n\
+                    visible = false;\n\
+                    screen = Screen.None;\n\
+                }\n\
+            }\n\
+        }\n\
+        end\n";
+    let names = crate::project_names::Names::default()
+        .and_clips(&["door/shut", "door/open"], &[])
+        .and_screens(&["Hint"]);
+    let (mut files, _) = crate::describe::descriptions_for("Test 1.0", "solis", &names);
+    files.push(("main.lst".into(), main.to_string()));
+    let code = Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let code = match crate::code::compile_within(&code, crate::luau::Limits::unhurried()) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{problems:#?}"),
+    };
+    let played = |shards: usize| {
+        let mut world = TestWorld::with(&["A"]);
+        let mut game = unhurried(shards);
+        game.load(&code, &mut world).unwrap();
+        let empty = ComponentData::default();
+        assert!(
+            game.sync_many(vec![(id(1), "Door", &empty)], &mut world)
+                .is_empty()
+        );
+        let mut landed = Vec::new();
+        for tick in 1..=6_u32 {
+            world.set_clock(u64::from(tick), f64::from(tick) / 60.0);
+            let ticked = game.tick(1.0 / 60.0, &mut world);
+            assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+            landed.extend(world.sprite_changes.drain(..).map(|c| (tick, c)));
+        }
+        landed
+    };
+    let landed = played(1);
+    assert_eq!(
+        landed,
+        [
+            (1, Change::PlayClip(id(1), "shut".into(), false)),
+            (1, Change::Visible(id(1), true)),
+            (1, Change::Solid(id(1), true)),
+            (1, Change::Flip(id(1), true, false)),
+            (3, Change::PlayClip(id(1), "open".into(), false)),
+            (3, Change::Solid(id(1), false)),
+            (3, Change::ShowScreen(id(1), "Hint".into(), true)),
+            (5, Change::Visible(id(1), false)),
+            (5, Change::ShowScreen(id(1), "Hint".into(), false)),
+        ],
+        "Screen.None at the start shows nothing; flippedDown isn't held, so it's false"
+    );
+    assert_eq!(played(4), landed);
+}
