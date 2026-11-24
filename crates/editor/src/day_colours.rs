@@ -96,8 +96,7 @@ pub(crate) fn day_colours(ui: &mut Ui, value: &Value, mixed: bool) -> Option<Val
                     changed = true;
                 }
                 let mut h = f64::from(*hour);
-                let drag = ui.add(
-                    egui::DragValue::new(&mut h)
+                let drag = crate::widgets::field::number(ui, egui::DragValue::new(&mut h)
                         .range(0.0..=23.99)
                         .speed(0.05)
                         .custom_formatter(|v, _| clock(v))

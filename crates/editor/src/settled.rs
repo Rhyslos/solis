@@ -58,9 +58,21 @@ pub(crate) fn settled_number(
     value: f64,
     field: impl for<'a> FnOnce(egui::DragValue<'a>) -> egui::DragValue<'a>,
 ) -> (Option<f64>, egui::Response) {
+    settled_number_in(ui, salt, crate::tokens::size::SLIDER_NUMBER_W, value, field)
+}
+
+/// [`settled_number`] in a box `width` wide, for one that shows words.
+pub(crate) fn settled_number_in(
+    ui: &mut Ui,
+    salt: impl Hash + Debug,
+    width: f32,
+    value: f64,
+    field: impl for<'a> FnOnce(egui::DragValue<'a>) -> egui::DragValue<'a>,
+) -> (Option<f64>, egui::Response) {
     let id = ui.id().with(("settled", salt));
     let mut shown: f64 = ui.data(|d| d.get_temp(id)).unwrap_or(value);
-    let response = ui.add(field(egui::DragValue::new(&mut shown)));
+    let response =
+        crate::widgets::field::number_in(ui, width, field(egui::DragValue::new(&mut shown)));
     let settled = if response.dragged() || response.has_focus() {
         ui.data_mut(|d| d.insert_temp(id, shown));
         None

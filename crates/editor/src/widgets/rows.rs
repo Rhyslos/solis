@@ -154,3 +154,92 @@ pub fn column_header(ui: &mut Ui, title: &str, tools: impl FnOnce(&mut Ui)) {
     strip.with_layout(Layout::right_to_left(Align::Center), tools);
     underline(ui, across, rect.bottom() - size::LINE, tokens::line());
 }
+
+/// What a row's name being renamed in place asked for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Renamed {
+    /// Still typing: keep the words for the next frame.
+    Typing,
+    /// `Enter`, or clicking away: keep the new name.
+    Keep,
+    /// `Esc`: leave the old name.
+    Leave,
+}
+
+/// A row's name edited in place, the same in every list ([decision
+/// 0137](../../../../docs/decisions/0137-the-uniformity-pass.md)): a box
+/// in the accent over `rect`, holding `typed`. On its `first` frame the
+/// name is picked out, so typing replaces it. `Enter` or clicking away
+/// keeps it, `Esc` leaves the old one. `id` tells this box from others;
+/// `font` is the row's own.
+pub fn rename_in(
+    ui: &mut Ui,
+    rect: Rect,
+    id: egui::Id,
+    typed: &mut String,
+    font: egui::FontId,
+    first: bool,
+) -> (egui::Response, Renamed) {
+    let (enter, escape) = ui.input(|i| {
+        (
+            i.key_pressed(egui::Key::Enter),
+            i.key_pressed(egui::Key::Escape),
+        )
+    });
+    let accent = crate::interface_look::accent_fill();
+    ui.painter().rect(
+        rect,
+        size::radius::SMALL,
+        tokens::field(),
+        egui::Stroke::new(size::LINE, accent),
+        egui::StrokeKind::Inside,
+    );
+    let mut inner = ui.new_child(
+        UiBuilder::new()
+            .max_rect(rect.shrink2(vec2(size::ROW_GAP, 0.0)))
+            .layout(Layout::left_to_right(Align::Center)),
+    );
+    let mut output = egui::TextEdit::singleline(typed)
+        .id(id)
+        .frame(egui::Frame::NONE)
+        .margin(egui::Margin::ZERO)
+        .font(font)
+        .text_color(tokens::text_primary())
+        .desired_width(rect.width() - 2.0 * size::ROW_GAP)
+        .show(&mut inner);
+    output.response.widget_info(|| {
+        let mut info = egui::WidgetInfo::labeled(egui::WidgetType::TextEdit, true, "New name");
+        info.current_text_value = Some(typed.clone());
+        info
+    });
+    if first {
+        output.response.request_focus();
+        let all = egui::text::CCursorRange::two(
+            egui::text::CCursor::new(0),
+            egui::text::CCursor::new(typed.chars().count()),
+        );
+        output.state.cursor.set_char_range(Some(all));
+        output.state.store(ui.ctx(), id);
+    }
+    let answer = if escape {
+        Renamed::Leave
+    } else if enter || (!first && output.response.lost_focus()) {
+        Renamed::Keep
+    } else {
+        Renamed::Typing
+    };
+    (output.response.response, answer)
+}
+
+/// [`rename_in`] over a row `height` tall across the room left.
+pub fn rename_row(
+    ui: &mut Ui,
+    height: f32,
+    id: egui::Id,
+    typed: &mut String,
+    font: egui::FontId,
+    first: bool,
+) -> (egui::Response, Renamed) {
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
+    rename_in(ui, rect, id, typed, font, first)
+}

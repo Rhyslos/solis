@@ -861,29 +861,29 @@ fn entity_row(
     requests: &mut Vec<LevelRequest>,
 ) {
     if let Some((renamed, mut text, focus)) = renaming(ui.ctx()).filter(|(r, ..)| *r == id) {
-        let edit = ui.add(egui::TextEdit::singleline(&mut text).desired_width(f32::INFINITY));
-        if focus {
-            edit.request_focus();
-        }
-        let (enter, escape) = ui.input(|i| {
-            (
-                i.key_pressed(egui::Key::Enter),
-                i.key_pressed(egui::Key::Escape),
-            )
-        });
-        if escape {
-            stop_renaming(ui.ctx());
-        } else if edit.lost_focus() || enter {
-            stop_renaming(ui.ctx());
-            if text != entity.name {
-                requests.push(LevelRequest::Rename {
-                    entity: renamed,
-                    name: text,
-                });
+        let (_, answer) = crate::widgets::rows::rename_row(
+            ui,
+            size::row_h(),
+            egui::Id::new(("level rename", renamed)),
+            &mut text,
+            text::row(),
+            focus,
+        );
+        match answer {
+            crate::widgets::rows::Renamed::Leave => stop_renaming(ui.ctx()),
+            crate::widgets::rows::Renamed::Keep => {
+                stop_renaming(ui.ctx());
+                if text != entity.name {
+                    requests.push(LevelRequest::Rename {
+                        entity: renamed,
+                        name: text,
+                    });
+                }
             }
-        } else {
-            ui.ctx()
-                .data_mut(|d| d.insert_temp(rename_key(), (renamed, text, false)));
+            crate::widgets::rows::Renamed::Typing => {
+                ui.ctx()
+                    .data_mut(|d| d.insert_temp(rename_key(), (renamed, text, false)));
+            }
         }
         return;
     }

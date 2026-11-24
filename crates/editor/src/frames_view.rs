@@ -8,7 +8,7 @@
 //! first. New, Copy and Delete are on Animate's ribbon.
 
 use crate::frames_editor::{FramesEditor, STANDARD_ZOOM, ZOOM_RANGE};
-use crate::settled::{settled_drag, settled_number};
+use crate::settled::{settled_drag, settled_number_in};
 use crate::theme;
 use animation::clips_file::{Clip as OwnClip, Facing};
 use animation::{ClipSet, Direction};
@@ -299,11 +299,23 @@ fn clip_row(
     if let Some((old, typed)) = &mut editor.renaming
         && *old == clip.name
     {
-        let response = ui.add(egui::TextEdit::singleline(typed).desired_width(f32::INFINITY));
-        response.request_focus();
-        if response.lost_focus() {
-            let (old, typed) = editor.renaming.take().unwrap_or_default();
-            if !ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+        let first = !editor.rename_started;
+        editor.rename_started = true;
+        let (_, answer) = crate::widgets::rows::rename_row(
+            ui,
+            22.0,
+            egui::Id::new(("clip rename", i)),
+            typed,
+            crate::tokens::text::row(),
+            first,
+        );
+        match answer {
+            crate::widgets::rows::Renamed::Typing => {}
+            crate::widgets::rows::Renamed::Leave => {
+                editor.renaming = None;
+            }
+            crate::widgets::rows::Renamed::Keep => {
+                let (old, typed) = editor.renaming.take().unwrap_or_default();
                 changed |= editor.rename(clips, &old, &typed);
             }
         }
@@ -372,6 +384,7 @@ fn clip_row(
     }
     if response.double_clicked() && !clip.from_aseprite {
         editor.renaming = Some((clip.name.clone(), clip.name.clone()));
+        editor.rename_started = false;
     }
     response.on_hover_text(if clip.from_aseprite {
         "An Aseprite tag: its frames, times and direction come from Aseprite"
@@ -432,7 +445,7 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
             } else {
                 let most = f64::from(animation::frames_file::MAX_REPEATS);
                 let (repeats, _) =
-                    settled_number(ui, "clip repeats", f64::from(clip.repeats), |d| {
+                    settled_number_in(ui, "clip repeats", 104.0, f64::from(clip.repeats), |d| {
                         d.range(0.0..=most).speed(0.05).custom_formatter(|n, _| {
                             match n.round() as u32 {
                                 0 => "over and over".to_owned(),

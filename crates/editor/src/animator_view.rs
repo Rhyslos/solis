@@ -259,9 +259,11 @@ fn parameter_value(
             }
         }
         Some(ParamValue::Number(mut n)) => {
-            if ui
-                .add(egui::DragValue::new(&mut n).speed(0.02).max_decimals(2))
-                .changed()
+            if crate::widgets::field::number(
+                ui,
+                egui::DragValue::new(&mut n).speed(0.02).max_decimals(2),
+            )
+            .changed()
             {
                 editor.set_preview(name, ParamValue::Number(n));
             }

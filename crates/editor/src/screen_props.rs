@@ -504,7 +504,8 @@ fn size_field(
         let id = egui::Id::new(("screen size", name, piece.span.start));
         let written: f32 = now.and_then(|v| v.trim().parse().ok()).unwrap_or(100.0);
         let mut n: f32 = ui.data(|d| d.get_temp(id)).unwrap_or(written);
-        let drag = ui.add_enabled(
+        let drag = crate::widgets::field::number_if(
+            ui,
             mode == "number",
             egui::DragValue::new(&mut n).range(0.0..=8192.0).speed(1.0),
         );
@@ -562,7 +563,10 @@ fn number_field(
             -8192.0..=8192.0
         };
         let speed = if name == "opacity" { 0.01 } else { 1.0 };
-        let drag = ui.add(egui::DragValue::new(&mut n).range(range).speed(speed));
+        let drag = crate::widgets::field::number(
+            ui,
+            egui::DragValue::new(&mut n).range(range).speed(speed),
+        );
         changed |= kept_while_dragged(ui, &drag, id, n, || {
             let v = if name == "opacity" {
                 format!("{:.2}", n)
