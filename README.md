@@ -448,9 +448,9 @@ The 2D and shared work in the order of the [game stages](docs/plans/game-stages.
 - [x] Text effects: words in a screen's text coloured, bold, slanted, wavy or shaking (`[wave]…[/wave]`), pictures inside text (`[icon=Picture.Ui.Coin]`), and text typing itself out with a sound, `[pause]` and `[speed]`, heard as `TypingFinished` and skipped with `finishTyping` ([manual](docs/manual/text-effects.md))
 - [x] Translations and subtitles: the game's text by key (`Text.Shop.Welcome`) in Fluent files per language with the main language as the fallback, Project settings › Languages, the Translations tab, the translators' spreadsheet, the check in Problems, tables' translated columns, the player's language, and captions for sounds and voices drawn by Solis ([manual](docs/manual/translations.md), [decision 0131](docs/decisions/0131-translations-and-captions.md))
 - [x] Fixes 1: bugs, and a project check that starts the game ([decision 0133](docs/decisions/0133-fixes-from-making-orc-invasion.md), [the report](docs/reports/orc-invasion-hurdles.md); choices in [decision 0134](docs/decisions/0134-fixes-1-choices.md)): screens and game code with hundreds of names start, the check starts the screens and `--smoke` plays the game, see-through colours on screens, copies named after their module's root, a project opens on a level, no false mistakes while it opens, and LFS only for big files
-- [ ] Fixes 2: the missing game-code calls
-- [ ] Fixes 3: clips by action and direction, and a character's other look
-- [ ] Fixes 4: Solis's files written down, and playing from the command line
+- [x] Fixes 2: the missing game-code calls: reading another entity's component (`other:knight()`, `World:the`), `exists()`, spawning with values, `setSolid` and `setVisible` ([manual](docs/manual/game-code.md))
+- [x] Fixes 3: clips by action and direction, and a character's other look: a picture cut into cells by a grid or by hand, clips with one, four or eight directions (the west side mirrored), looks, a sprite's Facing and Look, animators that face by a parameter, and game code's `facing` and `look` fields ([manual](docs/manual/sprite-animation.md))
+- [x] Fixes 4: Solis's files written down, and playing from the command line ([manual](docs/manual/solis-files.md), [playing](docs/manual/playing-from-the-command-line.md))
 - [ ] Dialogue, a full system in the engine ([outline](docs/plans/dialogue/README.md)): six milestones, counted in Dialogue below
 - [ ] Tooltips, and drag and drop
 - [ ] Fades

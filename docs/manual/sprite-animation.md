@@ -1,30 +1,48 @@
 # Animating sprites
 
-> Make sprites walk, swing and wave: play the clips you tagged in Aseprite, make clips of your own in Solis, and give frames events that play footsteps and tell your game code.
+> Make sprites walk, swing and wave: cut a picture into cells, put them into named clips that face four or eight ways, dress them in other looks, and play them from game code by name.
 
 ## When to use it
-For anything in a 2D game that moves frame by frame: a farmer walking, a hoe swinging, crops swaying, a door opening. A [clip](concepts.md#2d) is a run of a [sprite sheet](concepts.md#2d)'s frames, each shown for its own time, played forward, backward or there and back (ping-pong), over and over or a number of times.
+For anything in a 2D game that moves frame by frame: a knight walking, a hoe swinging, crops swaying, a door opening. A [clip](concepts.md#2d) is a run of [cells](concepts.md#cell), the pieces a picture is cut into, each shown for its own time, played forward, backward or there and back (ping-pong), over and over or a number of times.
 
-The quickest way is Aseprite's own: **tag** runs of frames there (*walk*, *idle*, *hoe*) and every tag is a clip in Solis, with Aseprite's frame times. To change a clip's speed, give frames events (a footstep on the frame a foot lands), or make clips Aseprite doesn't have, Solis keeps a small **clips file** (`.clips.lst`) beside the Aseprite file. A sprite can play either.
+A character's clips live in one **clips file** (`knight.clips.lst`) beside its picture: every clip by name (*walk*, *idle*, *swing*), each facing one, four or eight ways, and the picture's other **looks** (the knight in mana armour), which every clip plays in. Game code then asks for a clip by its name, says which way the sprite faces and which look it wears, and Solis picks the frames. A character with ten actions, eight directions and two looks is ten clips, not a hundred and sixty.
 
-To choose clips by what's happening (walking when moving, idle when not, facing the right way), use an [animator](animators.md).
+Drawn your frames in Aseprite? Its tags are clips already, with Aseprite's frame times, and a clips file beside it adds what Aseprite doesn't have.
+
+To choose clips by what's happening (walking when moving, idle when not), use an [animator](animators.md), or a `check` in game code.
 
 ## How to use it
-1. **Tag your frames in Aseprite** and save. In Solis, click the file in the Library: Properties lists its tags.
-2. **Play a clip on a sprite:** select a sprite and pick a **Clip** in its Sprite component. Press **Play**: it plays at its frame times. To see it move while you edit, open the viewport's **≡** menu and tick **Preview animation**.
-3. **Open the clips:** in the Aseprite file's Properties, press **Edit clips…**. Solis makes `walker.clips.lst` beside `walker.aseprite` (or opens the one there) and shows its clips on the **Animate** tab:
-   - **Frames**, the timeline: a tab of the bottom panel on the **Animate** tab (the clips file opens there; the × after it closes the file). In the left slot, **Clips**: every clip, with how long it is and where it comes from (*Aseprite* or *made here*). Click one to choose it. Beside them, the chosen clip's frames in order along a time ruler, each as wide as it lasts, so you see its timing at a glance. A ping-pong's way back is shown faded after them. The line in the accent colour is where it's playing; the lane below shows its events.
-   - **Clip**, the right slot: the chosen clip's **Speed**, **Direction**, how many times it **Plays**, **Plays first**, and for a clip of your own, its **Directions**.
+1. **Make the clips file.** Right-click the picture (a PNG or JPEG) in the Library and choose **Make clips…**. Solis makes `knight.clips.lst` beside `knight.png`, opens it on the **Animate** tab, and opens the pop-up that [cuts the picture into cells](#cutting-a-picture-into-cells). For an Aseprite file, press **Edit clips…** in its Properties instead: its frames are its cells, and its tags its first clips ([Clips from Aseprite](#clips-from-aseprite)).
+2. **Find your way round.** With a clips file open, the Animate tab shows:
+   - on the left, the **Clips** (each with how many directions it has, and whether it's *made here* or from *Aseprite*) and under them its **Looks**;
+   - in the middle, the **Cells** page: the chosen clip playing on the left, with the **facing pad** under it, and every cell of the picture, numbered, on the right, with **Cut picture…**;
+   - below, the **Frames** tab: the chosen clip's frames, a row for each direction, each frame as wide as it lasts along a time ruler, its events in a lane below. A ping-pong's way back is shown faded after them; the line in the accent colour is where it's playing;
+   - on the right, the **Clip** slot: the chosen clip's settings (Speed, Direction, Plays, Plays first, Directions), or a look's when one is picked.
 
-   While a clips file is open, Animate's [ribbon](concepts.md#the-window) is the clips file's: **Clip** (New, Copy, Delete), **Frames** (Take out), and how the clip plays (Plays, Speed, and a **Direction** list for a clip of your own). The design's cutscene controls after them (Keys, Step, Linear, Smooth, Tracks) are [unfinished parts](unfinished-parts.md).
-4. **Watch it:** press **▶** (or **Space** over the Frames tab). **⏮** goes back to the start, **■** stops, **⏭** goes to the last frame. **−** and **+** zoom the ruler.
+   Animate's [ribbon](concepts.md#the-window) is the clips file's: **Clip** (New, Copy, Delete), **Frames** (Take out), **Look** (the look shown, and **+ Look**), and how the clip plays (Plays, Speed, and a **Direction** list for a clip of your own). The design's cutscene controls after them (Keys, Step, Linear, Smooth, Tracks) are [unfinished parts](unfinished-parts.md).
+3. **Make a clip:** the ribbon's **New** makes an empty one; double-click it to name it (*walk*). On the Cells page, click a cell, Shift+click to reach a run of them (Ctrl+click adds one), and drag them onto the clip's row in the Frames tab. **Copy** copies the chosen clip, so a run can start from a walk.
+4. **Time it:** click a frame (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out. With a frame picked, click a cell on the Cells page to show that cell in the frame instead. **＋ Add frames ▾** adds the picture's cells after the picked frame.
 5. **Give a frame an event:** click the frame, then type a name in **event**, or pick a sound event from **◆ ▾**. When the clip reaches that frame:
    - a sound event of the same name (`footstep`, or its path, `sfx/footstep`) plays on the sprite by itself, with no code;
    - game code on the entity hears `CueReached`, with the event as one of the project's names (`Cue.Footstep`).
-   Events typed in Aseprite (a cel's user data) work the same way.
-6. **Make a clip of your own:** the ribbon's **New** makes an empty one; **Copy** copies the chosen clip (a tag's copy can then be changed here). In the Frames tab, **＋ Add frames ▾** shows the sheet's frames: click one to add it after the picked frame. Double-click a clip of your own to rename it.
-7. **Change frames of your own clips:** click a frame to pick it (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out.
-8. **Close the file:** the **×** after the Frames tab closes it.
+6. **Give it directions,** for a character that turns: choose **Four** or **Eight** under **Directions** in the Clip slot, and fill each direction's row ([Directions](#directions)).
+7. **Watch it:** press **▶** (or **Space** over the Frames tab). **⏮** goes back to the start, **■** stops, **⏭** goes to the last frame. **−** and **+** zoom the ruler. The facing pad's arrows play each direction.
+8. **Play it on a sprite:** drop the clips file on the viewport, or select a sprite and pick the clips file as its **Sheet**. Pick its **Clip**, and its **Facing** and **Look** if it has them. Press **Play**: it plays at its frame times. To see it move while you edit, open the viewport's **≡** menu and tick **Preview animation**.
+9. **Close the file:** the **×** after the Frames tab closes it.
+
+### Cutting a picture into cells
+A PNG or JPEG with every frame laid out on it, a *sprite sheet*, is cut into cells before its clips can show them. **Make clips…** opens **Cut knight.png into cells** over the clips file's tabs. That pop-up cuts the picture into [cells](concepts.md#cell), the pieces its clips show, numbered from 0 across and then down, as Aseprite numbers frames:
+- **Cell** is a cell's width (W) and height (H) in pixels; **Between** the gap between cells; **Edge** the margin round the picture. The cells and their numbers move over the picture as you type, and the count under it says how many there are ("45 cells: 9 across, 5 down").
+- **Find grid** looks for see-through gaps between the cells and round the edge, and fills in all three. With no gaps it guesses the cell size from where the art changes.
+- **Free crop**, the pop-up's other mode, is for a picture whose frames aren't on an even grid. The grid's cells show faintly, and you can:
+  - drag on the picture to draw a cell, which gets the next number after the grid's;
+  - click a cell to pick it, then drag it to move it, drag a corner to size it, or type its **X**, **Y**, **W** and **H**;
+  - press the arrow keys to move the picked cell a pixel at a time, for lining frames up exactly;
+  - press **Back to the grid's box** to forget a cell's own box: a grid cell goes back to the grid's, and an added one is gone.
+- The wheel zooms the picture and the middle mouse button moves it.
+- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** above the cells on the **Cells** page.
+
+Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.
 
 ### Directions
 
@@ -45,23 +63,6 @@ Turning either setting off and back on gives the clip back as it was.
 
 Going from eight to four keeps the four straight rows. A new row starts as a copy of the first, so you only change what differs. A clip that mirrors its west side shows those rows faded, as the east rows they're flipped from (◈ NorthEast).
 
-### A plain picture's clips
-
-A PNG or JPEG with every frame laid out on it, a *sprite sheet*, gets clips too. Right-click it in the Library and choose **Make clips…**: Solis makes `knight.clips.lst` beside `knight.png`, opens its tabs, and opens **Cut knight.png into cells** over them. That pop-up cuts the picture into [cells](concepts.md#cell), the pieces its clips show, numbered from 0 across and then down, as Aseprite numbers frames:
-- **Cell** is a cell's width (W) and height (H) in pixels; **Between** the gap between cells; **Edge** the margin round the picture. The cells and their numbers move over the picture as you type, and the count under it says how many there are ("45 cells: 9 across, 5 down").
-- **Find grid** looks for see-through gaps between the cells and round the edge, and fills in all three. With no gaps it guesses the cell size from where the art changes.
-- **Free crop**, the pop-up's other mode, is for a picture whose frames aren't on an even grid. The grid's cells show faintly, and you can:
-  - drag on the picture to draw a cell, which gets the next number after the grid's;
-  - click a cell to pick it, then drag it to move it, drag a corner to size it, or type its **X**, **Y**, **W** and **H**;
-  - press the arrow keys to move the picked cell a pixel at a time, for lining frames up exactly;
-  - press **Back to the grid's box** to forget a cell's own box: a grid cell goes back to the grid's, and an added one is gone.
-- The wheel zooms the picture and the middle mouse button moves it.
-- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** above the cells on the **Cells** page.
-
-Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.
-
-Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
-
 ### Looks
 A character can wear other clothes, armour or colours without making its clips again. Draw the other picture the same size and laid out the same way, `knight-mana.png` beside `knight.png`, and add it as a **look** of the clips file: every clip then plays in it, from the same cells.
 
@@ -70,6 +71,16 @@ A character can wear other clothes, armour or colours without making its clips a
 - In the look's settings, **Name** renames it, **Make main** makes it the look sprites wear when their Look is empty, and **Remove look** takes it out. **← Back to the clip** goes back to the clip's settings.
 
 A sprite wears a look by its **Look** setting in Properties (see [Settings](#settings)).
+
+### Clips from Aseprite
+An Aseprite file needs no cutting: its frames are its cells, numbered from 0 as Aseprite numbers them. **Tag** runs of frames in Aseprite and save, and every tag is a clip in Solis with Aseprite's frame times, direction and repeat count; click the file in the Library and Properties lists them. A sprite can play the Aseprite file's clips straight away, with no clips file.
+
+**Edit clips…** in the file's Properties makes `walker.clips.lst` beside `walker.aseprite` (or opens the one there), for what Aseprite doesn't have: a clip's speed, events on frames, directions and clips of your own. A tag's frames stay Aseprite's, so saving there keeps both in step: to change them in Solis, **Copy** the clip and change the copy. Events typed in Aseprite (a cel's user data) work like events added here.
+
+**How a tag's name becomes a clip's name.** The clip keeps the tag's name as it is (`walk`, `Walk NE`). Game code names a clip by its file's path and the tag, each part with its first letter made a capital: `sprites/walker.aseprite`'s `walk` is `Clip.Sprites.Walker.Walk`. A name of all capitals keeps only its first (`IDLE` is `Idle`). A tag whose name holds a space or a dash, or starts with a digit, plays and edits as usual but can't be named in game code, and the Console says so when the names are written: rename the tag in Aseprite (`WalkNE`), or give the clip a direction instead ([Directions](#directions)), which is what directions are for.
+
+### Saving and undo
+Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### In game code
 Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.Sprites.Farmer.Walk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
@@ -251,6 +262,26 @@ end
 
 The component's field is the sprite's facing and look from the game's first tick: its starting value wins over the Sprite's own **Facing** and **Look** in Properties. Set it only while moving: `nearestFacing` of no way at all is South.
 
+**Why it's built this way.** Before clips had directions and looks, a knight with ten actions facing eight ways in two looks was 160 clips, each with its own name, and game code needed a lookup table to find the right one: one line for every action, direction and look.
+
+```text
+-- Before: a clip for every action, direction and look.
+check facing {
+    when North { animate(Clip.Sprites.Knight.WalkNorthMain); }
+    when NorthEast { animate(Clip.Sprites.Knight.WalkNorthEastMain); }
+    -- … six more directions, then all eight again for the mana look,
+    -- then the same for idle, swing, hurt and the other actions.
+}
+```
+
+Now the clip is named once and the facing and the look are values beside it, so the table is gone:
+
+```text
+-- After: one clip; the facing and the look choose its frames.
+facing = nearestFacing([push.x, push.y]);
+animate(Clip.Sprites.Knight.Walk);
+```
+
 Two mistakes are said in the Console, once a play for each entity, and change nothing:
 - **A look from another clips file**, `look = Look.OrcRed;` on the knight: the Console names the file the look belongs to and the looks this sprite can wear.
 - **A facing on a sprite whose animator turns it**: a state that [faces by a parameter](animators.md) sets the facing itself each tick, so set the animator's direction parameter instead.
@@ -264,8 +295,8 @@ The Sprite component's clip settings:
 |---|---|
 | Sheet | An Aseprite file (its tags are its clips) or a clips file (`.clips.lst`). |
 | Clip | The clip it plays. Empty: the clips file's clip marked **Plays first**, or with none, the still **Frame**. |
-| Look | Which of its clips file's looks it shows: the main one (empty), or another picture cut the same way, such as the knight in mana armour. Every clip plays in it. A look's picture should be the main one's size, or its cells won't line up (the Clip slot says so). |
-| Facing | Which way it faces: North, NorthEast, East, SouthEast, South, SouthWest, West or NorthWest. A clip with directions plays the row nearest it: with four directions, a diagonal keeps showing north or south if that's what it showed, and otherwise turns east or west; a mirrored west side plays its east row flipped. Turning mid-clip keeps its place in the clip. |
+| Look | Which of its clips file's looks it shows: the main one (empty), or another picture cut the same way, such as the knight in mana armour. Every clip plays in it. A look's picture should be the main one's size, or its cells won't line up (the Clip slot says so). A component's `look` field sets it while the game runs ([Facing and looks](#facing-and-looks)). |
+| Facing | Which way it faces: North, NorthEast, East, SouthEast, South, SouthWest, West or NorthWest. A clip with directions plays the row nearest it: with four directions, a diagonal keeps showing north or south if that's what it showed, and otherwise turns east or west; a mirrored west side plays its east row flipped. Turning mid-clip keeps its place in the clip. A component's `facing` field, or an animator that faces by a parameter, sets it while the game runs. |
 | Playing | Whether the clip moves on while the game runs. Game code's `animate` and `stopAnimation` turn it on and off. |
 | Speed | 1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed. |
 | Clip time | How far into the clip it is, in seconds. Give a crowd of copies different times so they don't all step in step. |
@@ -285,7 +316,7 @@ A look's settings, also in the Clip slot when a look is picked:
 
 | Setting | What it does |
 |---|---|
-| Name | The look's name, as a Sprite's **Look** picks it. |
+| Name | The look's name, as a Sprite's **Look** picks it. Game code names it with its file's name in front: `Look.KnightMana`. |
 | Picture | The picture it draws, cut as the main look's. Its size is checked against the main one's. |
 | Make main | Makes it the look a sprite wears when its Look is empty. |
 | Remove look | Takes it out of the clips file (never the main look); sprites wearing it go back to the main look. |
@@ -293,7 +324,9 @@ A look's settings, also in the Clip slot when a look is picked:
 ## Shortcuts
 | Action | Shortcut |
 |---|---|
-| Rename a clip (your own clips) | Double-click it in the Frames tab's list of clips (`Enter` keeps the name, `Esc` leaves it) |
+| Rename a clip (your own clips) | Double-click it in the Clips list (`Enter` keeps the name, `Esc` leaves it) |
+| Pick cells on the Cells page | Click, `Shift` + click for a run, `Ctrl` + click to add one; then drag them onto a row |
+| Move the picked cell a pixel (Cut picture…, Free crop) | Arrow keys |
 | Pick a frame | Click it |
 | Pick several frames | `Ctrl` + click, or `Shift` + click for a run |
 | Move picked frames (your own clips) | Drag them |
@@ -303,6 +336,9 @@ A look's settings, also in the Clip slot when a look is picked:
 
 ## Tips and common problems
 - **Problem:** a look's frames are cut off or show the wrong part. **Why:** its picture isn't the main one's size or layout. **Fix:** draw it on a copy of the main picture, so the cells line up; the Look settings say when the sizes differ.
+- **Problem:** a character jumps a little between frames. **Why:** its cells were cut from different places in the picture, or are different sizes. **Fix:** every cell stands on its bottom middle, so line the feet up there: in **Cut picture…**'s Free crop, nudge each cell with the arrow keys.
+- **Problem:** a walk restarts every time the character turns. **Why:** the code plays a different clip per direction. **Fix:** give the clip directions and set the component's `facing` instead; with **Same frames in every direction** on, turning keeps the step.
+- **Problem:** game code can't name a clip from Aseprite. **Why:** its tag's name has a space or a dash, or starts with a digit. **Fix:** rename the tag (`WalkNE`), or use one clip with directions ([Clips from Aseprite](#clips-from-aseprite)).
 - **Problem:** sprites don't move in the viewport. **Why:** the editor rests unless something changes. **Fix:** tick **Preview animation** in the viewport's **≡** menu, or press **Play**.
 - **Problem:** a tag's frames can't be moved, timed or taken out. **Why:** a tag's frames are Aseprite's, so saving there keeps both in step. **Fix:** change them in Aseprite, or **Copy** the clip (on the ribbon) to change the copy here.
 - **Problem:** an event doesn't play a sound. **Why:** no sound event has its name. **Fix:** name it after the sound event (`footstep` or `sfx/footstep`), or pick one from **◆ ▾**.
@@ -312,5 +348,6 @@ A look's settings, also in the Clip slot when a look is picked:
 ## Related
 - [Sprites from Aseprite](sprites.md): sheets, placing sprites, pivots.
 - [Sound events](sound-events.md): the sounds an event plays.
+- [Animators](animators.md): choosing clips by what's happening, and facing by a parameter.
 - [Game code](game-code.md): components and events.
-- [Concepts](concepts.md#2d): clip, clips file, frame event.
+- [Concepts](concepts.md#2d): clip, clips file, frame event, [cell](concepts.md#cell), [direction](concepts.md#direction), [look](concepts.md#look).
