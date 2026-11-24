@@ -71,6 +71,19 @@ Each is planned in detail when it starts, as the game stages are.
 
 *As built (U3):* the Tileset's picture is `widgets::picture_board::picture_board_in` (a picture that is part of its texture; `picture_board` is the whole of one), with the tileset editor's `zoom` and a new `pan`; its grid is `Board::lines`, the picked tile `Board::boxed`, and a click or a drag finds the tile under the pointer with `Board::to_pixel`. The − and + under the steps went; the ribbon's Zoom list stays. Its tiles aren't numbered as cells are, since a tileset's slots, numbered for the chosen terrain, are what its tiles are known by.
 
+### U4 in detail: one dot (planned 2026-11-24)
+
+**What changes for a game writer:** every kind of the project's names has one dot. A name is the file's own name (a clip's is its sheet's name and the clip's, `Clip.FarmerWalk`; a picture's crop is the picture's and the crop's, `Picture.ToolsAxe`; a text key's parts are joined, `Text.ShopWelcome`), with folders put in front only where two names would clash (`Module.ShipsFighter` beside `Module.DronesFighter`). Looks already work this way (`project_names::look_names`), and every kind moves onto that one rule.
+
+**How it's built:**
+1. **One naming rule.** `look_names` becomes `one_dot(kind, paths)`: the last part, joined parts for clips, crops and texts, folders in front on a clash, and none (with a note) for a name Lust can't take or two that would still be the same. `project_file` writes every state flat with it.
+2. **Names lead back to files through a table, not a spelling.** Today `path_of("Ships.Fighter")` turns an option back into `ships/fighter`; with one dot that can't be undone by spelling. `solis/project.lst` gains, under each state, a comment line per option naming its file (`-- Module.Fighter: ships/fighter`), which Solis writes and reads back (`states_in`, into `States`) and game code never sees. The natives that take a name (`World:spawn`, `Audio:play`, `animate`, `[icon=…]`, `World:text`, a level, a font) look it up in that table, kept on the compiled code, in place of `path_of`; `option_of` goes the other way through the same table (the editor's renames, the Library's names, the engine's events).
+3. **Clips.** `animate` takes the clip's option and finds its sheet and clip in the table, rather than the last part of a dotted name; `ClipFinished` and the Sprite's Clip field give the option back the same way.
+4. **Groups.** Folders stop being options inside options, so `is clip == Clip.Sprites.Knight?` goes. Decision 0137 makes a group a value of the name (`clip.sheet`); Lust's states can't carry values, so this waits on Lust (asked of Lust: data on a state's options), and until then the manual shows a `check` over the clips themselves.
+5. **Moved in the same pull request:** the manual's examples (every `Clip.Sprites.…`, `Module.Ships.…`, `Sound.Sfx.…`, `Picture.…`, `Level.…`, `Font.…`, `Text.…`), the kit and the sample games' Lust, the interface file, the field pickers (`Offer::Names`, which show options), Problems' checks of names, and `World:find` taken out of the manual (decision 0137, point 6).
+
+**Tests:** the naming rule (clashes, names Lust can't take, every kind), the table written and read back (and fuzzed), each native finding its file by a one-dot name, a renamed file followed, the manual's examples compiling, and the samples playing (`--smoke`).
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.
