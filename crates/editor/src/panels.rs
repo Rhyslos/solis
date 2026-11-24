@@ -251,7 +251,7 @@ impl PanelViewer<'_> {
     /// Whether `panel` shows a file of its own that its × closes now.
     pub(crate) fn closes_a_file(&self, panel: Panel) -> bool {
         match panel {
-            Panel::Clips | Panel::Frames => self.frames.is_some(),
+            Panel::Clips | Panel::Frames | Panel::Cells => self.frames.is_some(),
             Panel::Animator => self.animator.is_some(),
             Panel::Tileset => self.tileset.is_some(),
             Panel::AtlasCrop => self.atlas.is_some(),
@@ -289,7 +289,7 @@ impl PanelViewer<'_> {
     pub(crate) fn close(&mut self, panel: Panel) {
         match panel {
             // Either tab closes the clips file, and the other goes with it.
-            Panel::Clips | Panel::Frames => self.frames_out.closed = true,
+            Panel::Clips | Panel::Frames | Panel::Cells => self.frames_out.closed = true,
             Panel::Animator => self.frames_out.animator_closed = true,
             Panel::Tileset => self.frames_out.tileset_closed = true,
             Panel::AtlasCrop => self.frames_out.atlas_closed = true,
@@ -759,7 +759,7 @@ impl PanelViewer<'_> {
                     None => {}
                 }
             }
-            Panel::Clips | Panel::Frames => {
+            Panel::Clips | Panel::Frames | Panel::Cells => {
                 let Some(frames) = &mut self.frames else {
                     empty_note(ui, "No clips file is open.");
                     return;
@@ -768,6 +768,7 @@ impl PanelViewer<'_> {
                     Panel::Frames => {
                         crate::frames_view::frames_tab(ui, frames, self.keys == KeyOwner::Frames)
                     }
+                    Panel::Cells => crate::frames_view::cells_page(ui, frames),
                     _ => scrolled(ui, "clips list", |ui| {
                         crate::frames_view::clips_list(ui, frames)
                     }),

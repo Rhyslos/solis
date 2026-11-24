@@ -7287,8 +7287,11 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 <ul>
 <li>each frame is a tile as wide as it lasts, with its cell's number;</li>
 <li>click a frame to pick it and its row, then set its <strong>time</strong> and <strong>event</strong>, or add frames after it with <strong>＋ Add frames</strong>;</li>
-<li>click a row's name to pick the row.</li>
+<li>click a row's name to pick the row;</li>
+<li>on the <strong>Cells</strong> page, the clips file's page in the middle, click a cell, or Shift+click to reach a run of them (Ctrl+click adds one), then drag them onto a row: the row shows those cells, keeping the times its frames had;</li>
+<li>with a frame picked, click a cell on the Cells page to show that cell in the frame instead.</li>
 </ul>
+<p>The Cells page's left side plays the chosen clip's picked row, and its right side shows every cell, numbered.</p>
 <p>Going from eight to four keeps the four straight rows. A new row starts as a copy of the first, so you only change what differs. A clip that mirrors its west side shows those rows faded, as the east rows they're flipped from (◈ NorthEast).</p>
 <h4 id="sprite-animation--a-plain-pictures-clips">A plain picture's clips<a class="anchor" href="#sprite-animation--a-plain-pictures-clips" aria-label="Link to this section">#</a></h4>
 <p>A PNG or JPEG with every frame laid out on it, a <em>sprite sheet</em>, gets clips too. Right-click it in the Library and choose <strong>Make clips…</strong>: Solis makes <code>knight.clips.lst</code> beside <code>knight.png</code>, opens its tabs, and opens <strong>Cut knight.png into cells</strong> over them. That pop-up cuts the picture into <a href="#concepts--cell">cells</a>, the pieces its clips show, numbered from 0 across and then down, as Aseprite numbers frames:</p>
@@ -7304,7 +7307,7 @@ Events typed in Aseprite (a cel's user data) work the same way.</li>
 </ul>
 </li>
 <li>The wheel zooms the picture and the middle mouse button moves it.</li>
-<li><strong>Use these cells</strong> keeps the grid in the clips file, as one step <strong>Ctrl+Z</strong> undoes; <strong>Cancel</strong> (or <strong>Esc</strong>) leaves it as it was. To change it later, press <strong>Cut picture…</strong> in the Clip slot.</li>
+<li><strong>Use these cells</strong> keeps the grid in the clips file, as one step <strong>Ctrl+Z</strong> undoes; <strong>Cancel</strong> (or <strong>Esc</strong>) leaves it as it was. To change it later, press <strong>Cut picture…</strong> above the cells on the <strong>Cells</strong> page.</li>
 </ul>
 <p>Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.</p>
 <p>Every change is saved at once and shows at once on every sprite playing the file. <strong>Ctrl+Z</strong> and <strong>Ctrl+Y</strong> over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step <strong>Ctrl+Z</strong> undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>

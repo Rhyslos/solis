@@ -31,7 +31,11 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 A character walking in a top-down game faces different ways, and each needs its own frames. Pick a clip of your own and choose its **Directions** in the Clip slot: **One** (it looks the same whatever way it faces), **Four** (south, east, north and west) or **Eight** (the diagonals too). The Frames tab then shows a row for each, south first, round by east to north:
 - each frame is a tile as wide as it lasts, with its cell's number;
 - click a frame to pick it and its row, then set its **time** and **event**, or add frames after it with **＋ Add frames**;
-- click a row's name to pick the row.
+- click a row's name to pick the row;
+- on the **Cells** page, the clips file's page in the middle, click a cell, or Shift+click to reach a run of them (Ctrl+click adds one), then drag them onto a row: the row shows those cells, keeping the times its frames had;
+- with a frame picked, click a cell on the Cells page to show that cell in the frame instead.
+
+The Cells page's left side plays the chosen clip's picked row, and its right side shows every cell, numbered.
 
 Going from eight to four keeps the four straight rows. A new row starts as a copy of the first, so you only change what differs. A clip that mirrors its west side shows those rows faded, as the east rows they're flipped from (◈ NorthEast).
 
@@ -46,7 +50,7 @@ A PNG or JPEG with every frame laid out on it, a *sprite sheet*, gets clips too.
   - press the arrow keys to move the picked cell a pixel at a time, for lining frames up exactly;
   - press **Back to the grid's box** to forget a cell's own box: a grid cell goes back to the grid's, and an added one is gone.
 - The wheel zooms the picture and the middle mouse button moves it.
-- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** in the Clip slot.
+- **Use these cells** keeps the grid in the clips file, as one step **Ctrl+Z** undoes; **Cancel** (or **Esc**) leaves it as it was. To change it later, press **Cut picture…** above the cells on the **Cells** page.
 
 Every cell stands on the same spot, its bottom middle where the sprite is, so a character doesn't hop between frames cut from different places. Clips made here then play the cells as they play an Aseprite file's frames. An Aseprite file needs no cutting: its frames are its cells.
 
