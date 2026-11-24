@@ -851,10 +851,17 @@ impl App {
         if let Some(gpu) = self.gpu.as_mut() {
             let sheets = self.workbench.sprite_sheets();
             for (id, path) in &sheets.paths {
-                if sheets.frames.contains_key(path)
-                    && let Some(sheet) = sheets.get(*id)
-                {
+                if !sheets.frames.contains_key(path) {
+                    continue;
+                }
+                if let Some(sheet) = sheets.get(*id) {
                     gpu.keep_clips_sheet(*id, sheet);
+                }
+                // Its other looks, each under an ID of its own.
+                for look in sheets.looks(*id).iter().skip(1) {
+                    if let Some((look_id, sheet)) = sheets.look_sheet(*id, look) {
+                        gpu.keep_clips_sheet(look_id, sheet);
+                    }
                 }
             }
         }

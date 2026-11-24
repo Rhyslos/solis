@@ -145,6 +145,9 @@ pub struct SpriteSheets {
     /// path: worked out by [`Self::work_out_clips`] when the file or its
     /// picture changes.
     pub cut: HashMap<String, CutPicture>,
+    /// Each clips file's other looks' pictures cut the same way, by the
+    /// clips file's path and the look's place in its list (from 1).
+    pub cut_looks: HashMap<(String, usize), CutPicture>,
 }
 
 /// A clips file's picture (a PNG or JPEG) cut into its cells.
@@ -186,6 +189,13 @@ impl PartialEq for PicturesWanted {
     fn eq(&self, _: &Self) -> bool {
         true
     }
+}
+
+/// The ID a clips file's look `i` (from 1) is drawn under: made from the
+/// clips file's, the same every time.
+pub fn look_id(clips: AssetId, i: usize) -> AssetId {
+    let raw = clips.0.raw() ^ (i as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    reflect::Id::from_raw(raw.max(1)).map_or(clips, AssetId)
 }
 
 /// Whether `path` is a plain picture (PNG or JPEG), which can be a sprite
@@ -414,44 +424,117 @@ impl SpriteSheets {
         self.work_out_maps();
     }
 
-    /// Cuts each clips file's picture into its cells again where the
-    /// file or the picture changed (an Aseprite file's frames are its
-    /// cells already).
+    /// Cuts each clips file's pictures (its main look's and the others')
+    /// into their cells again where the file or a picture changed (an
+    /// Aseprite file's frames are its cells already). A look's picture of
+    /// another size than the main one's is noted.
     fn cut_pictures(&mut self) {
         let mut cut = HashMap::new();
+        let mut cut_looks = HashMap::new();
         for (path, state) in &self.frames {
             let FramesState::Read(file, _) = state else {
                 continue;
             };
-            let Some(picture_path) = file.sheet().and_then(|s| self.paths.get(&s)) else {
-                continue;
-            };
-            let Some(SheetState::Read(picture)) = self.by_path.get(picture_path) else {
-                continue;
-            };
-            if !is_plain_picture(picture_path) {
-                continue;
-            }
             let cutting = file.cutting();
-            let kept = self
-                .cut
-                .remove(path)
-                .filter(|c| c.cutting == cutting && Arc::ptr_eq(&c.picture, picture));
-            let done = kept.unwrap_or_else(|| {
-                let (sheet, notes) = match assets::cells::cut_sheet(picture, &cutting) {
-                    Ok((sheet, notes)) => (Ok(Arc::new(sheet)), notes),
-                    Err(why) => (Err(why.0), Vec::new()),
+            let main_size = (file.sheet().and_then(|s| self.paths.get(&s)))
+                .and_then(|p| self.at(p))
+                .map(|sheet| sheet.size);
+            for (i, look) in file.looks.iter().enumerate() {
+                let Some(picture_path) = self.paths.get(&look.picture) else {
+                    continue;
                 };
-                CutPicture {
-                    cutting,
-                    picture: Arc::clone(picture),
-                    sheet,
-                    notes,
+                let Some(SheetState::Read(picture)) = self.by_path.get(picture_path) else {
+                    continue;
+                };
+                if !is_plain_picture(picture_path) {
+                    continue;
                 }
-            });
-            cut.insert(path.clone(), done);
+                let earlier = if i == 0 {
+                    self.cut.remove(path)
+                } else {
+                    self.cut_looks.remove(&(path.clone(), i))
+                };
+                let kept =
+                    earlier.filter(|c| c.cutting == cutting && Arc::ptr_eq(&c.picture, picture));
+                let mut done = kept.unwrap_or_else(|| {
+                    let (sheet, notes) = match assets::cells::cut_sheet(picture, &cutting) {
+                        Ok((sheet, notes)) => (Ok(Arc::new(sheet)), notes),
+                        Err(why) => (Err(why.0), Vec::new()),
+                    };
+                    CutPicture {
+                        cutting: cutting.clone(),
+                        picture: Arc::clone(picture),
+                        sheet,
+                        notes,
+                    }
+                });
+                if i == 0 {
+                    cut.insert(path.clone(), done);
+                    continue;
+                }
+                if let Some(main) = main_size.filter(|&m| m != picture.size) {
+                    let note = format!(
+                        "the {} look's picture is {} × {}, not {} × {} as the main one is, so \
+                         its cells won't line up",
+                        look.name, picture.size[0], picture.size[1], main[0], main[1]
+                    );
+                    if !done.notes.contains(&note) {
+                        done.notes.push(note);
+                    }
+                }
+                cut_looks.insert((path.clone(), i), done);
+            }
         }
         self.cut = cut;
+        self.cut_looks = cut_looks;
+    }
+
+    /// The looks of the clips file with ID `id`, by name, the main one
+    /// first; none for anything else.
+    pub fn looks(&self, id: AssetId) -> Vec<String> {
+        let file = self.paths.get(&id).and_then(|p| match self.frames.get(p)? {
+            FramesState::Read(file, _) => Some(file),
+            FramesState::Failed(_) => None,
+        });
+        file.map_or_else(Vec::new, |f| {
+            f.looks.iter().map(|l| l.name.clone()).collect()
+        })
+    }
+
+    /// The sheet a sprite in the look `look` of the clips file `clips`
+    /// draws from, with the ID it's drawn under (its own, made from the
+    /// clips file's and the look's place, so it never mixes with the
+    /// picture shown on its own): its picture cut into cells, or its
+    /// Aseprite file. None for the main look, or one not read yet (which
+    /// is asked for).
+    pub fn look_sheet(&self, clips: AssetId, look: &str) -> Option<(AssetId, &Arc<SpriteSheet>)> {
+        let path = self.paths.get(&clips)?;
+        let FramesState::Read(file, _) = self.frames.get(path)? else {
+            return None;
+        };
+        let i = file
+            .looks
+            .iter()
+            .position(|l| l.name == look)
+            .filter(|&i| i > 0)?;
+        let picture = self.paths.get(&file.looks[i].picture)?;
+        let sheet = if is_plain_picture(picture) {
+            match self.by_path.get(picture) {
+                None => {
+                    self.pictures_wanted.ask(picture);
+                    return None;
+                }
+                Some(_) => self
+                    .cut_looks
+                    .get(&(path.clone(), i))?
+                    .sheet
+                    .as_ref()
+                    .ok()?,
+            }
+        } else {
+            self.at(picture)?
+        };
+        Some((look_id(clips, i), sheet))
     }
 
     /// Lists every tile map file read by asset ID again (after one was
@@ -916,9 +999,16 @@ pub fn batches(
         let Some(id) = s.sprite.sheet.map(|r| r.asset) else {
             continue;
         };
-        let Some(sheet) = sheets.get(id) else {
+        let Some(mut sheet) = sheets.get(id) else {
             continue;
         };
+        // A look draws its own picture, cut the same way (Fixes 3).
+        let mut id = id;
+        if !s.sprite.look.is_empty()
+            && let Some((look, look_sheet)) = sheets.look_sheet(id, &s.sprite.look)
+        {
+            (id, sheet) = (look, look_sheet);
+        }
         let (frame, flip) = sheets.shown(&s.sprite, sheet.frames.len(), ahead);
         let drawn = view_frame_flipped(&s.sprite, sheet, frame, s.transform, pixel, snap, flip);
         let Some(drawn) = drawn else {

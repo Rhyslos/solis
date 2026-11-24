@@ -442,3 +442,83 @@ fn a_sprite_shows_the_row_its_facing_is_nearest_mirrored_ones_flipped() {
         "a diagonal turns sideways"
     );
 }
+
+/// [`cut_knight`] at 4 with a second look, Mana, its picture `size` big.
+fn knight_with_mana(size: [u32; 2]) -> (SpriteSheets, AssetId) {
+    let (mut sheets, clips) = cut_knight(4);
+    let mana = AssetId::random();
+    let picture = assets::sprite_sheet::build_sheet(assets::aseprite::Aseprite {
+        size,
+        frames: vec![assets::aseprite::AseFrame {
+            duration_ms: 100,
+            rgba: vec![90; (size[0] * size[1] * 4) as usize],
+            events: Vec::new(),
+        }],
+        layers: Vec::new(),
+        tags: Vec::new(),
+        slices: Vec::new(),
+        palette: Vec::new(),
+        notes: Vec::new(),
+    })
+    .unwrap();
+    sheets.by_path.insert(
+        "knight-mana.png".into(),
+        SheetState::Read(Arc::new(picture)),
+    );
+    sheets.paths.insert(mana, "knight-mana.png".into());
+    let Some(FramesState::Read(file, _)) = sheets.frames.get_mut("knight.clips.lst") else {
+        panic!("read");
+    };
+    Arc::make_mut(file).looks.push(animation::clips_file::Look {
+        name: "Mana".into(),
+        picture: mana,
+    });
+    sheets.work_out_clips();
+    (sheets, clips)
+}
+
+#[test]
+fn a_sprite_in_a_look_draws_that_picture_cut_the_same_way() {
+    let (sheets, clips) = knight_with_mana([8, 4]);
+    assert_eq!(sheets.looks(clips), ["Main", "Mana"]);
+    let (id, sheet) = sheets.look_sheet(clips, "Mana").expect("cut");
+    assert_eq!((id, sheet.frames.len()), (look_id(clips, 1), 2));
+    assert_ne!(id, clips, "drawn under an ID of its own");
+    assert!(
+        sheets.look_sheet(clips, "Main").is_none(),
+        "the main look is the clips file's"
+    );
+    let sprite = |look: &str| LevelSprite {
+        entity: EntityId(reflect::Id::from_raw(1).unwrap()),
+        sprite: Sprite {
+            sheet: Some(reflect::AssetRef {
+                asset: clips,
+                part: None,
+            }),
+            clip: "walk".into(),
+            look: look.into(),
+            ..Sprite::default()
+        },
+        transform: Mat4::IDENTITY,
+        pick: 1,
+        parallax: None,
+    };
+    let drawn = batches(&[sprite("Mana"), sprite("")], &sheets, 1.0, None, 0.0);
+    let ids: Vec<AssetId> = drawn.iter().map(|b| b.sheet).collect();
+    assert!(ids.contains(&id) && ids.contains(&clips), "{ids:?}");
+    assert!(
+        sheets.cut_looks[&("knight.clips.lst".to_owned(), 1)]
+            .notes
+            .is_empty()
+    );
+}
+
+#[test]
+fn a_look_of_another_size_is_noted() {
+    let (sheets, _) = knight_with_mana([12, 4]);
+    let notes = &sheets.cut_looks[&("knight.clips.lst".to_owned(), 1)].notes;
+    assert!(
+        notes.iter().any(|n| n.contains("12 × 4, not 8 × 4")),
+        "{notes:?}"
+    );
+}
