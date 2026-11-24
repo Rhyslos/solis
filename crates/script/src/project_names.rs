@@ -279,31 +279,48 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
 /// order, or none where it can't be one (a name Lust can't take, or two
 /// looks that would still be called the same).
 pub fn look_names(looks: &[(String, String)]) -> Vec<Option<String>> {
-    let joined = |parts: &[&str], look: &str| -> Option<String> {
+    let named: Vec<(String, String)> = looks
+        .iter()
+        .map(|(path, look)| {
+            let (folders, file) = path.rsplit_once('/').unwrap_or(("", path));
+            (folders.to_owned(), format!("{file}/{look}"))
+        })
+        .collect();
+    one_dot(&named)
+}
+
+/// The project's names with one dot ([decision 0137](../../../docs/decisions/0137-the-uniformity-pass.md)):
+/// each given as its folders (`heroes`, empty for none) and its own parts
+/// (`knight/walk`: a file, or a file and a part of it), named by its own
+/// parts joined (`KnightWalk`), with its folders in front only where two
+/// would otherwise be called the same (`HeroesKnightWalk`). The answer is
+/// each one's name, in the same order, or none where Lust can't take it or
+/// two would still be called the same.
+pub fn one_dot(names: &[(String, String)]) -> Vec<Option<String>> {
+    let joined = |parts: &mut dyn Iterator<Item = &str>| -> Option<String> {
         let mut name = String::new();
-        for part in parts.iter().copied().chain(std::iter::once(look)) {
+        for part in parts.filter(|p| !p.is_empty()) {
             name.push_str(&option_name(part)?);
         }
         option_name(&name)
     };
-    let short: Vec<Option<String>> = looks
+    let short: Vec<Option<String>> = names
         .iter()
-        .map(|(path, look)| joined(&[path.rsplit('/').next().unwrap_or(path)], look))
+        .map(|(_, own)| joined(&mut own.split('/')))
         .collect();
-    let clashes = |name: &str, path: &str, names: &[Option<String>]| {
-        names.iter().zip(looks).any(|(other, (other_path, _))| {
-            other_path != path
+    let clashes = |i: usize, name: &str, list: &[Option<String>]| {
+        list.iter().enumerate().any(|(j, other)| {
+            j != i
+                && names[j] != names[i]
                 && other
                     .as_deref()
                     .is_some_and(|o| o.eq_ignore_ascii_case(name))
         })
     };
-    let long: Vec<Option<String>> = looks
-        .iter()
-        .zip(&short)
-        .map(|((path, look), name)| match name {
-            Some(name) if clashes(name, path, &short) => {
-                joined(&path.split('/').collect::<Vec<_>>(), look)
+    let long: Vec<Option<String>> = (names.iter().enumerate())
+        .map(|(i, (folders, own))| match &short[i] {
+            Some(name) if clashes(i, name, &short) => {
+                joined(&mut folders.split('/').chain(own.split('/')))
             }
             name => name.clone(),
         })
@@ -312,10 +329,11 @@ pub fn look_names(looks: &[(String, String)]) -> Vec<Option<String>> {
         .enumerate()
         .map(|(i, name)| {
             let name = name.as_ref()?;
-            let twice = long
-                .iter()
-                .enumerate()
-                .any(|(j, o)| j != i && o.as_deref().is_some_and(|o| o.eq_ignore_ascii_case(name)));
+            let twice = long.iter().enumerate().any(|(j, o)| {
+                j != i
+                    && names[j] != names[i]
+                    && o.as_deref().is_some_and(|o| o.eq_ignore_ascii_case(name))
+            });
             (!twice).then(|| name.clone())
         })
         .collect()
@@ -757,6 +775,47 @@ mod tests {
         // Nothing to name is no crash.
         assert!(looks(&[]).is_empty());
         assert_eq!(looks(&[("", "")]), [None]);
+    }
+
+    #[test]
+    fn every_kind_of_name_has_one_dot() {
+        let named = |list: &[(&str, &str)]| {
+            one_dot(
+                &list
+                    .iter()
+                    .map(|(f, o)| ((*f).to_string(), (*o).to_string()))
+                    .collect::<Vec<_>>(),
+            )
+            .into_iter()
+            .map(|n| n.unwrap_or_default())
+            .collect::<Vec<_>>()
+        };
+        // A module, a clip, a crop and a text key.
+        assert_eq!(
+            named(&[
+                ("ships", "fighter"),
+                ("sprites", "farmer/walk"),
+                ("sprites", "tools/Axe"),
+                ("", "Shop/Welcome")
+            ]),
+            ["Fighter", "FarmerWalk", "ToolsAxe", "ShopWelcome"]
+        );
+        // Folders join only where two would clash, however deep.
+        assert_eq!(
+            named(&[
+                ("ships/big", "fighter"),
+                ("drones", "fighter"),
+                ("", "crate")
+            ]),
+            ["ShipsBigFighter", "DronesFighter", "Crate"]
+        );
+        // The same name given twice is one name, not a clash.
+        assert_eq!(
+            named(&[("ships", "fighter"), ("ships", "fighter")]),
+            ["Fighter", "Fighter"]
+        );
+        // Names Lust can't take.
+        assert_eq!(named(&[("", "big-ship"), ("", "2d")]), ["", ""]);
     }
 
     #[test]
