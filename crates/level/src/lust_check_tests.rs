@@ -48,7 +48,7 @@ fn what_a_data_file_holds_is_let_through() {
     // Every shape Solis writes, and the ways a hand may lay them out:
     // comments of each kind, values over several lines, a `,` after the
     // last item, fields in any order or left out.
-    let text = "-- A test.\n// Another comment.\n--[[ A block\ncomment. ]]\n\
+    let text = "-- A test.\n-- Another comment.\n--[[ A block\ncomment. ]]\n\
         fetch \"solis/data/test\":[Kind, Part, Item,];\nfetch \"solis/data/test\":Kind;\n\n\
         lock int version = 2;\n\
         lock Item item = new Item {\n    \
@@ -104,6 +104,9 @@ fn anything_else_is_refused_with_its_line() {
         ("state S = [A];", 5, "only lock values"),
         ("method m() {}", 5, "only lock values"),
         ("@", 5, "only lock values"),
+        // A comment the old way (Lust alpha 75 made it a mistake).
+        ("// a note", 5, "comments start with --"),
+        ("lock int a = // a note\n1;", 5, "comments start with --"),
         ("\n;", 6, "only lock values"),
         ("fetch \"solis/data/test\":Kind;", 5, "only lock values"),
         (

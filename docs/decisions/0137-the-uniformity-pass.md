@@ -31,3 +31,7 @@ The project lead asked for a pass over the whole engine before dialogue ([the pl
 - The rework is built in milestones of the usual size (the plan's list): the shared parts first, then each panel moved onto them; then the calls, with the manual, the sample games and [the interface file](../game-code-interface.txt) in the same pull requests. There are no projects to move, so old names are dropped rather than kept.
 - `docs/design/g-layout/` gains the rules for buttons, fields, switches and pickers.
 - Asked of Lust: making a state option with `new` (which would remove the classes Solis writes), and writing to another entity's component.
+
+## Amended (2026-11-26): making with `new` through Lust's engine classes
+
+Lust alpha 80 lets the engine make a class of its own files that has a native `made()`, so U6 is built on it ([the plan](../plans/uniformity-pass.md#u6-in-detail-making-with-new-planned-2026-11-26)). The project lead's answers: the classes are named by the one-dot name, with the kind added only on a clash (`OrcModule`); a module's root components' fields go straight on its class, a shared one with its component in front; and a timer or a sound made in a component's code belongs to the entity whose code is running, with nothing extra to write.

@@ -1,5 +1,5 @@
-//! Guards for text on its way to the Lust compiler. Lust (2.0.0-alpha.74,
-//! rev 9fcd48c, as at rev 930afae) never finishes checking a file that
+//! Guards for text on its way to the Lust compiler. Lust (found at rev
+//! 930afae, still at 2.0.0-alpha.74 and guarded at alpha 80) never finishes checking a file that
 //! declares two things with one name, and a long run of `!` takes it
 //! time that grows with the square of the run's length. So game code (`script::code`) and data files
 //! ([`crate::lust_data`]) are looked over here first, and what would set
@@ -46,6 +46,10 @@ pub fn scan(text: &str) -> impl Iterator<Item = (u32, Found<'_>)> {
     std::iter::from_fn(move || {
         loop {
             let (line, piece) = pieces.next()?;
+            if piece == Piece::SlashComment {
+                // Lust reports it and skips its line, as a comment.
+                continue;
+            }
             run = if piece == Piece::Stray('!') {
                 run + 1
             } else {
@@ -72,6 +76,7 @@ pub fn scan(text: &str) -> impl Iterator<Item = (u32, Found<'_>)> {
                     }
                 }
                 Piece::Number(_) | Piece::Symbol(_) => declaring = None,
+                Piece::SlashComment => {}
             }
         }
     })
@@ -197,6 +202,9 @@ pub(crate) enum Piece<'a> {
     Symbol(&'a str),
     /// A character Lust has no use for, which it reports and skips.
     Stray(char),
+    /// A line after `//`, which was a comment until Lust alpha 75 and is
+    /// now a mistake: Lust reports it and skips the line.
+    SlashComment,
 }
 
 /// Lust text, a piece at a time, each with the line it starts on.
@@ -250,8 +258,11 @@ impl<'a> Pieces<'a> {
                 // A block comment, to its `]]` or the end of the text.
                 let end = inside.find("]]").map_or(self.rest.len(), |at| at + 6);
                 self.take(end);
-            } else if self.rest.starts_with("--") || self.rest.starts_with("//") {
+            } else if self.rest.starts_with("--") {
                 self.take(self.rest.find('\n').unwrap_or(self.rest.len()));
+            } else if self.rest.starts_with("//") {
+                self.take(self.rest.find('\n').unwrap_or(self.rest.len()));
+                return Some((line, Piece::SlashComment));
             } else if self.rest.starts_with("/*") {
                 self.take(2);
                 return Some((line, Piece::Stray('/')));
