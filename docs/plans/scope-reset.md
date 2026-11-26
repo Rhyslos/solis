@@ -43,10 +43,7 @@ Each step made sense on its own. Together they made a small button take half a d
 
    It's kept current with every change, so the project lead always knows what they can do.
 
-Then the order is:
-1. Fixes 2 to 4 from [Orc Invasion](game-stages.md#fixes-from-making-orc-invasion), trimmed to what the done list needs.
-2. The dialogue system.
-3. The rest of the done list's gaps, smallest first.
+Then the order was: Fixes 2 to 4 from [Orc Invasion](game-stages.md#fixes-from-making-orc-invasion), then the dialogue system, then the rest of the done list's gaps. Fixes 2 to 4 and the uniformity pass are built; since 2026-11-26 the order is [the target below](#the-target-tiny-versions-cheapest-game-first) (decision 0138).
 
 Fixes 2's unfinished start is saved on the branch `fixes/2-game-code-calls`.
 
@@ -125,6 +122,25 @@ Everything the platformer needs, and:
 - **Effects:** particles, trails, muzzle flashes and sparks.
 - **Enemies and bots that move round a level of platforms:** pathfinding with jumps and drops, not just walking.
 - **Music that follows the fight.**
+
+### The target: tiny versions, cheapest game first
+
+The project lead, 2026-11-26 ([decision 0138](../decisions/0138-tiny-first-games-in-order.md)): each feature in its smallest version that makes the games possible, grown later when a game needs more; what game code can do reasonably is a Lust recipe in the manual. **Dialogue is the exception, built in full.** Games are made possible cheapest first: "it makes more sense to let me write platformers today, and Stardew Valley in 2 weeks". Sizes are guesses until the check in step 1 confirms them.
+
+1. **The "Can I make this?" check** (1 pull request): the manual page, with each need below marked *works*, *works with a recipe* or *not yet*. Its "not yet" rows become the milestones.
+2. **The platformer** (about 3): one-way platforms; being carried by moving platforms; screen shake. Running and jumping are game code already ([the first platformer](../manual/first-platformer.md)); coyote time and jump buffering are recipes; hit-stop is `World.gameSpeed`; paths in the editor wait (marker entities do).
+3. **The action platformer** (about 3): aiming with the mouse in the world; one simple particle emitter (sparks, muzzle flashes, later rain); "is there ground ahead" for bots, if it's missing. Melee is a recipe (frame events, `World:within` and tags); bullets are `fire`, with pools only if it's too slow; music follows the fight with the music fade from step 4.
+4. **The farming game's small pieces** (about 12):
+   - a screen piece that tells game code it was clicked, and tips on hover (drag and drop waits);
+   - loading another level at an entry point from game code (the fade is a screen fading, the door a trigger zone recipe; no world map);
+   - sorting sprites by their feet on a layer;
+   - `walkTo` round solid tiles (schedules are game code on timers);
+   - saving and loading by slot number (the menu is the game's own screen);
+   - "which cells hold this" on a tile map;
+   - a fade from one music track to the next;
+   - rain and snow on the particle emitter.
+   Cutscenes are game code with timers and `moveTo`, and night lights are the lights there are.
+5. **Dialogue, in full** (about 35): [the outline](dialogue/README.md), milestones 2 to 7.
 
 ### Not on the list (waits until a game asks for it)
 
