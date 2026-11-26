@@ -230,7 +230,7 @@ impl Workbench {
         self.log(
             LogLevel::Info,
             format!(
-                "Alt+Enter: the exported game would {} (Window:fullscreen() is {on} now). While \
+                "Alt+Enter: the exported game would {} (Window.fullscreen is {on} now). While \
                  playing in the editor, the game stays in the Game panel.",
                 if on {
                     "fill the screen"

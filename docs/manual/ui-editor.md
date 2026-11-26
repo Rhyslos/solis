@@ -66,7 +66,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 | When clicked | What a button does, as written in its `{ }`, when it's more than one event: change it as code. |
 | Preview values | Other numbers to try on the canvas for what the screen reads. Never saved. |
 | All its settings | Everything in the piece's `[ ]`, as written. Type anything Lust has (`nowrap`, `spread`, `minWidth 200`); press Enter to keep it. If it doesn't read, it isn't changed. |
-| Text 100% / 150% / 200% | Previews the screen with players' bigger text (`Screens:setTextSize`), to check nothing spills out. |
+| Text 100% / 150% / 200% | Previews the screen with players' bigger text (`Screens.textSize`), to check nothing spills out. |
 | Safe area | Shows the guide 5% in from each edge. |
 | Snap | Sizes snap to whole pixels and to other pieces' edges. |
 

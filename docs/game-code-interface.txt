@@ -26,10 +26,6 @@ world: object World: method vec3 viewSize() native;
 world: object World: method float random() native;
 world: object World: method float randomRange(float low, float high) native;
 world: object World: method int randomInt(int low, int high) native;
-world: object World: method setGameSpeed(float speed) native;
-world: object World: method float gameSpeed() native;
-world: object World: method float timeOfDay() native;
-world: object World: method setTimeOfDay(float hour) native;
 world: object World: method setSeed(int seed) native;
 world: object Saves: method saveTo(string slot) native;
 world: object Saves: method loadFrom(string slot) native;
@@ -98,23 +94,7 @@ screens: method entity:showScreen(Screen which) native;
 screens: method entity:hideScreen(Screen which) native;
 screens: method bool entity:screenShown(Screen which) native;
 screens: method entity:finishTyping(Screen which) native;
-screens: object Screens: method float textSize() native;
-screens: object Screens: method setTextSize(float size) native;
-screens: object Screens: method float uiSize() native;
-screens: object Screens: method setUiSize(float size) native;
-screens: object Screens: method Language language() native;
-screens: object Screens: method setLanguage(Language which) native;
 screens: object Screens: method string languageName(Language which) native;
-screens: object Screens: method bool subtitles() native;
-screens: object Screens: method setSubtitles(bool on) native;
-screens: object Screens: method bool captions() native;
-screens: object Screens: method setCaptions(bool on) native;
-screens: object Screens: method float captionSize() native;
-screens: object Screens: method setCaptionSize(float size) native;
-screens: object Screens: method float captionBackground() native;
-screens: object Screens: method setCaptionBackground(float strength) native;
-window: object Window: method bool fullscreen() native;
-window: object Window: method setFullscreen(bool on) native;
 window: object Window: method vec3 resolution() native;
 window: object Window: method setResolution(int width, int height) native;
 window: object Window: method useNextResolution() native;
@@ -130,6 +110,19 @@ zones: event EnteredZone(entity zone);
 zones: event LeftZone(entity zone);
 timers: event TimerFinished(Timer which);
 screens: event TypingFinished(Screen which);
+
+## Fields of the engine's objects (read, and set with =)
+
+World.gameSpeed: float
+World.timeOfDay: float
+Screens.textSize: float
+Screens.uiSize: float
+Screens.language: Language
+Screens.subtitles: bool
+Screens.captions: bool
+Screens.captionSize: float
+Screens.captionBackground: float
+Window.fullscreen: bool
 
 ## Fields the engine reads from a Lust component (set with =)
 

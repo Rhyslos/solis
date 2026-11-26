@@ -251,7 +251,7 @@ component Rooster {
 component Bed {
     -- Sleeping: the clock jumps to seven the next morning.
     method sleep() {
-        World:setTimeOfDay(7.0);
+        World.timeOfDay = 7.0;
     }
 }
 pass Rooster, Bed;
@@ -308,7 +308,7 @@ end
 -- A bed calls solis.World:setTimeOfDay(7.0) to skip to the morning.
 ```
 
-**When the clock jumps.** Sleeping in a bed (`World:setTimeOfDay(7.0)` at ten at night) jumps the clock past six: the rooster crows **once**, on the next tick, not once for every hour skipped. Midnight works the same way: a timer at 23:30 or at 0:00 finishes as the clock goes round. Setting the clock always moves the day *forward* to that hour, so setting it from seven back to five is the day going on to five the next morning, which comes before six: the rooster crows when six comes.
+**When the clock jumps.** Sleeping in a bed (`World.timeOfDay = 7.0` at ten at night) jumps the clock past six: the rooster crows **once**, on the next tick, not once for every hour skipped. Midnight works the same way: a timer at 23:30 or at 0:00 finishes as the clock goes round. Setting the clock always moves the day *forward* to that hour, so setting it from seven back to five is the day going on to five the next morning, which comes before six: the rooster crows when six comes.
 
 ### Stop a timer, and ask about one
 | Call | What it does |

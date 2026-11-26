@@ -399,7 +399,7 @@ fn game_code_card(ui: &mut Ui) {
         quiet(ui, "a line in the player's language");
         code(ui, "ShopText:welcome(name, gold)");
         quiet(ui, "a line that takes values");
-        code(ui, "Screens:setLanguage(Language.Nb)");
+        code(ui, "Screens.language = Language.Nb;");
         sentence(
             ui,
             "The same in Lust, Rust and Lua. A misspelt key is a mistake before the game runs.",

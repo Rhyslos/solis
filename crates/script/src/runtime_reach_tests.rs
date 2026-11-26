@@ -57,7 +57,7 @@ const CALLS: &[(&str, &str, &str)] = &[
     (
         "Screens",
         "solis.Screens:setTextSize(1.5)",
-        "Screens:setTextSize(1.5);",
+        "Screens.textSize = 1.5;",
     ),
     ("Window", "solis.Window:quit()", "Window:quit();"),
     ("World", "solis.World:say('hello')", "World:say(\"hello\");"),

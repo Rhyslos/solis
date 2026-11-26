@@ -1379,7 +1379,7 @@ const PAUSING_HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
             is ticks == 3? then {\n\
-                World:setGameSpeed(0);\n\
+                World.gameSpeed = 0;\n\
             }\n\
             rolled = World:random();\n\
             made = World:spawn(Module.Drone, [0, 0, 1]);\n\

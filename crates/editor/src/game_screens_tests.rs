@@ -625,7 +625,7 @@ fn a_screen_reads_lua_components_and_solis_s_own() {
 /// steps the window's size, every tick; and a screen saying the text size.
 fn settings_program(hud_text: &str) -> Arc<script::Compiled> {
     let main = "fetch \"solis/window\":Window;\nfetch \"solis/screens\":Screens;\n\
-        component Settler {\n    method update(float dt) {\n        Screens:setTextSize(1.5);\n        Screens:setUiSize(1.25);\n        Window:setFullscreen(true);\n        Window:useNextResolution();\n    }\n}\npass Settler;\nend\n";
+        component Settler {\n    method update(float dt) {\n        Screens.textSize = 1.5;\n        Screens.uiSize = 1.25;\n        Window.fullscreen = true;\n        Window:useNextResolution();\n    }\n}\npass Settler;\nend\n";
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
@@ -647,7 +647,7 @@ fn settings_program(hud_text: &str) -> Arc<script::Compiled> {
 
 #[test]
 fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
-    let hud = "fetch \"solis/screens\":Screens;\nassembly Hud {\n    view {\n        text \"Text \" + Screens:textSize().text() [size 20];\n    }\n}\npass Hud;\nend\n";
+    let hud = "fetch \"solis/screens\":Screens;\nassembly Hud {\n    view {\n        text \"Text \" + Screens.textSize.text() [size 20];\n    }\n}\npass Hud;\nend\n";
     let mut w = showing(settings_program(hud), &[("Hud", true, 0)]);
     let mut settler = EntityData::new("Settler");
     settler
@@ -682,7 +682,7 @@ fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
         .lines()
         .iter()
         .map(|l| l.text.clone())
-        .filter(|l| l.starts_with("Window:"))
+        .filter(|l| l.starts_with("Window"))
         .collect();
     assert!(
         said.iter().any(|l| l.contains("fill the screen")),
@@ -695,7 +695,7 @@ fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
 
 #[test]
 fn a_screen_can_t_change_the_player_s_settings() {
-    let hud = "fetch \"solis/screens\":Screens;\nassembly Hud {\n    view {\n        Screens:setTextSize(2.0);\n        text \"never\";\n    }\n}\npass Hud;\nend\n";
+    let hud = "fetch \"solis/screens\":Screens;\nassembly Hud {\n    view {\n        Screens.textSize = 2.0;\n        text \"never\";\n    }\n}\npass Hud;\nend\n";
     let mut w = showing(settings_program(hud), &[("Hud", true, 0)]);
     w.play();
     w.run_game(1.0 / 60.0);

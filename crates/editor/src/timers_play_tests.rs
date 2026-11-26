@@ -22,13 +22,13 @@ const MAIN: &str = "fetch \"solis/world\":World;\n\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
-                World:setGameSpeed(speed);\n\
+                World.gameSpeed = speed;\n\
                 startTimer(Timer.Opens, 2.0);\n\
                 startTimerAtHour(Timer.Dawn, 6.0);\n\
-                World:setTimeOfDay(5.0);\n\
+                World.timeOfDay = 5.0;\n\
             }\n\
             is ticks == 3? then {\n\
-                World:setTimeOfDay(7.0);\n\
+                World.timeOfDay = 7.0;\n\
             }\n\
             is ticks == 2 && vanish? then {\n\
                 despawn();\n\

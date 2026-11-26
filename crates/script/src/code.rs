@@ -188,6 +188,23 @@ impl From<lust::Problem> for CodeProblem {
 /// A moved call that kept its name (`moveTo`) given the entity first
 /// gets the same help after Lust's own words.
 fn moved_message(message: String) -> String {
+    // An engine object's setting that's a field now (the uniformity pass,
+    // U5b): `Screens:setTextSize(…)` is `Screens.textSize = …;`.
+    for field in crate::describe::OBJECT_FIELDS {
+        for (old, how) in [(field.setter, "set"), (field.getter, "read")] {
+            if message == format!("{} has no method called {old}.", field.object) {
+                let written = if how == "set" {
+                    format!("{}.{} = …;", field.object, field.name)
+                } else {
+                    format!("{}.{}", field.object, field.name)
+                };
+                return format!(
+                    "{}:{old}() is now a field of {}, {how} as {written}",
+                    field.object, field.object
+                );
+            }
+        }
+    }
     for moved in crate::describe::MOVED {
         if message == format!("there's no method called {}.", moved.old) {
             return format!("{} is now written {}.", moved.old, moved.lust);

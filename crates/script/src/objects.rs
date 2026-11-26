@@ -4,6 +4,11 @@
 //! `update(float dt)` once a tick, objects in order of their names, before
 //! any entity's components, and keeps its fields in save games.
 //!
+//! The engine's own objects with fields (`Screens.textSize`; the
+//! uniformity pass, U5b) are the exception: they hold nothing, and reading
+//! or setting one calls the engine ([`WRAP_ENGINE`]), so any code may set
+//! them and every core still agrees.
+//!
 //! **An object changes only in its own update.** Components read it
 //! (`Clock.hour`, `Clock:isNight()`) but writing one of its fields from
 //! anywhere else stops with a message pointing at the line. That's what
@@ -75,6 +80,52 @@ return function(o, class, name, names, guard)
 end
 "#;
 
+/// Wraps one of the engine's objects whose fields are read and set
+/// through its natives (the uniformity pass, U5b;
+/// [`crate::describe::OBJECT_FIELDS`]): `wrap(object, class, fields,
+/// env)`, `fields` holding each field's key in Lua with its getter's and
+/// setter's keys in `LUST_NATIVES`, which `env` holds while game code
+/// runs. Reading `Screens.textSize` calls the getter; setting it calls the
+/// setter, which lands at the end of the tick like the call it replaces.
+/// Neither is kept, copied or saved: the engine keeps them. With no
+/// natives lent (nothing should read them then), a field reads as it
+/// started.
+pub(crate) const WRAP_ENGINE: &str = r#"
+local next, rawget, rawset, setmetatable, type = next, rawget, rawset, setmetatable, type
+return function(o, class, fields, env)
+  local start = {}
+  for k in next, fields do
+    start[k] = rawget(o, k)
+    rawset(o, k, nil)
+  end
+  local mt = {}
+  for k, v in next, class do
+    if type(k) == "string" and k:sub(1, 2) == "__" then mt[k] = v end
+  end
+  mt.__index = function(t, k)
+    local f = fields[k]
+    if f == nil then return class[k] end
+    local natives = rawget(env, "LUST_NATIVES")
+    local get = natives and natives[f[1]]
+    if get then return get(t) end
+    return start[k]
+  end
+  mt.__newindex = function(t, k, v)
+    local f = fields[k]
+    if f == nil then
+      rawset(t, k, v)
+      return
+    end
+    local natives = rawget(env, "LUST_NATIVES")
+    local set = natives and natives[f[2]]
+    if set then set(t, v) end
+  end
+  mt.__parent = class
+  setmetatable(mt, { __index = class })
+  setmetatable(o, mt)
+end
+"#;
+
 /// One of the game's objects.
 pub(crate) struct GameObject {
     /// Its name in Lust (`Clock`).
@@ -107,7 +158,7 @@ pub type ObjectValues = Vec<(String, ComponentData)>;
 impl Objects {
     /// The objects the Lust's table `api` passes (`objects`,
     /// `objectNames`), each wrapped so it changes only in an update.
-    pub(crate) fn read(luau: &Luau, api: &Table) -> mlua::Result<Self> {
+    pub(crate) fn read(luau: &Luau, api: &Table, env: &Table) -> mlua::Result<Self> {
         let Ok(LuaValue::Table(names)) = api.raw_get::<LuaValue>("objectNames") else {
             return Ok(Self::default());
         };
@@ -146,6 +197,28 @@ impl Objects {
                     }),
                     None => unkept.push(field_name),
                 }
+            }
+            // One of the engine's objects with fields (Screens): read and
+            // set through its natives, never ticked or kept here.
+            let engine: Vec<&crate::describe::ObjectField> = crate::describe::OBJECT_FIELDS
+                .iter()
+                .filter(|f| f.object == name)
+                .collect();
+            if !engine.is_empty() {
+                let through = luau.lua.create_table()?;
+                for field in engine {
+                    let Some(own) = fields.iter().find(|f: &&Field| f.name == field.name) else {
+                        continue;
+                    };
+                    let keys = luau.lua.create_sequence_from([
+                        format!("{name}_{}", field.getter),
+                        format!("{name}_{}", field.setter),
+                    ])?;
+                    through.raw_set(own.key.as_str(), keys)?;
+                }
+                luau.wrap_engine_object
+                    .call::<()>((table, class, through, env.clone()))?;
+                continue;
             }
             let update = match class.get::<LuaValue>("update")? {
                 LuaValue::Function(f) => Some(f),
