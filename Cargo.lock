@@ -236,7 +236,7 @@ dependencies = [
  "editor",
  "eframe",
  "gilrs",
- "glam 0.33.12",
+ "glam 0.34.3",
  "image",
  "input",
  "level",
@@ -319,7 +319,7 @@ version = "0.0.1"
 dependencies = [
  "assets",
  "chrono",
- "glam 0.33.12",
+ "glam 0.34.3",
  "notify",
  "reflect",
  "serde",
@@ -334,7 +334,7 @@ dependencies = [
  "base64",
  "bytemuck",
  "flate2",
- "glam 0.33.12",
+ "glam 0.34.3",
  "gltf",
  "image",
  "meshopt",
@@ -1088,7 +1088,7 @@ dependencies = [
  "chrono",
  "egui",
  "egui_kittest",
- "glam 0.33.12",
+ "glam 0.34.3",
  "input",
  "level",
  "mesh",
@@ -1348,7 +1348,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1720,8 +1720,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37bfe73dc8ec21f54d181e5a60554327ec3f1c600c455a75ccbfc65d2106a6c4"
 dependencies = [
  "approx",
- "bytemuck",
  "libm",
+]
+
+[[package]]
+name = "glam"
+version = "0.34.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "627003914c6057c9c8f0832ee4f870b5a4f599d0cfa83f4072675114860cd0ff"
+dependencies = [
+ "bytemuck",
  "mint",
  "serde_core",
 ]
@@ -1889,7 +1897,7 @@ version = "0.0.1"
 dependencies = [
  "assets",
  "flate2",
- "glam 0.33.12",
+ "glam 0.34.3",
  "physics",
  "pollster 1.0.1",
  "rayon",
@@ -2210,7 +2218,7 @@ dependencies = [
 name = "input"
 version = "0.0.1"
 dependencies = [
- "glam 0.33.12",
+ "glam 0.34.3",
  "reflect",
  "serde",
  "toml",
@@ -2348,13 +2356,13 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 
 [[package]]
 name = "kira"
-version = "0.12.5"
+version = "0.12.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aae7115ef1161313b8f71f49487702a662ab333bd2a47bf69af410b69112a519"
+checksum = "92df3bfdb0c2f061c5899695d1c1c8616b427005970f4b7fb129f587435b4644"
 dependencies = [
  "atomic-arena",
  "cpal",
- "glam 0.33.12",
+ "glam 0.34.3",
  "mint",
  "pastey",
  "rtrb",
@@ -2421,7 +2429,7 @@ checksum = "20870f649af7073d53e38067b2a84312175d56ea15217e1b15bc83506ec50afb"
 name = "level"
 version = "0.0.1"
 dependencies = [
- "glam 0.33.12",
+ "glam 0.34.3",
  "lust",
  "mesh",
  "proptest",
@@ -2586,7 +2594,7 @@ dependencies = [
 name = "mesh"
 version = "0.0.1"
 dependencies = [
- "glam 0.33.12",
+ "glam 0.34.3",
 ]
 
 [[package]]
@@ -3524,7 +3532,7 @@ dependencies = [
 name = "physics"
 version = "0.0.1"
 dependencies = [
- "glam 0.33.12",
+ "glam 0.34.3",
  "proptest",
  "rapier2d",
  "rapier3d",
@@ -3915,7 +3923,7 @@ dependencies = [
 name = "reflect"
 version = "0.0.1"
 dependencies = [
- "glam 0.33.12",
+ "glam 0.34.3",
  "serde",
  "toml",
 ]
@@ -3932,7 +3940,7 @@ version = "0.0.1"
 dependencies = [
  "assets",
  "bytemuck",
- "glam 0.33.12",
+ "glam 0.34.3",
  "log",
  "mesh",
  "pollster 1.0.1",
@@ -4069,7 +4077,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4126,7 +4134,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4196,7 +4204,7 @@ name = "script"
 version = "0.0.1"
 dependencies = [
  "animation",
- "glam 0.33.12",
+ "glam 0.34.3",
  "input",
  "level",
  "libm",
@@ -4618,7 +4626,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.5",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4896,7 +4904,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -5560,7 +5568,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5919,7 +5927,7 @@ name = "world"
 version = "0.0.1"
 dependencies = [
  "animation",
- "glam 0.33.12",
+ "glam 0.34.3",
  "hecs",
  "level",
  "mesh",
