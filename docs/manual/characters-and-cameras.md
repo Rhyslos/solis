@@ -62,6 +62,27 @@ It has sounds too ([Sound events](sound-events.md)): footsteps as the character 
   - Then it catches up smoothly in about **smoothing** seconds, easing in and stopping without going past (0 follows at once). **Why:** a camera glued to the player jerks with every step; a little slack and easing feels calm, as in farming and adventure games.
   - With **bounds** set, it never shows past the map's edges: near the edge the player walks towards the side of the screen instead. A map smaller than the view stays in the middle.
   - The picture stays crisp: Solis keeps the camera on whole pixels as it draws, whatever the camera does.
+  - It **shakes** when told to: send it `ShakeCamera(strength, seconds)` from any game code, and the view jumps about a new way each frame, fading to still. `strength` is how far it throws the view at first, in metres (0.2 is a thump, 0.5 an explosion), and `seconds` how long it lasts (a quarter of a second is plenty for a hit). A stronger shake takes over a weaker one still going. The camera settles back exactly where it would have been.
+
+```lust
+-- bomb.lst: shakes the camera when the player walks into it.
+fetch "solis/zones":Entered;
+fetch "solis/kit/cameras":ShakeCamera;
+
+component Bomb {
+    has {
+        entity camera = nothing; -- [tip "The camera with FollowCamera2D."]
+    }
+
+    on Entered(entity who) {
+        send ShakeCamera(0.5, 0.4) to camera;
+        despawn();
+    }
+}
+
+pass Bomb;
+end
+```
 
 | RTS camera | Keyboard and mouse | Gamepad |
 |---|---|---|
@@ -195,7 +216,7 @@ In Lua the move is a `vec3(x, y, z)` (a table works too, but only with its parts
 
 **RtsCamera** (ready-made): **focus** (the point on the map it looks at), **height**, **lowest** and **highest** (how far it zooms), **tilt** (degrees it looks down), **panSpeed** and **turnSpeed**.
 
-**FollowCamera2D** (ready-made): **target** (who it follows), **bounds** (an entity with a tile map it stays inside; empty: no edges), **deadZone** (how far, in metres across and up, the target can move from the middle before it follows; 1 and 0.75 to start), **smoothing** (about how many seconds it takes to catch up; 0.2 to start, 0 for at once), and **speed** (how fast it's moving now; you don't need to set it).
+**FollowCamera2D** (ready-made): **target** (who it follows), **bounds** (an entity with a tile map it stays inside; empty: no edges), **deadZone** (how far, in metres across and up, the target can move from the middle before it follows; 1 and 0.75 to start), **smoothing** (about how many seconds it takes to catch up; 0.2 to start, 0 for at once), and **speed** (how fast it's moving now; you don't need to set it). Its shake is kept in hidden fields, so a save keeps a shake going.
 
 The fields at the bottom of each (`fall`, `yaw`, `pitch`) are how it's moving right now: how fast it's falling, and which way it's looking. While playing, Properties shows them changing. They're fields so a [save game](save-games.md) keeps them; you don't need to set them.
 

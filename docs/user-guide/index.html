@@ -1103,7 +1103,7 @@ footer p { color: var(--muted); }
 <li><strong>Recipe:</strong> a few lines of game code do it, ready to copy from the recipe pages. A recipe is not a stopgap: what game code does well stays game code, so it's yours to change.</li>
 <li><strong>Not yet:</strong> it isn't there. It says when it comes, and what to do until then where there's a way.</li>
 </ul>
-<p>The games come in order of cost: the platformer first, then the action game, then the farming game. This page changes with every update, so it always says what you can do in the version you have.</p>
+<p>The games come in order of cost: the platformer first (everything it needs is here now), then the action game, then the farming game. This page changes with every update, so it always says what you can do in the version you have.</p>
 <div class="note">
 <p>Checked against Solis itself on 2026-11-26, not guessed. If something here is wrong, it's a mistake in the manual: please report it.</p>
 </div>
@@ -1134,7 +1134,7 @@ footer p { color: var(--muted); }
 <tr><td>Animations: run, jump, idle, facing left and right</td><td>Works</td><td><a href="#sprite-animation">Animating sprites</a>, the <code>Flip flip</code> field</td></tr>
 <tr><td>Tweens (things gliding to a new value)</td><td>Works</td><td><a href="#game-code--tweens">Tweens</a></td></tr>
 <tr><td>Tweens kept in save games</td><td>Not yet</td><td>Later, when a game asks; glide the value yourself in <code>update</code> where it must survive a save</td></tr>
-<tr><td>Screen shake</td><td>Not yet</td><td>The platformer's third update, on the kit's <code>FollowCamera2D</code></td></tr>
+<tr><td>Screen shake</td><td>Works</td><td>Send <code>ShakeCamera</code> to the kit's <code>FollowCamera2D</code> (<a href="#characters-and-cameras">Characters and cameras</a>)</td></tr>
 <tr><td>A flash when hurt</td><td>Recipe</td><td><a href="#platformer-recipes--a-hurt-flash">A hurt flash</a> (a blink; a white flash later)</td></tr>
 <tr><td>Hit-stop</td><td>Recipe</td><td><code>World.gameSpeed</code> (<a href="#platformer-recipes--hit-stop-the-game-stops-for-a-blink-on-a-big-hit">Hit-stop</a>)</td></tr>
 <tr><td>Squash and stretch</td><td>Not yet</td><td>Later, when a game asks: game code can't size a sprite yet</td></tr>
@@ -1198,7 +1198,6 @@ footer p { color: var(--muted); }
 <h4 id="can-i-make-this--what-comes-when">What comes when<a class="anchor" href="#can-i-make-this--what-comes-when" aria-label="Link to this section">#</a></h4>
 <p>In order, each a small update:</p>
 <ol class="steps">
-<li><strong>The platformer:</strong> screen shake (one-way and moving platforms are in).</li>
 <li><strong>The action game:</strong> aiming with the mouse, rays in 2D.</li>
 <li><strong>Rust and Lua stop being game languages:</strong> Lust is the language games are written in.</li>
 <li><strong>Dialogue,</strong> in full: conversations, the dialogue box and the conversation editor.</li>
@@ -1341,7 +1340,7 @@ footer p { color: var(--muted); }
 
 <span class="tk-k">pass</span> <span class="tk-n">HitStop</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
-<p>Four to six frames is a solid hit; more than ten feels like the game stuck. Put <code>HitStop</code> on one entity (the camera is a good home) and <code>send Freeze(5) to camera;</code> from the attack.</p>
+<p>Four to six frames is a solid hit; more than ten feels like the game stuck. Put <code>HitStop</code> on one entity (the camera is a good home) and <code>send Freeze(5) to camera;</code> from the attack. A shake with it lands harder still: <code>send ShakeCamera(0.3, 0.25) to camera;</code> (<a href="#characters-and-cameras">the camera's shake</a>).</p>
 <h4 id="platformer-recipes--a-hurt-flash">A hurt flash<a class="anchor" href="#platformer-recipes--a-hurt-flash" aria-label="Link to this section">#</a></h4>
 <p>A hero that blinks after being hit tells the player they're safe for a moment. The component's <code>bool visible</code> field shows and hides its entity (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities</a>).</p>
 <pre data-lang="lust"><code><span class="tk-c">-- blink.lst: blinks its entity for a moment after it's hurt.</span>
@@ -10878,9 +10877,27 @@ event MoodChanged(Mood from, Mood to);</code></pre>
 <li>Then it catches up smoothly in about <strong>smoothing</strong> seconds, easing in and stopping without going past (0 follows at once). <strong>Why:</strong> a camera glued to the player jerks with every step; a little slack and easing feels calm, as in farming and adventure games.</li>
 <li>With <strong>bounds</strong> set, it never shows past the map's edges: near the edge the player walks towards the side of the screen instead. A map smaller than the view stays in the middle.</li>
 <li>The picture stays crisp: Solis keeps the camera on whole pixels as it draws, whatever the camera does.</li>
+<li>It <strong>shakes</strong> when told to: send it <code>ShakeCamera(strength, seconds)</code> from any game code, and the view jumps about a new way each frame, fading to still. <code>strength</code> is how far it throws the view at first, in metres (0.2 is a thump, 0.5 an explosion), and <code>seconds</code> how long it lasts (a quarter of a second is plenty for a hit). A stronger shake takes over a weaker one still going. The camera settles back exactly where it would have been.</li>
 </ul>
 </li>
 </ul>
+<pre data-lang="lust"><code><span class="tk-c">-- bomb.lst: shakes the camera when the player walks into it.</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/zones&quot;</span><span class="tk-p">:</span><span class="tk-n">Entered</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/kit/cameras&quot;</span><span class="tk-p">:</span><span class="tk-n">ShakeCamera</span><span class="tk-p">;</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Bomb</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">entity</span> camera = <span class="tk-v">nothing</span><span class="tk-p">;</span> <span class="tk-c">-- [tip &quot;The camera with FollowCamera2D.&quot;]</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-f">on</span> <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
+        <span class="tk-f">send</span> <span class="tk-n">ShakeCamera</span><span class="tk-p">(</span><span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0.4</span><span class="tk-p">)</span> <span class="tk-f">to</span> camera<span class="tk-p">;</span>
+        despawn<span class="tk-p">();</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Bomb</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
 <div class="table-wrap"><table class="keys">
 <thead><tr><th>RTS camera</th><th>Keyboard and mouse</th><th>Gamepad</th></tr></thead>
 <tbody>
@@ -11006,7 +11023,7 @@ event MoodChanged(Mood from, Mood to);</code></pre>
 </table></div>
 <p><strong>FirstPersonCamera</strong> (ready-made): <strong>body</strong> (the character), <strong>eyes</strong> (how high its eyes are), <strong>turnsBody</strong>, <strong>lowest</strong> and <strong>highest</strong>.</p>
 <p><strong>RtsCamera</strong> (ready-made): <strong>focus</strong> (the point on the map it looks at), <strong>height</strong>, <strong>lowest</strong> and <strong>highest</strong> (how far it zooms), <strong>tilt</strong> (degrees it looks down), <strong>panSpeed</strong> and <strong>turnSpeed</strong>.</p>
-<p><strong>FollowCamera2D</strong> (ready-made): <strong>target</strong> (who it follows), <strong>bounds</strong> (an entity with a tile map it stays inside; empty: no edges), <strong>deadZone</strong> (how far, in metres across and up, the target can move from the middle before it follows; 1 and 0.75 to start), <strong>smoothing</strong> (about how many seconds it takes to catch up; 0.2 to start, 0 for at once), and <strong>speed</strong> (how fast it's moving now; you don't need to set it).</p>
+<p><strong>FollowCamera2D</strong> (ready-made): <strong>target</strong> (who it follows), <strong>bounds</strong> (an entity with a tile map it stays inside; empty: no edges), <strong>deadZone</strong> (how far, in metres across and up, the target can move from the middle before it follows; 1 and 0.75 to start), <strong>smoothing</strong> (about how many seconds it takes to catch up; 0.2 to start, 0 for at once), and <strong>speed</strong> (how fast it's moving now; you don't need to set it). Its shake is kept in hidden fields, so a save keeps a shake going.</p>
 <p>The fields at the bottom of each (<code>fall</code>, <code>yaw</code>, <code>pitch</code>) are how it's moving right now: how fast it's falling, and which way it's looking. While playing, Properties shows them changing. They're fields so a <a href="#save-games">save game</a> keeps them; you don't need to set them.</p>
 </section>
 <section id="characters-and-cameras--shortcuts">

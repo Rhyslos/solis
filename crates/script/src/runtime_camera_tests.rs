@@ -246,3 +246,51 @@ fn the_manual_s_hoe_is_sound_code() {
         panic!("{}", problems[0]);
     }
 }
+
+#[test]
+fn a_shake_throws_the_camera_about_and_it_settles_where_it_was() {
+    let mut host = Flat::new();
+    host.places.insert(id(1), Vec3::new(20.0, 15.0, 0.0));
+    host.places.insert(id(2), Vec3::new(20.0, 15.0, 10.0));
+    let code = compiled(
+        "fetch \"solis/kit/cameras\":[FollowCamera2D, ShakeCamera];\n\
+         component Quake {\n    has {\n        entity camera = nothing;\n        bool sent = false;\n    }\n\
+         \x20   method update(float dt) {\n        is not sent? then {\n\
+         \x20           send ShakeCamera(0.5, 0.5) to camera;\n            sent = true;\n        }\n    }\n}\n\
+         pass Quake;\nend\n",
+    );
+    let mut runtime = Runtime::new().unwrap();
+    runtime.load(&code, &mut host).unwrap();
+    let mut data = ComponentData::default();
+    data.set("target", Value::Entity(Some(id(1))));
+    data.set("smoothing", Value::Float(0.0));
+    runtime
+        .sync(id(2), "FollowCamera2D", &data, &mut host)
+        .unwrap();
+    let mut data = ComponentData::default();
+    data.set("camera", Value::Entity(Some(id(2))));
+    runtime.sync(id(3), "Quake", &data, &mut host).unwrap();
+    // The shake is heard this tick and shown from the next.
+    assert!(runtime.tick(1.0 / 60.0, &mut host).failures.is_empty());
+    assert_eq!(host.places[&id(2)], Vec3::new(20.0, 15.0, 10.0));
+    assert!(runtime.tick(1.0 / 60.0, &mut host).failures.is_empty());
+    let thrown = host.places[&id(2)] - Vec3::new(20.0, 15.0, 10.0);
+    assert!(
+        thrown.length() > 0.4 && thrown.length() <= 0.5 && thrown.z == 0.0,
+        "thrown nearly half a metre at first: {thrown}"
+    );
+    // It fades, and after its half second the camera is back at rest.
+    let mut last = thrown.length();
+    for _ in 0..40 {
+        assert!(runtime.tick(1.0 / 60.0, &mut host).failures.is_empty());
+        let now = (host.places[&id(2)] - Vec3::new(20.0, 15.0, 10.0)).length();
+        assert!(now <= last + 1e-5, "fading: {now} after {last}");
+        last = now;
+    }
+    assert!(runtime.tick(1.0 / 60.0, &mut host).failures.is_empty());
+    let at = host.places[&id(2)];
+    assert!(
+        (at - Vec3::new(20.0, 15.0, 10.0)).length() < 1e-4,
+        "settled: {at}"
+    );
+}
