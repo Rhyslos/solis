@@ -93,4 +93,39 @@ Kept as they are, not extended, until the done list needs them or the project le
 
 ## Done means
 
-*(A rough first version is written with the project lead in the next chat, and changed whenever it should be.)*
+The project lead's first version (2026-11-26). Three kinds of game; with them, 2D should have most of what any game needs. Work that helps one of them comes first; anything else waits until a game asks for it. A guide, changed whenever ideas change.
+
+### 1. A farming and life game, like Stardew Valley (single player)
+
+Already in Solis: tile maps with values per tile, the day clock and day colours, timers at an hour, trigger zones, tags and "nearest" questions, data tables, game screens with text effects, translations, lights, saves.
+
+Still needed from the engine:
+- **Dialogue:** conversations, the dialogue box, the conversation editor, talking to people. Voice lines and the translators' spreadsheets aren't needed for this game.
+- **Inventory and hotbar support:** tooltips and drag and drop in screens. The inventory itself is the game's Lust.
+- **Houses, town and mines:** rooms, moving between them with a fade, and the Door.
+- **Walking behind trees and buildings.**
+- **Villagers walking their routes:** pathfinding. Their days are game code on timers.
+- **Save slots**, and **tile map questions** ("which cells hold a crop").
+- **Polish:** rain and snow, music that follows the season and the hour, festival cutscenes, night lighting with glowing windows.
+
+The game's own code, not the engine's: crops and seasons, shops, crafting, fishing, friendship and gifts, quests and mail.
+
+### 2. A platformer
+
+- **Platformer movement:** jumps set by height and time, coyote time, jump buffering, wall jumps; one-way platforms, slopes and moving platforms.
+- **Paths drawn in the editor** for platforms and enemies to follow, and **components that draw in the editor** (an enemy's reach).
+- **Tweens kept in saves.**
+- **Game feel:** screen shake, flash, hit-stop, squash, rumble.
+
+### 3. A 2D combat game: a platformer with sword fighting, or a side-view shooter like Strike Force Heroes
+
+Everything the platformer needs, and:
+- **Melee:** hit boxes that turn on for a few frames of an attack's animation, knockback, hit-stop.
+- **Guns:** aiming with the mouse or a stick, many projectiles at once (pools), hits as game state.
+- **Effects:** particles, trails, muzzle flashes and sparks.
+- **Enemies and bots that move round a level of platforms:** pathfinding with jumps and drops, not just walking.
+- **Music that follows the fight.**
+
+### Not on the list (waits until a game asks for it)
+
+Puzzle and turn-based tools (grid-step movement, game tests, advanced tiling), the renderer rework and materials, palette tricks, mods and Git, multiplayer, and the 3D track.
