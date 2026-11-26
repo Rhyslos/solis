@@ -669,6 +669,8 @@ pub(crate) fn with_natives<'h, R>(
         let h = &host;
         let said = &lines;
         crate::natives::lend(scope, &natives, h, keys, said)?;
+        // What game code makes with new (the uniformity pass, U6).
+        crate::made::lend(scope, lua, &natives, h)?;
         // The data tables' natives: made once for each set of tables.
         let (tables, texts) = {
             let host = h.borrow();

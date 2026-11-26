@@ -12,6 +12,7 @@ use std::sync::Arc;
 
 const MAIN: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":Timer;\n\
+    fetch \"solis/made\":[Opens, Dawn];\n\
     fetch \"solis/timers\":TimerFinished;\n\n\
     component Door {\n\
         has {\n\
@@ -23,8 +24,8 @@ const MAIN: &str = "fetch \"solis/world\":World;\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
                 World.gameSpeed = speed;\n\
-                startTimer(Timer.Opens, 2.0);\n\
-                startTimerAtHour(Timer.Dawn, 6.0);\n\
+                new Opens { after = 2.0 };\n\
+                new Dawn { atHour = 6.0 };\n\
                 World.timeOfDay = 5.0;\n\
             }\n\
             is ticks == 3? then {\n\

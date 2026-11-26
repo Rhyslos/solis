@@ -307,6 +307,40 @@ pub const OBJECT_FIELDS: &[ObjectField] = &[
     },
 ];
 
+/// The calls that are `new` in Lust now (the uniformity pass, U6a;
+/// [`crate::made`]): each native's key, with how it's written in Lust.
+/// They stay natives, for Lua and Rust, but leave Lust's files.
+pub const MADE_NOW: &[(&str, &str)] = &[
+    (
+        "World_fire",
+        "new Shot { from = muzzle, direction = ahead, speed = 30 }; with fetch \"solis/made\":Shot;",
+    ),
+    (
+        "Audio_play",
+        "new Theme { everywhere = true }; for Sound.Theme, the same everywhere, with fetch \"solis/made\":Theme;",
+    ),
+    (
+        "Audio_playAt",
+        "new Footstep { at = place }; for Sound.Footstep, with fetch \"solis/made\":Footstep;",
+    ),
+    (
+        "entity_playSound",
+        "new Footstep {}; for Sound.Footstep on the component's own entity, or new Footstep { on = target }; on another, with fetch \"solis/made\":Footstep;",
+    ),
+    (
+        "entity_startTimer",
+        "new DoorOpens { after = 2.0 }; for Timer.DoorOpens, with fetch \"solis/made\":DoorOpens;",
+    ),
+    (
+        "entity_startTimerEvery",
+        "new Wave { every = 5.0 }; for Timer.Wave, with fetch \"solis/made\":Wave;",
+    ),
+    (
+        "entity_startTimerAtHour",
+        "new Rooster { atHour = 6.0 }; for Timer.Rooster, with fetch \"solis/made\":Rooster;",
+    ),
+];
+
 impl Native {
     /// Whether it's a field's getter or setter, read and set as the field
     /// in Lust ([`OBJECT_FIELDS`]) and kept for Lua and Rust only.
@@ -314,6 +348,12 @@ impl Native {
         OBJECT_FIELDS
             .iter()
             .any(|f| f.object == self.owner && (f.getter == self.name || f.setter == self.name))
+    }
+
+    /// Whether Lust's files describe it: not a field's getter or setter,
+    /// nor a call that's `new` now ([`MADE_NOW`]). Lua and Rust keep it.
+    pub fn in_lust(&self) -> bool {
+        !self.is_field() && !MADE_NOW.iter().any(|(key, _)| *key == self.key())
     }
 }
 
@@ -341,7 +381,7 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "fire",
-        lust: "World:fire(from, direction, speed, life, colour)",
+        lust: "new Shot { from = muzzle, direction = ahead }, with fetch \"solis/made\":Shot;",
         lua: "solis.World:fire(from, direction, speed, life, colour)",
     },
     Moved {
@@ -481,17 +521,17 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "playSound",
-        lust: "Audio:play(Sound.Footstep) for sfx/footstep, with fetch \"solis/sound\":Audio; and fetch \"solis/project\":Sound;",
+        lust: "new Footstep { everywhere = true }; for sfx/footstep, with fetch \"solis/made\":Footstep;",
         lua: "solis.Audio:play(\"Sfx.Footstep\")",
     },
     Moved {
         old: "playSoundAt",
-        lust: "Audio:playAt(Sound.Footstep, place)",
+        lust: "new Footstep { at = place };",
         lua: "solis.Audio:playAt(\"Sfx.Footstep\", place)",
     },
     Moved {
         old: "playSoundOn",
-        lust: "target:playSound(Sound.Footstep) (inside a component, playSound(…) for its own entity)",
+        lust: "new Footstep { on = target }; (inside a component, new Footstep {}; for its own entity)",
         lua: "solis.entity.playSound(target, \"Sfx.Footstep\")",
     },
     Moved {
@@ -1359,6 +1399,11 @@ fn descriptions_with(
     names: &crate::project_names::Names,
 ) -> (Vec<(String, String)>, Vec<String>) {
     let (project, notes) = crate::project_names::project_file(made_by, names);
+    // What game code makes with new: written when the code is checked.
+    let made = (
+        format!("{folder}/{}.lst", crate::made::FILE),
+        crate::made::placeholder(made_by),
+    );
     // An object field's state starts on its first option (the project's
     // main language), or the one a state has when it has none.
     let first_language = names
@@ -1379,7 +1424,7 @@ fn descriptions_with(
         .map(|file| {
             let mine: Vec<&Native> = NATIVES
                 .iter()
-                .filter(|n| n.file == file && !n.is_field())
+                .filter(|n| n.file == file && n.in_lust())
                 .collect();
             let mut text = format!(
                 "-- Made by {made_by}{ENGINE_FILE} It's written again\n\
@@ -1514,6 +1559,7 @@ fn descriptions_with(
             format!("{folder}/{}.lst", crate::component_code::FILE),
             crate::component_code::placeholder(made_by),
         )))
+        .chain(std::iter::once(made))
         .chain(DATA_CLASSES.iter().map(|(kind, classes)| {
             (
                 format!("{folder}/{}/{kind}.lst", level::lust_data::CLASSES_FOLDER),
@@ -1603,8 +1649,9 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 25);
+        assert_eq!(files.len(), 26);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
+        assert!(files.iter().any(|(p, _)| p == "solis/made.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/clips.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/module.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
@@ -1618,6 +1665,7 @@ mod tests {
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\
              fetch \"solis/sound\":Audio;\n\
+             fetch \"solis/made\":Shot;\n\
              fetch \"solis/animation\":[CueReached, ClipFinished];\n\
              fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\
              -- A game's own class may share a name with a data file's class.\n\
@@ -1690,10 +1738,7 @@ mod tests {
                      made:despawn();\n\
                      World:setSeed(World:randomInt(1, 6));\n\
                      float r = World:random() + World:randomRange(1, 2);\n\
-                     World:fire(position(), step, 10, 1, [1, 0, 0]);\n\
-                     Audio:play(Sound.None);\n\
-                     Audio:playAt(Sound.None, position());\n\
-                     playSound(Sound.None);\n\
+                     new Shot { from = position(), direction = step, speed = 10, life = 1, colour = [1, 0, 0] };\n\
                      other:stopSounds();\n\
                      setSoundPlaying(true);\n\
                      Audio:setVolume(Bus.Music, 0.5);\n\
@@ -1717,6 +1762,8 @@ mod tests {
              end\n"
                 .into(),
         ));
+        // What the game makes with new, as the code's check writes it.
+        let files = crate::made::write("solis", &files).files;
         let engine = lust::Engine {
             folders: engine_folders(),
         };

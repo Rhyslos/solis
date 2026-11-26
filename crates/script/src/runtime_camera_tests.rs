@@ -106,6 +106,7 @@ fn compiled(main: &str) -> Compiled {
         screens: None,
         engine_reads: Vec::new(),
         name_paths: Default::default(),
+        made: Default::default(),
     }
 }
 

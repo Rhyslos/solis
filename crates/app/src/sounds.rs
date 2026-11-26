@@ -942,9 +942,9 @@ mod tests {
             ..hum_event()
         };
         let (_dir, s) = with_events("at-once", &[("hum", two)]);
-        const KEEP: &str = "fetch \"solis/project\":Sound;\n\n\
+        const KEEP: &str = "fetch \"solis/made\":Hum;\n\n\
             component Keep {\n\
-                method update(float dt) { playSound(Sound.Hum); }\n\
+                method update(float dt) { new Hum {}; }\n\
             }\n\
             pass Keep;\nend\n";
         let mut w = coded_world(KEEP, "Keep");
@@ -960,10 +960,10 @@ mod tests {
         w.stop();
         audio.frame(&mut w, &s, &mut device, &ctx);
 
-        const UNSAID: &str = "fetch \"solis/project\":Sound;\n\n\
+        const UNSAID: &str = "fetch \"solis/made\":Hum;\n\n\
             component Unsaid {\n\
                 method update(float dt) {\n\
-                    playSound(Sound.Hum);\n\
+                    new Hum {};\n\
                     stopSounds();\n\
                 }\n\
             }\n\
@@ -985,11 +985,11 @@ mod tests {
             ..hum_event()
         };
         let (_dir, s) = with_events("drone", &[("drone", drone)]);
-        const ONCE: &str = "fetch \"solis/project\":Sound;\n\n\
+        const ONCE: &str = "fetch \"solis/made\":Drone;\n\n\
             component Once {\n\
                 has { bool started = false; }\n\
                 method update(float dt) {\n\
-                    is not started? then { playSound(Sound.Drone); }\n\
+                    is not started? then { new Drone {}; }\n\
                     started = true;\n\
                 }\n\
             }\n\
@@ -1012,12 +1012,12 @@ mod tests {
         // Regression (the Phase 7 review): game code naming buses or sound
         // events that aren't there grew two lists without end.
         let (_dir, s) = with_events("made-up", &[("hum", hum_event())]);
-        const MADE_UP: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\n\n\
+        const MADE_UP: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\nfetch \"solis/made\":Nothing;\n\n\
             component Noisy {\n\
                 method update(float dt) {\n\
                     Audio:setVolume(Bus.Nope, 0.5);\n\
                     Audio:setVolume(Bus.Music, 0.5);\n\
-                    Audio:play(Sound.Nothing);\n\
+                    new Nothing { everywhere = true };\n\
                 }\n\
             }\n\
             pass Noisy;\nend\n";

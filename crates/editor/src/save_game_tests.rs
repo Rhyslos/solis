@@ -13,7 +13,7 @@ use std::sync::Arc;
 /// A busy game: a counter that staggers randomly, kicks a crate on its
 /// first tick, fires a laser now and then, and saves or loads when its
 /// `request` field says to.
-pub(super) const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
+pub(super) const BUSY: &str = "fetch \"solis/world\":[World, Saves];\nfetch \"solis/made\":Shot;\n\n\
     \n\
     \n\
     component Busy {\n\
@@ -30,7 +30,7 @@ pub(super) const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
             wander = wander + World:randomRange(-1, 1);\n\
             moveTo(position() + [World:randomRange(-0.1, 0.1), 0.05, 0]);\n\
             is ticks % 20 == 0? then {\n\
-                World:fire(position(), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);\n\
+                new Shot { from = position(), direction = [1, 0, 0], speed = 30, life = 1, colour = [2, 0.5, 0.2] };\n\
             }\n\
             is request == 1? then {\n\
                 Saves:saveTo(\"quick\");\n\

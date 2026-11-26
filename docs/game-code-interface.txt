@@ -12,7 +12,6 @@ world: object World: method float time() native;
 world: object World: method entity find(string name) native;
 world: object World: method entity array within(Tag tag, vec3 place, float radius) native;
 world: object World: method entity nearest(Tag tag, vec3 place) native;
-world: object World: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
 world: object World: method entity spawn(Module which, vec3 place) native;
 world: object World: method entity spawnWith(Module which, vec3 place, SpawnValues array values) native;
 world: object World: method entity the(Component which) native;
@@ -29,9 +28,6 @@ world: object World: method int randomInt(int low, int high) native;
 world: object World: method setSeed(int seed) native;
 world: object Saves: method saveTo(string slot) native;
 world: object Saves: method loadFrom(string slot) native;
-sound: object Audio: method play(Sound event) native;
-sound: object Audio: method playAt(Sound event, vec3 place) native;
-sound: method entity:playSound(Sound event) native;
 sound: method entity:stopSounds() native;
 sound: method entity:setSoundPlaying(bool playing) native;
 sound: object Audio: method setVolume(Bus bus, float volume) native;
@@ -76,9 +72,6 @@ physics: object Physics: method RayHit castRay(vec3 from, vec3 direction, float 
 physics: method entity:walk(vec3 wanted) native;
 physics: method bool entity:grounded() native;
 zones: method entity array entity:inside() native;
-timers: method entity:startTimer(Timer which, float seconds) native;
-timers: method entity:startTimerEvery(Timer which, float seconds) native;
-timers: method entity:startTimerAtHour(Timer which, float hour) native;
 timers: method entity:stopTimer(Timer which) native;
 timers: method bool entity:timerRunning(Timer which) native;
 timers: method float entity:timeLeft(Timer which) native;
@@ -110,6 +103,12 @@ zones: event EnteredZone(entity zone);
 zones: event LeftZone(entity zone);
 timers: event TimerFinished(Timer which);
 screens: event TypingFinished(Screen which);
+
+## Made with new (fetch "solis/made":<Name>)
+
+Shot: vec3 from, vec3 direction, float speed, float life, vec3 colour
+<a sound event>: vec3 at, entity on, bool everywhere
+<a timer>: float after, float every, float atHour
 
 ## Fields of the engine's objects (read, and set with =)
 

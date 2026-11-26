@@ -1058,14 +1058,14 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     );
     files.push((
         "main.lst".into(),
-        "fetch \"solis/world\":World;\n\n\
+        "fetch \"solis/world\":World;\nfetch \"solis/made\":Shot;\n\n\
          \n\
          component LustGun {\n\
              has {\n\
                  int shots = 0;\n\
              }\n\
              method update(float dt) {\n\
-                 World:fire(position(), [0, 1, 0], 30, 0.25, [4, 0.2, 0.1]);\n\
+                 new Shot { from = position(), direction = [0, 1, 0], speed = 30, life = 0.25, colour = [4, 0.2, 0.1] };\n\
              }\n\
          }\n\
          pass LustGun;\nend\n"
@@ -1136,13 +1136,13 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
 fn past_the_projectile_limit_the_console_says_so_once() {
     let mut w = Workbench::new(info());
     w.set_program(Some(program(
-        "fetch \"solis/world\":World;\n\n\
+        "fetch \"solis/world\":World;\nfetch \"solis/made\":Shot;\n\n\
          component Gun {\n\
              has {\n\
                  int shots = 0;\n\
              }\n\
              method update(float dt) {\n\
-                 World:fire([0, 0, 0], [0, 1, 0], 30, 50, [4, 0.2, 0.1]);\n\
+                 new Shot { from = [0, 0, 0], direction = [0, 1, 0], speed = 30, life = 50, colour = [4, 0.2, 0.1] };\n\
              }\n\
          }\n\
          pass Gun;\nend\n",

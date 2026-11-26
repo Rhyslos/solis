@@ -24,6 +24,7 @@ fetch "solis/animation":Animators;
 fetch "solis/zones":[Entered, Exited, EnteredZone, LeftZone];
 fetch "solis/kit/character":[CharacterController];
 fetch "solis/kit/topdown":[TopDownController];
+fetch "solis/made":[Pulse, Bell, Sting, Hum, Blink, Shot];
 
 event Hit(entity by, float damage);
 event Dented(int platesLeft);
@@ -91,8 +92,8 @@ component Hive {
     method update(float dt) {
         -- The pulse and the bell go on whatever the swarm does.
         is not started? then {
-            startTimerEvery(Timer.Pulse, 0.75);
-            startTimerAtHour(Timer.Bell, 8.05);
+            new Pulse { every = 0.75 };
+            new Bell { atHour = 8.05 };
             keepStarted();
             started = true;
         }
@@ -112,9 +113,9 @@ component Hive {
             is made % 4 == 0? then {
                 is state == Swarm.Quiet? then {
                     state = Swarm.Buzzing;
-                    startTimerEvery(Timer.Sting, 0.2);
+                    new Sting { every = 0.2 };
                     tween glow to 1 over 3.0;
-                    playSound(Sound.Hum);
+                    new Hum {};
                 } or {
                     state = Swarm.Quiet;
                 }
@@ -152,7 +153,7 @@ component Drone {
         is life == 0? then {
             life = World:randomInt(40, 160);
             heading = World:randomRange(0, 2 * Maths.pi);
-            startTimer(Timer.Blink, 1.0);
+            new Blink { after = 1.0 };
         }
         age = age + 1;
         is age % 30 == 0? then {
@@ -183,7 +184,7 @@ component Turret {
         aim = aim + dt * 0.7;
         is reload <= 0 && target != nothing? then {
             vec3 way = [Maths:cos(aim), Maths:sin(aim), 0.15];
-            World:fire(position() + [0, 0, 1], way, World:randomRange(8, 14), 1.2, [1, 0.4, 0.1]);
+            new Shot { from = position() + [0, 0, 1], direction = way, speed = World:randomRange(8, 14), life = 1.2, colour = [1, 0.4, 0.1] };
             send Hit(this, World:randomRange(1, 3)) to target;
             reload = 0.4;
         }

@@ -17,8 +17,9 @@ There's nothing new to learn to enter a state: the code that sets `state = Mood.
 ```lust
 -- hero.lst: stunned by a hit, recovering a second and a half later.
 fetch "solis/world":World;
-fetch "solis/project":[Timer, Sound];
+fetch "solis/project":Timer;
 fetch "solis/timers":TimerFinished;
+fetch "solis/made":[Recover, Dizzy];
 
 state Mood = [Calm, Stunned];
 event Hit(float damage);
@@ -33,9 +34,9 @@ component Hero {
     -- A hit stuns: everything started here belongs to Stunned.
     on Hit(float damage) {
         state = Mood.Stunned;
-        startTimer(Timer.Recover, 1.5);
+        new Recover { after = 1.5 };
         tween flash to 1 over 1.5;
-        playSound(Sound.Dizzy);
+        new Dizzy {};
     }
 
     -- The stun is over: setting the state ends the rest.
@@ -148,9 +149,9 @@ While a component is in an option of its own state, these belong to that option 
 
 | Started in the state | When the state changes |
 |---|---|
-| A timer (`startTimer`, `startTimerEvery`, `startTimerAtHour`) | It stops, and `TimerFinished` never comes. Even one that was due this very tick isn't heard once the state has changed. |
+| A timer (`new DoorOpens { after = … }`, with `every` or `atHour` too) | It stops, and `TimerFinished` never comes. Even one that was due this very tick isn't heard once the state has changed. |
 | A [tween](game-code.md#tweens) (`tween flash to 1 over 1.5;`) | It stops where it is: the value keeps what it had reached, and its done block doesn't run. |
-| A sound set to **Loop** ([Sound events](sound-events.md)), played with `playSound` or `Audio:play` | It fades out. A sound that plays once finishes as usual. |
+| A sound set to **Loop** ([Sound events](sound-events.md)), made with `new` (`new Engine {};`) | It fades out. A sound that plays once finishes as usual. |
 
 And these **don't**:
 
@@ -165,7 +166,7 @@ A state's options can hold options of their own, and each counts separately, as 
 
 ```lust
 -- fighter.lst: a stance inside combat.
-fetch "solis/project":[Timer, Sound];
+fetch "solis/made":[Battle, Swing];
 
 state Mood = [Calm, Combat [Melee, Ranged]];
 
@@ -176,12 +177,12 @@ component Fighter {
 
     method enterCombat() {
         state = Mood.Combat;
-        playSound(Sound.Battle);
+        new Battle {};
     }
 
     method closeIn() {
         state = Mood.Combat.Melee;
-        startTimerEvery(Timer.Swing, 0.8);
+        new Swing { every = 0.8 };
     }
 
     method backOff() {
@@ -227,8 +228,9 @@ Sometimes a thing started in a state should outlive it: a door's slow swing that
 
 ```lust
 -- gate.lst: the gate keeps swinging after it's locked; the alarm doesn't.
-fetch "solis/project":[Timer, Sound];
+fetch "solis/project":Timer;
 fetch "solis/timers":TimerFinished;
+fetch "solis/made":[Alarm, Lock];
 
 state Gate = [Shut, Opening, Locked];
 
@@ -244,8 +246,8 @@ component Guard {
         keepStarted();
 
         -- Started after keepStarted(): ends with Opening.
-        playSound(Sound.Alarm);
-        startTimer(Timer.Lock, 1.0);
+        new Alarm {};
+        new Lock { after = 1.0 };
     }
 
     on TimerFinished(Timer which) {

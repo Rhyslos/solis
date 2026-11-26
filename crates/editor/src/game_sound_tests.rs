@@ -12,7 +12,7 @@ use level::builtin::{Camera, Transform};
 use reflect::EntityId;
 use std::sync::Arc;
 
-const SPEAKER: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Audio;\n\n\
+const SPEAKER: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Audio;\nfetch \"solis/made\":[Step, Engine];\n\n\
     \n\
     component Speaker {\n\
         has {\n\
@@ -20,8 +20,8 @@ const SPEAKER: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Aud
         }\n\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
-            Audio:playAt(Sound.Step, position());\n\
-            playSound(Sound.Engine);\n\
+            new Step { at = position() };\n\
+            new Engine {};\n\
             moveTo(position() + [1, 0, 0]);\n\
         }\n\
     }\n\

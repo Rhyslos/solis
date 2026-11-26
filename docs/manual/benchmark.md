@@ -34,6 +34,6 @@ Everything is ordinary Solis, so you can read and change it:
 
 ## Related
 - [The Profiler](profiler.md)
-- [Game code](game-code.md): `World:spawn`, `World:fire` and `World:frameTime`
+- [Game code](game-code.md): `World:spawn`, `new Shot` and `World:frameTime`
 - [Levels of detail](levels-of-detail.md)
 - Concepts: [frame, frames a second, CPU and GPU](concepts.md#playing)

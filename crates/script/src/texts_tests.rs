@@ -161,6 +161,7 @@ fn compiled(main: &str, lua: &[(&str, &str)]) -> Compiled {
         screens: None,
         engine_reads: Vec::new(),
         name_paths: std::sync::Arc::new(shop_paths()),
+        made: Default::default(),
     }
 }
 

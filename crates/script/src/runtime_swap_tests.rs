@@ -30,6 +30,7 @@ fn chunk(main: &str) -> Compiled {
             screens: None,
             engine_reads: Vec::new(),
             name_paths: Default::default(),
+            made: Default::default(),
         },
         Err(problems) => panic!("{}", problems[0]),
     }

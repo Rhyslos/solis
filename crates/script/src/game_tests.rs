@@ -16,7 +16,7 @@ pub(super) struct TestWorld {
     pub(super) said: Vec<String>,
     time: f64,
     tick: u64,
-    shots: Vec<crate::Shot>,
+    pub(super) shots: Vec<crate::Shot>,
     seed: u64,
     pub(super) sounds: Vec<Change>,
     /// Who is inside each trigger zone, as the world's pass found.
@@ -429,14 +429,14 @@ fn swapping_values_and_stopping_reach_every_shard() {
 fn shots_fired_land_in_order_on_any_number_of_shards() {
     // Each gun fires towards +Y from where it is, a little faster the
     // later it is in the list.
-    const GUNS: &str = "fetch \"solis/world\":World;\n\n\
+    const GUNS: &str = "fetch \"solis/world\":World;\nfetch \"solis/made\":Shot;\n\n\
         \n\
         component Gun {\n\
             has {\n\
                 float speed = 10;\n\
             }\n\
             method update(float dt) {\n\
-                World:fire(position(), [0, 1, 0], speed, 2, [4, 0.2, 0.1]);\n\
+                new Shot { from = position(), direction = [0, 1, 0], speed = speed, life = 2, colour = [4, 0.2, 0.1] };\n\
             }\n\
         }\n\
         pass Gun;\nend\n";
@@ -770,14 +770,14 @@ fn game_code_s_checksum_is_the_same_on_any_number_of_shards() {
 fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
     // Each speaker plays at itself, on itself, and everywhere; the last
     // also stops the first's sounds. A bad place or name is left out.
-    const SPEAKERS: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Audio;\nfetch \"solis/world\":World;\n\n\
+    const SPEAKERS: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Audio;\nfetch \"solis/world\":World;\nfetch \"solis/made\":[Step, Engine, Theme];\n\n\
         \n\
         \n\
         component Speaker {\n\
             method update(float dt) {\n\
-                Audio:playAt(Sound.Step, position());\n\
-                playSound(Sound.Engine);\n\
-                Audio:play(Sound.Theme);\n\
+                new Step { at = position() };\n\
+                new Engine {};\n\
+                new Theme { everywhere = true };\n\
             }\n\
         }\n\
         component Hush {\n\
@@ -849,10 +849,10 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
 
 #[test]
 fn a_flood_of_sounds_is_capped() {
-    const LOUD: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\n\n\
+    const LOUD: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\nfetch \"solis/made\":Boom;\n\n\
         component Loud {\n\
             method update(float dt) {\n\
-                loop 1000 { Audio:play(Sound.Boom); }\n\
+                loop 1000 { new Boom { everywhere = true }; }\n\
                 Audio:setVolume(Bus.Music, 0.5);\n\
             }\n\
         }\n\
