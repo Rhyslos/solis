@@ -10,6 +10,9 @@ The manual is also the **user guide**: all its pages as one page to read in your
 
 - [Getting started: install Solis, download it, or build it yourself](getting-started.md)
 - [Getting started: your first 2D platformer, step by step, learning Solis and Lust](first-platformer.md)
+- [Can I make this? What a platformer, an action game and a farming game need, and what's ready](can-i-make-this.md)
+- [Platformer recipes: a jump that feels right, wall jumps, hit-stop, a hurt flash, paths](platformer-recipes.md)
+- [Combat recipes: sword hits, knockback, bullets, sparks, music for fights](combat-recipes.md)
 - [Installing and updating: install once, and new builds arrive by themselves](installing-and-updating.md)
 - [Concepts: the ideas behind a game engine's editor](concepts.md)
 - [The user guide: this guide, the Documentation button, and which browser it opens in](user-guide.md)
