@@ -259,6 +259,11 @@ mod tests {
             character: true,
             ..Collider2D::default()
         });
+        round_trip(&Collider2D {
+            shape: Shape2D::Box,
+            one_way: true,
+            ..Collider2D::default()
+        });
         round_trip(&RigidBody {
             kind: BodyKind::Kinematic,
             upright: true,

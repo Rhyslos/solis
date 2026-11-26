@@ -1123,7 +1123,7 @@ footer p { color: var(--muted); }
 <tr><td>Coyote time and jump buffering</td><td>Recipe</td><td><a href="#platformer-recipes--a-jump-that-feels-right">A jump that feels right</a></td></tr>
 <tr><td>A short hop when Jump is let go early</td><td>Recipe</td><td><a href="#platformer-recipes--a-jump-that-feels-right">A jump that feels right</a></td></tr>
 <tr><td>Wall jumps</td><td>Recipe</td><td><a href="#platformer-recipes--a-jump-that-feels-right">A jump that feels right</a></td></tr>
-<tr><td>One-way platforms, jumped up through and stood on</td><td>Not yet</td><td>Next: the platformer's first update</td></tr>
+<tr><td>One-way platforms, jumped up through and stood on</td><td>Works</td><td><strong>One way</strong> on a <code>Collider2D</code> (<a href="#walls-and-walking--one-way-platforms">One-way platforms</a>); dropping down through one is game code (<code>setSolid(false)</code> for a moment)</td></tr>
 <tr><td>Moving platforms</td><td>Recipe</td><td>A solid <code>Collider2D</code> moved along a path (<a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">Following a path</a>)</td></tr>
 <tr><td>Being carried along by a moving platform</td><td>Not yet</td><td>The platformer's second update. Until then a character on a moving platform stays where it is and the platform slides under it</td></tr>
 <tr><td>Slopes</td><td>Not yet</td><td>Later, when a game asks: 2D colliders and tiles are boxes and circles</td></tr>
@@ -1198,7 +1198,7 @@ footer p { color: var(--muted); }
 <h4 id="can-i-make-this--what-comes-when">What comes when<a class="anchor" href="#can-i-make-this--what-comes-when" aria-label="Link to this section">#</a></h4>
 <p>In order, each a small update:</p>
 <ol class="steps">
-<li><strong>The platformer:</strong> one-way platforms, being carried by moving platforms, screen shake.</li>
+<li><strong>The platformer:</strong> being carried by moving platforms, screen shake (one-way platforms are in).</li>
 <li><strong>The action game:</strong> aiming with the mouse, rays in 2D.</li>
 <li><strong>Rust and Lua stop being game languages:</strong> Lust is the language games are written in.</li>
 <li><strong>Dialogue,</strong> in full: conversations, the dialogue box and the conversation editor.</li>
@@ -3992,6 +3992,7 @@ end</code></pre>
 <tr><td><code>width</code>, <code>height</code></td><td>a box's size</td><td><code>16.0</code>, <code>16.0</code></td></tr>
 <tr><td><code>across</code>, <code>up</code></td><td>how far right and up of the entity's place its middle is</td><td><code>0.0</code>, <code>0.0</code></td></tr>
 <tr><td><code>character</code></td><td>walked by game code, sliding along walls; otherwise solid and still</td><td><code>false</code></td></tr>
+<tr><td><code>one_way</code></td><td>a one-way platform: landed on from above, passed through from below and the sides</td><td><code>false</code></td></tr>
 </tbody>
 </table></div>
 <p><strong>TileMap</strong>: a tile map placed with its top-left corner on the entity (<a href="#tile-maps">Tile maps</a>).</p>
@@ -9205,6 +9206,14 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <span class="tk-k">end</span></code></pre>
 </div>
 <p>When an entity with a Collider2D is despawned, its collider goes with it at once, so a squashed enemy never leaves an invisible wall.</p>
+<h4 id="walls-and-walking--one-way-platforms">One-way platforms<a class="anchor" href="#walls-and-walking--one-way-platforms" aria-label="Link to this section">#</a></h4>
+<p>In a platformer, a <strong>one-way platform</strong> is a ledge the hero jumps up through from below and lands on from above, like the thin wooden platforms in many side-scrollers.</p>
+<ol class="steps">
+<li>Place an entity for the platform (a sprite of a plank, say) and give it a <strong>Collider2D</strong> with <strong>Shape</strong> Box, sized to the plank.</li>
+<li>Tick <strong>One way</strong>. Leave <strong>Character</strong> unticked: a one-way collider is solid and still (or moved by game code with <code>moveTo</code>, as a <a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">moving platform</a>).</li>
+<li>Play: jump up into it from below and you pass through; come down onto it and you land on top and stand there, <code>grounded()</code> true.</li>
+</ol>
+<p>It stops a character only when the character is coming down and its bottom was at or above the platform's top as the move began. So a character that jumps up into it but not past its top falls back out of the bottom, and one walking into its side passes through. Tile maps' terrains aren't one way yet: use an entity per platform.</p>
 </section>
 <section id="walls-and-walking--settings">
 <h3>Settings<a class="anchor" href="#walls-and-walking--settings" aria-label="Link to this section">#</a></h3>
@@ -9217,6 +9226,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <tr><td>Width, Height</td><td>A box's size, in pixels.</td></tr>
 <tr><td>Across, Up</td><td>Where the shape's middle is from the entity's place, in pixels. Raise a character's circle to its feet so its head can overlap things above it, as top-down games do.</td></tr>
 <tr><td>Character</td><td>Ticked: game code walks it (<code>walk</code>, or the TopDownController) and it slides along what's in its way. Unticked: solid and still.</td></tr>
+<tr><td>One way</td><td>Ticked on a solid (not a character): a one-way platform, landed on from above and passed through from below and the sides (<a href="#walls-and-walking--one-way-platforms">One-way platforms</a>).</td></tr>
 </tbody>
 </table></div>
 <p>Pixels become metres with the project's 2D settings (<strong>File › Project settings</strong>, pixels per unit).</p>
@@ -9256,6 +9266,8 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <li><strong>Problem:</strong> the character walks through a fence. <strong>Why:</strong> the fence's terrain isn't solid, or the character has no Collider2D ticked Character. <strong>Fix:</strong> right-click the fence's swatch and tick Solid; press Walls to check it shows.</li>
 <li><strong>Problem:</strong> nothing moves when I press keys. <strong>Why:</strong> the entity has no TopDownController, or its Collider2D isn't ticked Character (walk only moves characters). <strong>Fix:</strong> check both in Properties, and look in the Console for game code mistakes.</li>
 <li><strong>Problem:</strong> the character stops at a doorway it should fit through. <strong>Why:</strong> its circle is wider than the gap. <strong>Fix:</strong> make the Radius smaller, or the door wider.</li>
+<li><strong>Problem:</strong> the hero falls through a one-way platform it should land on. <strong>Why:</strong> it was partly inside the platform as it started coming down (a jump that didn't clear the top), or the platform is ticked Character. <strong>Fix:</strong> jump higher, or untick Character on the platform.</li>
+<li><strong>Problem:</strong> the hero can't drop down through a one-way platform. <strong>Why:</strong> dropping through isn't built in. <strong>Fix:</strong> for now, game code can untick the platform's collider for a moment (<code>plank:setSolid(false)</code>), which lets everything through.</li>
 <li><strong>Problem:</strong> it catches on corners. <strong>Why:</strong> a Box collider meets corners square on. <strong>Fix:</strong> use a Circle for characters.</li>
 <li><strong>Problem:</strong> the <a href="#console">Console</a> says 2D physics stopped and was started again. <strong>Why:</strong> 2D physics met something it couldn't work out, usually a Collider2D or a tile map whose size or place is far out of the ordinary. Rather than leave every character standing still, Solis builds 2D physics again from the entities and tile maps as they are, and the game carries on; the message names the character it was moving when it knows. If it keeps happening, it's built again at most once a second (so the game doesn't slow to a crawl), and 2D characters stand still in between. It's said once each time you press Play. <strong>Fix:</strong> look at the entity named, or at anything very big or very far away, and bring it back into range.</li>
 <li>Walking into a door or a shop counter to make something happen (a trigger) comes with a later update.</li>

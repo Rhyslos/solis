@@ -110,6 +110,7 @@ impl World {
                 Shape2D::Box => FlatShape::Box(Vec2::new(size(c.width), size(c.height))),
             },
             center: Vec2::new(off(c.across), off(c.up)),
+            one_way: c.one_way,
         }
     }
 

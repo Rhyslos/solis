@@ -167,6 +167,15 @@ end
 
 When an entity with a Collider2D is despawned, its collider goes with it at once, so a squashed enemy never leaves an invisible wall.
 
+### One-way platforms
+In a platformer, a **one-way platform** is a ledge the hero jumps up through from below and lands on from above, like the thin wooden platforms in many side-scrollers.
+
+1. Place an entity for the platform (a sprite of a plank, say) and give it a **Collider2D** with **Shape** Box, sized to the plank.
+2. Tick **One way**. Leave **Character** unticked: a one-way collider is solid and still (or moved by game code with `moveTo`, as a [moving platform](platformer-recipes.md#following-a-path-moving-platforms-patrolling-enemies)).
+3. Play: jump up into it from below and you pass through; come down onto it and you land on top and stand there, `grounded()` true.
+
+It stops a character only when the character is coming down and its bottom was at or above the platform's top as the move began. So a character that jumps up into it but not past its top falls back out of the bottom, and one walking into its side passes through. Tile maps' terrains aren't one way yet: use an entity per platform.
+
 ## Settings
 **Collider2D**
 
@@ -177,6 +186,7 @@ When an entity with a Collider2D is despawned, its collider goes with it at once
 | Width, Height | A box's size, in pixels. |
 | Across, Up | Where the shape's middle is from the entity's place, in pixels. Raise a character's circle to its feet so its head can overlap things above it, as top-down games do. |
 | Character | Ticked: game code walks it (`walk`, or the TopDownController) and it slides along what's in its way. Unticked: solid and still. |
+| One way | Ticked on a solid (not a character): a one-way platform, landed on from above and passed through from below and the sides ([One-way platforms](#one-way-platforms)). |
 
 Pixels become metres with the project's 2D settings (**File › Project settings**, pixels per unit).
 
@@ -208,6 +218,8 @@ Change them in **File › Project settings › Input** (the Move action). A proj
 - **Problem:** the character walks through a fence. **Why:** the fence's terrain isn't solid, or the character has no Collider2D ticked Character. **Fix:** right-click the fence's swatch and tick Solid; press Walls to check it shows.
 - **Problem:** nothing moves when I press keys. **Why:** the entity has no TopDownController, or its Collider2D isn't ticked Character (walk only moves characters). **Fix:** check both in Properties, and look in the Console for game code mistakes.
 - **Problem:** the character stops at a doorway it should fit through. **Why:** its circle is wider than the gap. **Fix:** make the Radius smaller, or the door wider.
+- **Problem:** the hero falls through a one-way platform it should land on. **Why:** it was partly inside the platform as it started coming down (a jump that didn't clear the top), or the platform is ticked Character. **Fix:** jump higher, or untick Character on the platform.
+- **Problem:** the hero can't drop down through a one-way platform. **Why:** dropping through isn't built in. **Fix:** for now, game code can untick the platform's collider for a moment (`plank:setSolid(false)`), which lets everything through.
 - **Problem:** it catches on corners. **Why:** a Box collider meets corners square on. **Fix:** use a Circle for characters.
 - **Problem:** the [Console](console.md) says 2D physics stopped and was started again. **Why:** 2D physics met something it couldn't work out, usually a Collider2D or a tile map whose size or place is far out of the ordinary. Rather than leave every character standing still, Solis builds 2D physics again from the entities and tile maps as they are, and the game carries on; the message names the character it was moving when it knows. If it keeps happening, it's built again at most once a second (so the game doesn't slow to a crawl), and 2D characters stand still in between. It's said once each time you press Play. **Fix:** look at the entity named, or at anything very big or very far away, and bring it back into range.
 - Walking into a door or a shop counter to make something happen (a trigger) comes with a later update.

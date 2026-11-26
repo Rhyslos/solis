@@ -51,6 +51,10 @@ pub struct Collider2D {
     /// Walked by game code (`entity:walk`), sliding along what's in its
     /// way; otherwise solid and still.
     pub character: bool,
+    /// A one-way platform: characters land on it from above and pass
+    /// through it from below and the sides. Only when it isn't a
+    /// character.
+    pub one_way: bool,
 }
 
 impl Default for Collider2D {
@@ -63,6 +67,7 @@ impl Default for Collider2D {
             across: 0.0,
             up: 0.0,
             character: false,
+            one_way: false,
         }
     }
 }
@@ -125,6 +130,13 @@ impl Component for Collider2D {
                     "Walked by game code (moveCharacter, or the kit's TopDownController), sliding \
                      along what's in its way. Off: solid and still.",
                 ),
+                field::boolean(
+                    "one_way",
+                    "One way",
+                    d.one_way,
+                    "A platform characters jump up through and land on from above. Not for a \
+                     character.",
+                ),
             ],
         }
     }
@@ -138,6 +150,7 @@ impl Component for Collider2D {
         data.set("across", Value::Float(f64::from(self.across)));
         data.set("up", Value::Float(f64::from(self.up)));
         data.set("character", Value::Bool(self.character));
+        data.set("one_way", Value::Bool(self.one_way));
         data
     }
 
@@ -152,6 +165,7 @@ impl Component for Collider2D {
             across: f.float("across", d.across),
             up: f.float("up", d.up),
             character: f.bool("character", d.character),
+            one_way: f.bool("one_way", d.one_way),
         }
     }
 }

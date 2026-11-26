@@ -106,6 +106,7 @@ fn flat_world() -> Flat {
     let circle = FlatCollider {
         shape: FlatShape::Circle(0.2),
         center: Vec2::ZERO,
+        one_way: false,
     };
     flat.add(id(2), Vec2::new(2.0, 0.0), circle, true);
     flat.add(id(3), Vec2::new(3.0, 0.0), circle, true);
@@ -157,6 +158,7 @@ fn a_concave_2d_zone_is_checked_exactly() {
     let dot = FlatCollider {
         shape: FlatShape::Circle(0.1),
         center: Vec2::ZERO,
+        one_way: false,
     };
     flat.add(id(2), Vec2::new(3.0, 3.0), dot, true); // the notch
     flat.add(id(3), Vec2::new(3.0, 1.0), dot, true); // the lower arm
@@ -214,6 +216,7 @@ fn many_zones_give_the_same_answers_on_one_core_or_four() {
     let dot = FlatCollider {
         shape: FlatShape::Circle(0.25),
         center: Vec2::ZERO,
+        one_way: false,
     };
     for n in 0..400u64 {
         let at = Vec2::new((n % 20) as f32, (n / 20) as f32) * 0.7;
