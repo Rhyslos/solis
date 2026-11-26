@@ -100,10 +100,10 @@ use std::sync::Arc;
 
 /// A hive that spawns a drone every tick, a component that takes its own
 /// entity out on its first tick, and one that counts and climbs.
-const GAME: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
+const GAME: &str = "fetch \"solis/world\":World;\nfetch \"solis/made\":Drone;\n\n\
     component Hive {\n\
         method update(float dt) {\n\
-            entity made = World:spawn(Module.Drone, [0, 0, 1]);\n\
+            entity made = new Drone { position = [0, 0, 1] };\n\
         }\n\
     }\n\
     component Doomed {\n\

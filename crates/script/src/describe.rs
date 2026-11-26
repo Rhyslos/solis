@@ -307,10 +307,18 @@ pub const OBJECT_FIELDS: &[ObjectField] = &[
     },
 ];
 
-/// The calls that are `new` in Lust now (the uniformity pass, U6a;
+/// The calls that are `new` in Lust now (the uniformity pass, U6a and U6b;
 /// [`crate::made`]): each native's key, with how it's written in Lust.
 /// They stay natives, for Lua and Rust, but leave Lust's files.
 pub const MADE_NOW: &[(&str, &str)] = &[
+    (
+        "World_spawn",
+        "entity made = new Fighter { position = place }; for Module.Fighter, with fetch \"solis/made\":Fighter;",
+    ),
+    (
+        "World_spawnWith",
+        "entity made = new Key { position = place, item = Item.Red }; for Module.Key, its root's fields given, with fetch \"solis/made\":Key;",
+    ),
     (
         "World_fire",
         "new Shot { from = muzzle, direction = ahead, speed = 30 }; with fetch \"solis/made\":Shot;",
@@ -386,7 +394,7 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "spawn",
-        lust: "World:spawn(Module.Fighter, place), with fetch \"solis/project\":Module;",
+        lust: "new Fighter { position = place }; for Module.Fighter, with fetch \"solis/made\":Fighter;",
         lua: "solis.World:spawn(\"Ships.Fighter\", place)",
     },
     Moved {
@@ -1731,7 +1739,7 @@ mod tests {
                          Saves:loadFrom(\"quick\");\n\
                      }\n\
                      entity other = World:find(\"Crate\");\n\
-                     entity made = World:spawn(Module.None, other:position());\n\
+                     entity made = World:find(\"Drone\");\n\
                      made:moveTo(other:position() + [0, 0, 1]);\n\
                      made:turnTo(other:rotation());\n\
                      World:say(made:name());\n\

@@ -165,11 +165,11 @@ fn the_wants_exactly_one() {
     assert!(failed.contains("there are 2"), "{failed}");
 }
 
-/// A chest that spawns a key once, giving its Pickup the red key and how
-/// many, and a key whose first update says what it was given.
+/// A chest that makes a key once with `new` (the uniformity pass, U6b),
+/// giving its Pickup the red key and how many, and a key whose first
+/// update says what it was given.
 const SPAWNING: &str = "fetch \"solis/world\":World;\n\
-    fetch \"solis/project\":Module;\n\
-    fetch \"solis/components\":PickupValues;\n\n\
+    fetch \"solis/made\":Key;\n\n\
     state Item = [Blue, Red];\n\n\
     component Pickup {\n\
         has {\n\
@@ -190,10 +190,8 @@ const SPAWNING: &str = "fetch \"solis/world\":World;\n\
         }\n\
         method update(float dt) {\n\
             is opened == false? then {\n\
-                PickupValues given = new PickupValues { item = Item.Red };\n\
-                World:say(\"unwritten \" + given.count.text());\n\
-                given.count = 2;\n\
-                entity key = World:spawnWith(Module.Key, [0, 0, 0], [given]);\n\
+                entity key = new Key { position = [0, 0, 0], item = Item.Red, count = 2 };\n\
+                World:say(\"made \" + (key != nothing).text());\n\
                 opened = true;\n\
             }\n\
         }\n\
@@ -204,7 +202,8 @@ fn compile_spawning() -> Arc<Compiled> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_modules(&["key"]),
+        &crate::project_names::Names::with_modules(&["key"])
+            .and_module_roots(&[("key", &["Pickup"])]),
     );
     files.push(("main.lst".into(), SPAWNING.to_string()));
     let code = Code {
@@ -236,8 +235,8 @@ fn a_spawn_carries_its_values_to_the_world() {
             .is_empty()
     );
     let said = run(&mut game, &mut world, 2);
-    // A field not written yet reads as its starting value.
-    assert_eq!(said, ["1: unwritten 1"]);
+    // new gives back the entity it made.
+    assert_eq!(said, ["1: made true"]);
     let spawns: Vec<&Change> = world
         .state_changes
         .iter()
@@ -274,11 +273,12 @@ fn a_component_started_with_the_values_sees_them_in_its_first_update() {
 
 #[test]
 fn values_for_a_field_of_the_wrong_kind_are_a_mistake_before_the_game_runs() {
-    let wrong = SPAWNING.replace("given.count = 2;", "given.count = \"two\";");
+    let wrong = SPAWNING.replace("count = 2 }", "count = \"two\" }");
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_modules(&["key"]),
+        &crate::project_names::Names::with_modules(&["key"])
+            .and_module_roots(&[("key", &["Pickup"])]),
     );
     files.push(("main.lst".into(), wrong));
     let code = Code {

@@ -124,9 +124,9 @@ end
 ```lust
 -- spawner.lst: a wave every five seconds, until the tenth.
 fetch "solis/world":World;
-fetch "solis/project":[Timer, Module];
+fetch "solis/project":Timer;
 fetch "solis/timers":TimerFinished;
-fetch "solis/made":Wave;
+fetch "solis/made":[Wave, Drone];
 
 component Spawner {
     has {
@@ -144,7 +144,7 @@ component Spawner {
 
     on TimerFinished(Timer which) {
         waves = waves + 1;
-        entity drone = World:spawn(Module.Drone, position() + [0, 0, 2]);
+        entity drone = new Drone { position = position() + [0, 0, 2] };
 
         -- Ten waves, then no more.
         is waves >= 10? then {

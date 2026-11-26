@@ -178,7 +178,7 @@ So a game runs the same way on a computer with 2 cores or 32. Most code never no
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
-**When code changes too much at once:** a loop that calls `moveTo`, `new Shot`, `World:spawn` or `World:say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
+**When code changes too much at once:** a loop that calls `moveTo`, `new Shot`, `new` of a module or `World:say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
 
 **When the whole tick is too slow:** if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
 
@@ -434,7 +434,7 @@ end
 
 - **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
 - **From the engine:** some events are Solis's own, such as a [trigger zone](trigger-zones.md)'s `Entered` or a [timer](timers.md)'s `TimerFinished` (a screen's [`TypingFinished`](text-effects.md) comes with the tick's input instead, as a button's event does). They arrive first, in the tick's first round. `TimerFinished` is the one event that reaches a single component: the one that started the timer.
-- **To something you just spawned:** an event sent to an entity spawned in the same tick (`entity shot = World:spawn(…); send Launch(dir) to shot;`) arrives at the start of the next tick's events, once its components exist. Its first `update` runs just before, so set it moving in the `on`, not in `update`'s first run.
+- **To something you just spawned:** an event sent to an entity spawned in the same tick (`entity shot = new Bolt { … }; send Launch(dir) to shot;`) arrives at the start of the next tick's events, once its components exist. Its first `update` runs just before, so set it moving in the `on`, not in `update`'s first run.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
 - **An event sent while starting** goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (`int id = register();`, where `register` has a `send` in it): nothing is running yet to take the event. Send from `update` or an `on`.
 - **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
@@ -531,11 +531,10 @@ A shot is made with `new`, like anything the game makes: `new Shot { … }` fire
 
 ## Making and removing entities
 
-Game code can make copies of [modules](modules.md) while it plays, and take entities away:
+Game code can make copies of [modules](modules.md) while it plays, and take entities away. Making something is `new`, as for anything else: Solis writes a class for each module into `solis/made.lst`, named from its file, and `new` of it makes a copy in the world and gives back its entity:
 
 ```lust
-fetch "solis/world":World;
-fetch "solis/project":Module;
+fetch "solis/made":Fighter;
 
 component Hangar {
     has {
@@ -544,7 +543,7 @@ component Hangar {
 
     method update(float dt) {
         is made < 10? then {
-            entity ship = World:spawn(Module.Fighter, [made * 5, 0, 10]);
+            entity ship = new Fighter { position = [made * 5, 0, 10] };
             made = made + 1;
         }
     }
@@ -590,22 +589,21 @@ function Hangar:update(dt)
 end
 ```
 
-- **Which module:** one of the project's, named from its file: `ships/fighter.module.lst` is `Module.Fighter` (its first letter a capital). A name has one dot: only where two files in different folders share a name does the folder join the front (`Module.ShipsFighter` beside `Module.DronesFighter`). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Module.None` is there when the project has none, and makes nothing.
-- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.
+- **Which module:** one of the project's, named from its file: `ships/fighter.module.lst` is `new Fighter { … }` (its first letter a capital), and `Module.Fighter` in `solis/project.lst`, for fields and pickers. Fetch each one a file makes from `solis/made`. A module whose name the game already uses for something else (a component `Fighter` on its own root, often) has `Module` added: `new FighterModule { … }`, and the Console says so. A name has one dot: only where two files in different folders share a name does the folder join the front (`Module.ShipsFighter` beside `Module.DronesFighter`). Solis writes the names into `solis/project.lst` whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Module.None` is there when the project has none, and makes nothing.
+- **Where:** `position` is where the copy's root goes (the world's middle if it's left out).
+- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `new` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Level panel while playing, and are gone when you press **Stop**, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours ([Play mode](play-mode.md)), so a change you make to one of these copies goes with it.
 - At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.
-- **When a copy can't be made:** `World:spawn` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a module (…) that isn't in the project, so nothing was made.* The reasons are those of [modules](modules.md) themselves: the module places another whose file is missing or can't be read, modules place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each module's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the module and press Play again.
+- **When a copy can't be made:** `new` still gives back an entity, but nothing appears, and the [Console](console.md) says why in a warning: *Game code spawned "squad", but it places a module (…) that isn't in the project, so nothing was made.* The reasons are those of [modules](modules.md) themselves: the module places another whose file is missing or can't be read, modules place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each module's reason is said once each time you press **Play**, however many times the code asks, so a spawn in `update` doesn't fill the Console. Fix the module and press Play again.
 - `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
-### Spawning with values
+### Making a copy with values
 
-A chest that drops a key wants the key to be *the red one*, from the moment it appears. `World:spawnWith` makes a copy and gives its components their first values, so its first `update` already sees them:
+A chest that drops a key wants the key to be *the red one*, from the moment it appears. A module's class holds its root components' fields beside `position`, so writing them in the braces gives the copy those first values, and its first `update` already sees them:
 
 ```lust
 -- main.lst: a chest that drops the red key once.
-fetch "solis/world":World;
-fetch "solis/project":Module;
-fetch "solis/components":PickupValues;
+fetch "solis/made":Key;
 
 state Item = [Blue, Red];
 
@@ -623,8 +621,7 @@ component Chest {
 
     method update(float dt) {
         is opened == false? then {
-            PickupValues red = new PickupValues { item = Item.Red, count = 2 };
-            entity key = World:spawnWith(Module.Key, position(), [red]);
+            entity key = new Key { position = position(), item = Item.Red, count = 2 };
             opened = true;
         }
     }
@@ -634,10 +631,10 @@ pass Item, Pickup, Chest;
 end
 ```
 
-- **A values object for each component:** Solis makes one for each of your components, named after it with `Values` (`PickupValues`), with the same fields. Fetch it from `solis/components` and make one with `new`, writing the values you want to give in its braces, as for any class. A value of the wrong kind is a mistake before the game runs.
-- **Only what you write changes:** fields you don't write keep the module's values, and a field set after `new` (`red.count = 3;`) counts as written too. Give values for several components in one list: `[red, health]`.
-- **The copy's root:** the values go to the components on the module's root entity. If the root has no such component, the copy is still made, and the [Console](console.md) says once that the values were left out.
-- Everything else is as `World:spawn`: the copy joins at the end of the tick, and its first `update` is next tick, already with its values.
+- **The root's fields, straight on the class:** the key module's root has a Pickup, so `new Key { … }` takes `item` and `count`. A field two of the root's components share is written with its component in front (`healthHp` beside `shieldHp`). Solis reads the root's components from the module's file, so adding one to the root in the editor adds its fields. A value of the wrong kind is a mistake before the game runs.
+- **Only what you write changes:** fields you don't write keep the module's values.
+- Everything else is as above: the copy joins at the end of the tick, and its first `update` is next tick, already with its values.
+- In Lua and Rust it's still `solis.World:spawn("Key", place)` and `cx.host().spawn_with("key", place, values)`.
 
 ## Reading other entities
 
@@ -1060,8 +1057,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `entity World:the(Component which)` | The one entity with this component, as the tick started; none, or more than one, stops the component ([Reading other entities](#reading-other-entities)). |
 | `solis/components` | `KnightReading entity:knight()`, one for each component | A copy of another entity's component as the tick started, read-only, or `nothing` ([Reading other entities](#reading-other-entities)). |
 | `solis/made` | `new Shot { vec3 from, vec3 direction, float speed, float life, vec3 colour }` | Fires a projectile (see Projectiles, above). |
-| `solis/world` | `entity World:spawn(Module which, vec3 place)` | Makes a copy of one of the project's modules at a place (see Making and removing entities, below). |
-| `solis/world` | `entity World:spawnWith(Module which, vec3 place, SpawnValues array values)` | Makes a copy as `spawn` does, its root's components given these values before their first update ([Spawning with values](#spawning-with-values)). |
+| `solis/made` | `entity new Fighter { vec3 position, … }`, one for each module | Makes a copy of one of the project's modules, its root's components given the fields written, and gives back its entity (see Making and removing entities, above). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
 | `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
 | `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
@@ -1138,7 +1134,7 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `turnTo(this, facingAlong(d))` | `face(d)` |
 | `say`, `time`, `frameTime`, `find`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
 | `fire` | `new Shot { from = muzzle, direction = ahead };` |
-| `spawn("ships/fighter", p)` | `World:spawn(Module.Fighter, p)` |
+| `spawn("ships/fighter", p)` | `new Fighter { position = p }` |
 | `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called modules, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Module.Fighter`, `fetch "solis/project":Module;`. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change. |
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
 | `held("Jump")`, `pressed`, `released`, `axis("Move")` | `Input:held(Action.Jump)` and so on, with `fetch "solis/input":Input;` and `fetch "solis/project":Action;` |

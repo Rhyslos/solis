@@ -4444,7 +4444,7 @@ After 121 ticks:
 </ul>
 <p>So a game runs the same way on a computer with 2 cores or 32. Most code never notices: a unit chasing another simply aims at where the other was a sixtieth of a second ago. Code that needs to see a move straight away should move things from one component, or tell the other with an event.</p>
 <p><strong>When something goes wrong while it runs,</strong> such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: &quot;Divider on Splitter stopped: main.lst, line 8: …&quot;. The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.</p>
-<p><strong>When code changes too much at once:</strong> a loop that calls <code>moveTo</code>, <code>new Shot</code>, <code>World:spawn</code> or <code>World:say</code> hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.</p>
+<p><strong>When code changes too much at once:</strong> a loop that calls <code>moveTo</code>, <code>new Shot</code>, <code>new</code> of a module or <code>World:say</code> hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.</p>
 <p><strong>When the whole tick is too slow:</strong> if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game <strong>pauses</strong>, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press <strong>Pause</strong> or <strong>Play</strong> to carry on. Without this, the game would try to catch up and the editor would hardly respond.</p>
 <p><strong>What game code says</strong> goes to the Console a line at a time. A very long line is cut short, and past 200 lines in one tick the rest are counted (&quot;Game code said 800 more lines just now&quot;), so a component that talks too much can't drown the Console or fill the computer's memory.</p>
 </section>
@@ -4680,7 +4680,7 @@ After 121 ticks:
 <ul>
 <li><strong>When they arrive:</strong> after every component's <code>update</code> in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an <code>on</code> for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.</li>
 <li><strong>From the engine:</strong> some events are Solis's own, such as a <a href="#trigger-zones">trigger zone</a>'s <code>Entered</code> or a <a href="#timers">timer</a>'s <code>TimerFinished</code> (a screen's <a href="#text-effects"><code>TypingFinished</code></a> comes with the tick's input instead, as a button's event does). They arrive first, in the tick's first round. <code>TimerFinished</code> is the one event that reaches a single component: the one that started the timer.</li>
-<li><strong>To something you just spawned:</strong> an event sent to an entity spawned in the same tick (<code>entity shot = World:spawn(…); send Launch(dir) to shot;</code>) arrives at the start of the next tick's events, once its components exist. Its first <code>update</code> runs just before, so set it moving in the <code>on</code>, not in <code>update</code>'s first run.</li>
+<li><strong>To something you just spawned:</strong> an event sent to an entity spawned in the same tick (<code>entity shot = new Bolt { … }; send Launch(dir) to shot;</code>) arrives at the start of the next tick's events, once its components exist. Its first <code>update</code> runs just before, so set it moving in the <code>on</code>, not in <code>update</code>'s first run.</li>
 <li><strong>An event to <code>nothing</code></strong> goes nowhere, so a gun with no target is harmless.</li>
 <li><strong>An event sent while starting</strong> goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (<code>int id = register();</code>, where <code>register</code> has a <code>send</code> in it): nothing is running yet to take the event. Send from <code>update</code> or an <code>on</code>.</li>
 <li><strong>Lust checks</strong> that every <code>send</code> carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.</li>
@@ -4766,11 +4766,10 @@ After 121 ticks:
 </section>
 <section id="game-code--making-and-removing-entities">
 <h3>Making and removing entities<a class="anchor" href="#game-code--making-and-removing-entities" aria-label="Link to this section">#</a></h3>
-<p>Game code can make copies of <a href="#modules">modules</a> while it plays, and take entities away:</p>
+<p>Game code can make copies of <a href="#modules">modules</a> while it plays, and take entities away. Making something is <code>new</code>, as for anything else: Solis writes a class for each module into <code>solis/made.lst</code>, named from its file, and <code>new</code> of it makes a copy in the world and gives back its entity:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
-<pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Module</span><span class="tk-p">;</span>
+<pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Fighter</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Hangar</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
@@ -4779,7 +4778,7 @@ After 121 ticks:
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is</span> made &lt; <span class="tk-v">10</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-t">entity</span> ship = <span class="tk-o">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Fighter</span><span class="tk-p">, [</span>made * <span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span><span class="tk-p">]);</span>
+            <span class="tk-t">entity</span> ship = <span class="tk-k">new</span> <span class="tk-n">Fighter</span> <span class="tk-p">{</span> position = <span class="tk-p">[</span>made * <span class="tk-v">5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">10</span><span class="tk-p">] };</span>
             made = made + <span class="tk-v">1</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -4819,19 +4818,18 @@ After 121 ticks:
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><strong>Which module:</strong> one of the project's, named from its file: <code>ships/fighter.module.lst</code> is <code>Module.Fighter</code> (its first letter a capital). A name has one dot: only where two files in different folders share a name does the folder join the front (<code>Module.ShipsFighter</code> beside <code>Module.DronesFighter</code>). Solis writes the names into <code>solis/project.lst</code> whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like <code>time</code>) is left out, and the Console says which. <code>Module.None</code> is there when the project has none, and makes nothing.</li>
-<li><strong>When:</strong> like a move, it happens after every <code>update</code> in the tick (<a href="#game-code--components">what game code sees</a>). <code>World:spawn</code> gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A <code>despawn</code> lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.</li>
+<li><strong>Which module:</strong> one of the project's, named from its file: <code>ships/fighter.module.lst</code> is <code>new Fighter { … }</code> (its first letter a capital), and <code>Module.Fighter</code> in <code>solis/project.lst</code>, for fields and pickers. Fetch each one a file makes from <code>solis/made</code>. A module whose name the game already uses for something else (a component <code>Fighter</code> on its own root, often) has <code>Module</code> added: <code>new FighterModule { … }</code>, and the Console says so. A name has one dot: only where two files in different folders share a name does the folder join the front (<code>Module.ShipsFighter</code> beside <code>Module.DronesFighter</code>). Solis writes the names into <code>solis/project.lst</code> whenever you add, rename or remove a module, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like <code>time</code>) is left out, and the Console says which. <code>Module.None</code> is there when the project has none, and makes nothing.</li>
+<li><strong>Where:</strong> <code>position</code> is where the copy's root goes (the world's middle if it's left out).</li>
+<li><strong>When:</strong> like a move, it happens after every <code>update</code> in the tick (<a href="#game-code--components">what game code sees</a>). <code>new</code> gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A <code>despawn</code> lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the level's tree, in the order they were spawned.</li>
 <li><strong>Where it shows:</strong> copies game code makes appear in the Level panel while playing, and are gone when you press <strong>Stop</strong>, like everything else the game did. They aren't undo steps, which is how Solis tells them from your own edits: Stop offers to keep only yours (<a href="#play-mode">Play mode</a>), so a change you make to one of these copies goes with it.</li>
 <li>At most 10,000 copies are made in one tick, and a level holds at most a million entities; past that, the Console says so and the rest aren't made.</li>
-<li><strong>When a copy can't be made:</strong> <code>World:spawn</code> still gives back an entity, but nothing appears, and the <a href="#console">Console</a> says why in a warning: <em>Game code spawned &quot;squad&quot;, but it places a module (…) that isn't in the project, so nothing was made.</em> The reasons are those of <a href="#modules">modules</a> themselves: the module places another whose file is missing or can't be read, modules place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each module's reason is said once each time you press <strong>Play</strong>, however many times the code asks, so a spawn in <code>update</code> doesn't fill the Console. Fix the module and press Play again.</li>
+<li><strong>When a copy can't be made:</strong> <code>new</code> still gives back an entity, but nothing appears, and the <a href="#console">Console</a> says why in a warning: <em>Game code spawned &quot;squad&quot;, but it places a module (…) that isn't in the project, so nothing was made.</em> The reasons are those of <a href="#modules">modules</a> themselves: the module places another whose file is missing or can't be read, modules place each other in a loop (the message names them in order), they're placed more than 16 deep, or a copy would be more than a million entities. Each module's reason is said once each time you press <strong>Play</strong>, however many times the code asks, so a spawn in <code>update</code> doesn't fill the Console. Fix the module and press Play again.</li>
 <li><code>despawn()</code> is how a component takes its own entity away, and <code>target:despawn()</code> takes another. It ends at the end of the tick.</li>
 </ul>
-<h4 id="game-code--spawning-with-values">Spawning with values<a class="anchor" href="#game-code--spawning-with-values" aria-label="Link to this section">#</a></h4>
-<p>A chest that drops a key wants the key to be <em>the red one</em>, from the moment it appears. <code>World:spawnWith</code> makes a copy and gives its components their first values, so its first <code>update</code> already sees them:</p>
+<h4 id="game-code--making-a-copy-with-values">Making a copy with values<a class="anchor" href="#game-code--making-a-copy-with-values" aria-label="Link to this section">#</a></h4>
+<p>A chest that drops a key wants the key to be <em>the red one</em>, from the moment it appears. A module's class holds its root components' fields beside <code>position</code>, so writing them in the braces gives the copy those first values, and its first <code>update</code> already sees them:</p>
 <pre data-lang="lust"><code><span class="tk-c">-- main.lst: a chest that drops the red key once.</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Module</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/components&quot;</span><span class="tk-p">:</span><span class="tk-n">PickupValues</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Key</span><span class="tk-p">;</span>
 
 <span class="tk-s">state Item</span> = <span class="tk-p">[</span>Blue<span class="tk-p">,</span> Red<span class="tk-p">];</span>
 
@@ -4849,8 +4847,7 @@ After 121 ticks:
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is</span> opened == <span class="tk-v">false</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-n">PickupValues</span> red = <span class="tk-k">new</span> <span class="tk-n">PickupValues</span> <span class="tk-p">{</span> item = <span class="tk-o">Item</span><span class="tk-p">.</span><span class="tk-s">Red</span><span class="tk-p">,</span> count = <span class="tk-v">2</span> <span class="tk-p">};</span>
-            <span class="tk-t">entity</span> key = <span class="tk-o">World</span><span class="tk-p">:</span>spawnWith<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Key</span><span class="tk-p">,</span> position<span class="tk-p">(), [</span>red<span class="tk-p">]);</span>
+            <span class="tk-t">entity</span> key = <span class="tk-k">new</span> <span class="tk-n">Key</span> <span class="tk-p">{</span> position = position<span class="tk-p">(),</span> item = <span class="tk-o">Item</span><span class="tk-p">.</span><span class="tk-s">Red</span><span class="tk-p">,</span> count = <span class="tk-v">2</span> <span class="tk-p">};</span>
             opened = <span class="tk-v">true</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -4859,10 +4856,10 @@ After 121 ticks:
 <span class="tk-k">pass</span> <span class="tk-n">Item</span><span class="tk-p">,</span> <span class="tk-n">Pickup</span><span class="tk-p">,</span> <span class="tk-n">Chest</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
 <ul>
-<li><strong>A values object for each component:</strong> Solis makes one for each of your components, named after it with <code>Values</code> (<code>PickupValues</code>), with the same fields. Fetch it from <code>solis/components</code> and make one with <code>new</code>, writing the values you want to give in its braces, as for any class. A value of the wrong kind is a mistake before the game runs.</li>
-<li><strong>Only what you write changes:</strong> fields you don't write keep the module's values, and a field set after <code>new</code> (<code>red.count = 3;</code>) counts as written too. Give values for several components in one list: <code>[red, health]</code>.</li>
-<li><strong>The copy's root:</strong> the values go to the components on the module's root entity. If the root has no such component, the copy is still made, and the <a href="#console">Console</a> says once that the values were left out.</li>
-<li>Everything else is as <code>World:spawn</code>: the copy joins at the end of the tick, and its first <code>update</code> is next tick, already with its values.</li>
+<li><strong>The root's fields, straight on the class:</strong> the key module's root has a Pickup, so <code>new Key { … }</code> takes <code>item</code> and <code>count</code>. A field two of the root's components share is written with its component in front (<code>healthHp</code> beside <code>shieldHp</code>). Solis reads the root's components from the module's file, so adding one to the root in the editor adds its fields. A value of the wrong kind is a mistake before the game runs.</li>
+<li><strong>Only what you write changes:</strong> fields you don't write keep the module's values.</li>
+<li>Everything else is as above: the copy joins at the end of the tick, and its first <code>update</code> is next tick, already with its values.</li>
+<li>In Lua and Rust it's still <code>solis.World:spawn(&quot;Key&quot;, place)</code> and <code>cx.host().spawn_with(&quot;key&quot;, place, values)</code>.</li>
 </ul>
 </section>
 <section id="game-code--reading-other-entities">
@@ -5258,8 +5255,7 @@ After 121 ticks:
 <tr><td><code>solis/world</code></td><td><code>entity World:the(Component which)</code></td><td>The one entity with this component, as the tick started; none, or more than one, stops the component (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/components</code></td><td><code>KnightReading entity:knight()</code>, one for each component</td><td>A copy of another entity's component as the tick started, read-only, or <code>nothing</code> (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/made</code></td><td><code>new Shot { vec3 from, vec3 direction, float speed, float life, vec3 colour }</code></td><td>Fires a projectile (see Projectiles, above).</td></tr>
-<tr><td><code>solis/world</code></td><td><code>entity World:spawn(Module which, vec3 place)</code></td><td>Makes a copy of one of the project's modules at a place (see Making and removing entities, below).</td></tr>
-<tr><td><code>solis/world</code></td><td><code>entity World:spawnWith(Module which, vec3 place, SpawnValues array values)</code></td><td>Makes a copy as <code>spawn</code> does, its root's components given these values before their first update (<a href="#game-code--spawning-with-values">Spawning with values</a>).</td></tr>
+<tr><td><code>solis/made</code></td><td><code>entity new Fighter { vec3 position, … }</code>, one for each module</td><td>Makes a copy of one of the project's modules, its root's components given the fields written, and gives back its entity (see Making and removing entities, above).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:frameTime()</code></td><td>How long the last frame took, in seconds of real time (1/60 at 60 frames a second).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:random()</code></td><td>A random number from 0 up to 1 (see Random numbers, above).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:randomRange(float low, float high)</code></td><td>A random number from low up to high.</td></tr>
@@ -5336,7 +5332,7 @@ After 121 ticks:
 <tr><td><code>turnTo(this, facingAlong(d))</code></td><td><code>face(d)</code></td></tr>
 <tr><td><code>say</code>, <code>time</code>, <code>frameTime</code>, <code>find</code>, <code>random</code>, <code>randomRange</code>, <code>randomInt</code>, <code>setSeed</code></td><td>the same names on <code>World</code>: <code>World:say(words)</code></td></tr>
 <tr><td><code>fire</code></td><td><code>new Shot { from = muzzle, direction = ahead };</code></td></tr>
-<tr><td><code>spawn(&quot;ships/fighter&quot;, p)</code></td><td><code>World:spawn(Module.Fighter, p)</code></td></tr>
+<tr><td><code>spawn(&quot;ships/fighter&quot;, p)</code></td><td><code>new Fighter { position = p }</code></td></tr>
 <tr><td><code>Assembly.Ships.Fighter</code>, <code>fetch &quot;solis/project&quot;:Assembly;</code> (assemblies are called modules, <a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0118-the-editor-rethink.md" target="_blank" rel="noopener">decision 0118<span class="out" aria-hidden="true">↗</span></a>)</td><td><code>Module.Fighter</code>, <code>fetch &quot;solis/project&quot;:Module;</code>. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change.</td></tr>
 <tr><td><code>saveGame(slot)</code>, <code>loadGame(slot)</code></td><td><code>Saves:saveTo(slot)</code>, <code>Saves:loadFrom(slot)</code></td></tr>
 <tr><td><code>held(&quot;Jump&quot;)</code>, <code>pressed</code>, <code>released</code>, <code>axis(&quot;Move&quot;)</code></td><td><code>Input:held(Action.Jump)</code> and so on, with <code>fetch &quot;solis/input&quot;:Input;</code> and <code>fetch &quot;solis/project&quot;:Action;</code></td></tr>
@@ -9477,9 +9473,9 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- spawner.lst: a wave every five seconds, until the tenth.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Timer</span><span class="tk-p">,</span> <span class="tk-n">Module</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Timer</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Wave</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:[</span><span class="tk-n">Wave</span><span class="tk-p">,</span> <span class="tk-n">Drone</span><span class="tk-p">];</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Spawner</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
@@ -9497,7 +9493,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 
     <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
         waves = waves + <span class="tk-v">1</span><span class="tk-p">;</span>
-        <span class="tk-t">entity</span> drone = <span class="tk-o">World</span><span class="tk-p">:</span>spawn<span class="tk-p">(</span><span class="tk-o">Module</span><span class="tk-p">.</span><span class="tk-s">Drone</span><span class="tk-p">,</span> position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">]);</span>
+        <span class="tk-t">entity</span> drone = <span class="tk-k">new</span> <span class="tk-n">Drone</span> <span class="tk-p">{</span> position = position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">] };</span>
 
         <span class="tk-c">-- Ten waves, then no more.</span>
         <span class="tk-f">is</span> waves &gt;= <span class="tk-v">10</span><span class="tk-f">? then</span> <span class="tk-p">{</span>

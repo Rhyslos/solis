@@ -185,3 +185,101 @@ fn timers_are_named_where_new_makes_them() {
         "not a sound, nor the game's own class, nor one without a timing, nor in a comment or text"
     );
 }
+
+/// Two modules: a ship whose root has a Ship and a Health (both with
+/// `hp`), and a component of the game's own called Crate beside a module
+/// called crate.
+fn compile_modules(main: &str) -> Result<Arc<Compiled>, Vec<crate::CodeProblem>> {
+    let names = crate::project_names::Names::with_modules(&["ships/fighter", "crate"])
+        .and_module_roots(&[
+            ("ships/fighter", &["Ship", "Health"]),
+            ("crate", &["Crate"]),
+        ]);
+    let (mut files, _) = crate::describe::descriptions_for("Test 1.0", "solis", &names);
+    files.push(("main.lst".into(), main.to_string()));
+    crate::code::compile_within(
+        &Code {
+            files,
+            lua: Vec::new(),
+            notes: Vec::new(),
+        },
+        crate::luau::Limits::unhurried(),
+    )
+    .map(|c| Arc::new(c.expect("there's code")))
+}
+
+const HANGAR: &str = "fetch \"solis/world\":World;\n\
+    fetch \"solis/made\":[Fighter, CrateModule];\n\n\
+    component Ship {\n    has {\n        float speed = 9;\n        int hp = 3;\n    }\n}\n\
+    component Health {\n    has {\n        int hp = 10;\n    }\n}\n\
+    component Crate {\n    has {\n        bool open = false;\n    }\n}\n\
+    component Hangar {\n\
+        method update(float dt) {\n\
+            entity ship = new Fighter { position = [1, 2, 0], speed = 12, healthHp = 5 };\n\
+            entity box = new CrateModule { open = true };\n\
+            World:say((ship != nothing).text() + \" \" + (box != nothing).text());\n\
+        }\n\
+    }\n\
+    pass Ship, Health, Crate, Hangar;\nend\n";
+
+#[test]
+fn modules_are_made_with_new_their_root_s_fields_given() {
+    let code = compile_modules(HANGAR).unwrap_or_else(|p| panic!("{p:#?}"));
+    let mut world = TestWorld::with(&["A"]);
+    let mut game = unhurried(1);
+    game.load(&code, &mut world).unwrap();
+    assert!(
+        game.sync_many(
+            vec![(id(1), "Hangar", &ComponentData::default())],
+            &mut world
+        )
+        .is_empty()
+    );
+    world.set_clock(1, 1.0 / 60.0);
+    let ticked = game.tick(1.0 / 60.0, &mut world);
+    assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+    assert_eq!(world.said, ["true true"]);
+    let spawns: Vec<(String, glam::Vec3, crate::SpawnValues)> = world
+        .state_changes
+        .iter()
+        .filter_map(|c| match c {
+            Change::Spawn(_, module, place, values) => {
+                Some((module.clone(), *place, values.clone()))
+            }
+            _ => None,
+        })
+        .collect();
+    let mut ship = ComponentData::default();
+    ship.set("speed", reflect::Value::Float(12.0));
+    let mut health = ComponentData::default();
+    health.set("hp", reflect::Value::Int(5));
+    let mut open = ComponentData::default();
+    open.set("open", reflect::Value::Bool(true));
+    assert_eq!(
+        spawns,
+        [
+            (
+                "ships/fighter".to_string(),
+                glam::Vec3::new(1.0, 2.0, 0.0),
+                vec![("Ship".to_string(), ship), ("Health".to_string(), health)]
+            ),
+            (
+                "crate".to_string(),
+                glam::Vec3::ZERO,
+                vec![("Crate".to_string(), open)]
+            ),
+        ],
+        "only the fields written; a field two components share has its component in front; \
+         a module named like a component has Module added; no position is the world's middle"
+    );
+}
+
+#[test]
+fn a_module_s_shared_field_is_only_known_with_its_component_in_front() {
+    let wrong = HANGAR.replace("healthHp = 5", "hp = 5");
+    let problems = compile_modules(&wrong).expect_err("hp is two fields");
+    assert!(
+        problems.iter().any(|p| p.message.contains("hp")),
+        "{problems:#?}"
+    );
+}

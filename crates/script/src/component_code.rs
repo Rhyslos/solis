@@ -9,10 +9,9 @@
 //!   mistake before the game runs), and `method KnightReading
 //!   entity:knight() native;`, a copy of another entity's as the last
 //!   tick left it.
-//! - For each component, a class to give one spawned its first values
-//!   (`KnightValues`, like `SpawnValues`), with the component's fields:
-//!   `new KnightValues { coins = 3 }` gives the fields written (Fixes 2b,
-//!   `crate::readings::values_new`).
+//! - Each component's fields, for the class a module is made with
+//!   (`new Fighter { speed = 9 }`, its root's fields; the uniformity
+//!   pass, U6b, [`crate::made`]), and where their types come from.
 //!
 //! A field's type is fetched from where the component's own file gets it:
 //! a name the file fetches from the file it fetched it from, a name the
@@ -26,8 +25,9 @@ use std::collections::{BTreeMap, BTreeSet};
 /// The file's name inside the engine's folder: `solis/components.lst`.
 pub const FILE: &str = "components";
 
-/// The class every component's values class is like, in this file:
-/// `World:spawnWith` takes a list of them.
+/// The class Lua's frozen `World:spawnWith` takes a list of (values
+/// classes were Lust's before the uniformity pass's U6b): none is written
+/// now.
 pub const VALUES_BASE: &str = "SpawnValues";
 
 /// The state of the game's components.
@@ -39,14 +39,14 @@ const MOST: usize = 4096;
 /// A field a component's reading and values hold: its Lust type, its name
 /// and the starting value the reading class gives it.
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct Field {
-    kind: String,
-    name: String,
-    start: String,
+pub(crate) struct Field {
+    pub(crate) kind: String,
+    pub(crate) name: String,
+    pub(crate) start: String,
     /// The component's own starting value, when it's a plain value that
     /// reads the same here (`3`, `true`, `"Ada"`, `Mood.Calm`, `[0, 1]`):
     /// a values object's field not written reads as it.
-    own: Option<String>,
+    pub(crate) own: Option<String>,
 }
 
 /// Whether `start`, written for a field of kind `kind`, is a plain value
@@ -96,8 +96,11 @@ pub struct ComponentCode {
     /// Each component game code can read, with its reading method's name
     /// (`Knight`, `knight`).
     pub readable: Vec<(String, String)>,
-    /// Each component with a values class, and that class's name.
-    pub with_values: Vec<(String, String)>,
+    /// Each component's fields another file can name, by component: a
+    /// module's class takes its root's (the uniformity pass, U6b).
+    pub(crate) fields: BTreeMap<String, Vec<Field>>,
+    /// Where each of those fields' types is fetched from, by type.
+    pub(crate) sources: BTreeMap<String, String>,
     /// What game code can't reach, in plain words.
     pub notes: Vec<String>,
 }
@@ -110,18 +113,14 @@ pub fn placeholder(made_by: &str) -> String {
         "-- Made by {made_by}: the game's components, for World:the, reading another entity's\n\
          -- and spawning with values. It's written again each time the game's code is checked,\n\
          -- so changes made here don't last.\n\n\
-         -- The game's components.\nstate {STATE} = [{}];\n\n{}pass {STATE}, {VALUES_BASE};\nend\n",
+         -- The game's components.\nstate {STATE} = [{}];\n\npass {STATE};\nend\n",
         crate::project_names::NO_OPTION,
-        values_base()
     )
 }
 
-/// The class every values class is like.
-fn values_base() -> String {
-    format!(
-        "-- What every component's values class (KnightValues) is like: World:spawnWith takes \
-         a list of them.\nclass {VALUES_BASE} {{\n    has {{\n    }}\n}}\n\n"
-    )
+/// Whether `kind` is one of Lust's own types, which needs no fetch.
+pub(crate) fn is_built_in(kind: &str) -> bool {
+    built_in(kind).is_some()
 }
 
 /// The Lust type and starting value of a field of a built-in type.
@@ -210,14 +209,12 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
     let mut code = ComponentCode::default();
     // Each name fetched into the file, and the module it comes from.
     let mut fetched: BTreeMap<String, String> = BTreeMap::new();
-    let ours: BTreeSet<String> = [STATE.to_string(), VALUES_BASE.to_string()]
-        .into_iter()
-        .collect();
+    let ours: BTreeSet<String> = [STATE.to_string()].into_iter().collect();
     // The names each file must share that it keeps to itself, by file.
     let mut to_pass: BTreeMap<usize, BTreeSet<String>> = BTreeMap::new();
     let mut classes = String::new();
     let mut readers = String::new();
-    let mut passed: Vec<String> = vec![STATE.to_string(), VALUES_BASE.to_string()];
+    let mut passed: Vec<String> = vec![STATE.to_string()];
     let mut names_made: BTreeSet<String> = BTreeSet::new();
     for (&component, &at) in &components {
         let (path, text) = &files[at];
@@ -270,7 +267,6 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             });
         }
         let reading = format!("{component}Reading");
-        let values = format!("{component}Values");
         let reader = crate::screens::reader_name(component);
         let free = |name: &str| !declared.contains(name) && !ours.contains(name);
         if !free(&reading) {
@@ -307,33 +303,7 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             passed.push(reading.clone());
             names_made.insert(reading);
         }
-        if free(&values) {
-            // Its fields are the component's: only those the game writes
-            // (`new PickupValues { item = Item.Red }`) are given
-            // (`crate::readings::values_new`).
-            classes.push_str(&format!(
-                "-- First values for a {component} spawned with World:spawnWith, in place before \
-                 its first update: only the fields written are given.\nclass {values} like \
-                 {VALUES_BASE} {{\n    has {{\n"
-            ));
-            for f in &fields {
-                classes.push_str(&format!(
-                    "        {} {} = {};\n",
-                    f.kind,
-                    f.name,
-                    f.own.as_deref().unwrap_or(&f.start)
-                ));
-            }
-            classes.push_str("    }\n}\n\n");
-            code.with_values
-                .push((component.to_string(), values.clone()));
-            passed.push(values.clone());
-            names_made.insert(values);
-        } else {
-            code.notes.push(format!(
-                "A spawned {component} can't be given values: the game has a {values} of its own."
-            ));
-        }
+        code.fields.insert(component.to_string(), fields);
     }
     let mut text = String::from(
         "-- Made from the game's components: what game code can read of another entity's, and\n\
@@ -359,10 +329,10 @@ pub fn write(folder: &str, files: &[(String, String)], entry: &str) -> Component
             options.join(", ")
         }
     ));
-    text.push_str(&values_base());
     text.push_str(&classes);
     text.push_str(&readers);
     text.push_str(&format!("pass {};\nend\n", passed.join(", ")));
+    code.sources = fetched.clone();
     let ours_path = format!("{folder}/{FILE}.lst");
     code.files = files
         .iter()

@@ -38,6 +38,7 @@ pub fn snapshot() -> String {
         out.push_str(&format!("{}: {}\n", event.file, event.lust));
     }
     out.push_str("\n## Made with new (fetch \"solis/made\":<Name>)\n\n");
+    out.push_str("<a module>: vec3 position, and its root's components' fields\n");
     out.push_str("Shot: vec3 from, vec3 direction, float speed, float life, vec3 colour\n");
     out.push_str("<a sound event>: vec3 at, entity on, bool everywhere\n");
     out.push_str("<a timer>: float after, float every, float atHour\n");

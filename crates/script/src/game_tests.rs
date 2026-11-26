@@ -474,13 +474,13 @@ fn shots_fired_land_in_order_on_any_number_of_shards() {
 
 #[test]
 fn spawns_make_the_same_entities_on_any_number_of_shards() {
-    const HIVES: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
+    const HIVES: &str = "fetch \"solis/made\":Drone;\nfetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
         component Hive {\n\
             has {\n\
                 entity last = nothing;\n\
             }\n\
             method update(float dt) {\n\
-                last = World:spawn(Module.Drone, [1, 2, 3]);\n\
+                last = new Drone { position = [1, 2, 3] };\n\
                 last:despawn();\n\
             }\n\
         }\n\
@@ -575,7 +575,7 @@ fn a_runaway_loop_can_t_keep_unbounded_changes() {
 fn spawns_in_different_rounds_of_events_make_different_entities() {
     // Each round's only event (number 0 in its round) reaches the same
     // component, which spawns and sends the next.
-    const ECHO: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
+    const ECHO: &str = "fetch \"solis/made\":Drone;\nfetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
         event Ping(int left);\n\
         component Echo {\n\
             has {\n\
@@ -588,7 +588,7 @@ fn spawns_in_different_rounds_of_events_make_different_entities() {
                 }\n\
             }\n\
             on Ping(int left) {\n\
-                entity made = World:spawn(Module.Drone, [0, 0, 0]);\n\
+                entity made = new Drone { position = [0, 0, 0] };\n\
                 is left > 0? then {\n\
                     send Ping(left - 1) to me;\n\
                 }\n\

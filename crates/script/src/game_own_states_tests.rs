@@ -24,7 +24,7 @@ const TIMERS: &[&str] = &[
 /// E changes its state back and forth within a tick.
 const GAME: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":[Timer, Sound, Module];\n\
-    fetch \"solis/made\":[Recover, Pulse, Outer, Inner, Kept, Lost, Quiet, Ping, Engine, Boom];\n\
+    fetch \"solis/made\":[Recover, Pulse, Outer, Inner, Kept, Lost, Quiet, Ping, Engine, Boom, Drone];\n\
     fetch \"solis/timers\":TimerFinished;\n\n\
     state Mood = [Calm, Stunned, Combat [Melee, Ranged]];\n\
     event MoodChanged(Mood from, Mood to);\n\n\
@@ -44,7 +44,7 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
                     World:say(\"A glow done\");\n\
                 }\n\
                 new Engine {};\n\
-                entity drone = World:spawn(Module.Drone, position());\n\
+                entity drone = new Drone { position = position() };\n\
             }\n\
             is ticks == 2? then {\n\
                 state = Mood.Calm;\n\

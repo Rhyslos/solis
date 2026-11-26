@@ -28,6 +28,9 @@ pub struct Names {
     /// Its modules: their paths in the assets, with `/` between
     /// folders and without `.solassembly` (`ships/fighter`).
     pub modules: Vec<String>,
+    /// The components on each module's root, by the module's path (the
+    /// uniformity pass, U6b): what game code's `new` gives first values.
+    pub module_roots: BTreeMap<String, Vec<String>>,
     /// Its input actions' names (`Jump`), as Edit > Input actions… has
     /// them.
     pub actions: Vec<String>,
@@ -81,6 +84,7 @@ impl Names {
                 .into_iter()
                 .map(|a| a.name)
                 .collect(),
+            module_roots: BTreeMap::new(),
             sounds: Vec::new(),
             buses: STANDARD_BUSES.iter().map(|b| (*b).to_string()).collect(),
             clips: Vec::new(),
@@ -105,6 +109,18 @@ impl Names {
         let mut names = Self::standard();
         names.modules = paths.iter().map(|p| (*p).to_string()).collect();
         names
+    }
+
+    /// These names with these components on these modules' roots.
+    #[must_use]
+    pub fn and_module_roots(mut self, roots: &[(&str, &[&str])]) -> Self {
+        for (module, components) in roots {
+            self.module_roots.insert(
+                (*module).to_string(),
+                components.iter().map(|c| (*c).to_string()).collect(),
+            );
+        }
+        self
     }
 
     /// These names with these sound events (paths without the extension).
@@ -194,13 +210,25 @@ pub const KIT_ACTIONS: [&str; 8] = [
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
     let files = |paths: &[String]| paths.iter().map(|p| file_entry(p)).collect::<Vec<_>>();
-    let module = flat_text(
+    let mut module = flat_text(
         "Module",
         &files(&names.modules),
         "module",
         false,
         &mut notes,
     );
+    // Each module's root components, under its name, for new (U6b).
+    let options: Vec<(String, String)> = module
+        .lines()
+        .filter_map(|l| l.strip_prefix(PATH_MARK))
+        .filter_map(|l| l.split_once(" = "))
+        .map(|(o, p)| (o.to_string(), p.to_string()))
+        .collect();
+    for (option, path) in options {
+        if let Some(roots) = names.module_roots.get(&path).filter(|r| !r.is_empty()) {
+            module.push_str(&format!("\n{ROOT_MARK}{option} = {}", roots.join(", ")));
+        }
+    }
     let mut actions = names.actions.clone();
     for kit in KIT_ACTIONS {
         if !actions.iter().any(|a| a.eq_ignore_ascii_case(kit)) {
@@ -252,8 +280,9 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
-         -- The project's modules, by their files' names: World:spawn(Module.Fighter, place) for\n\
-         -- ships/fighter. Each name's file is listed under it, for Solis.\n\
+         -- The project's modules, by their files' names: Module.Fighter for ships/fighter, made\n\
+         -- with new Fighter {{ position = place }}; (solis/made.lst). Each name's file, and its\n\
+         -- root's components, are listed under it, for Solis.\n\
          {module}\n\n\
          -- The project's input actions (Edit > Input actions…): Input:pressed(Action.Jump).\n\
          {action}\n\n\
@@ -418,6 +447,33 @@ fn flat_text(
 
 /// How a line naming an option's file starts in `solis/project.lst`.
 const PATH_MARK: &str = "-- @";
+
+/// How a line naming a module's root components starts in
+/// `solis/project.lst`: `-- root Module.Fighter = Ship, Health`.
+const ROOT_MARK: &str = "-- root ";
+
+/// Each module's root components in `files` (the game's code), by its
+/// option (`Fighter`), as `solis/project.lst` lists them; none if it has
+/// none.
+pub fn roots_in(files: &[(String, String)]) -> BTreeMap<String, Vec<String>> {
+    let path = format!("{}/project.lst", level::lust_data::ENGINE_FOLDER);
+    let Some((_, text)) = files.iter().find(|(p, _)| *p == path) else {
+        return BTreeMap::new();
+    };
+    text.lines()
+        .filter_map(|line| line.trim().strip_prefix(ROOT_MARK))
+        .filter_map(|rest| rest.split_once(" = "))
+        .filter_map(|(option, roots)| {
+            let option = option.trim().strip_prefix("Module.")?;
+            let roots = roots
+                .split(',')
+                .map(|c| c.trim().to_string())
+                .filter(|c| !c.is_empty())
+                .collect();
+            Some((option.to_string(), roots))
+        })
+        .collect()
+}
 
 /// Each option's file (or key), as `solis/project.lst` lists them under
 /// its states: `Module.Fighter` to `ships/fighter` (decision 0137).
@@ -926,6 +982,30 @@ mod tests {
             "{text}"
         );
         assert!(notes.is_empty(), "{notes:?}");
+    }
+
+    #[test]
+    fn a_module_s_root_components_are_listed_under_its_name_and_read_back() {
+        let names = Names::with_modules(&["ships/fighter", "crate"])
+            .and_module_roots(&[("ships/fighter", &["Ship", "Health"]), ("crate", &[])]);
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(notes.is_empty(), "{notes:?}");
+        assert!(
+            text.contains("-- root Module.Fighter = Ship, Health"),
+            "{text}"
+        );
+        assert!(
+            !text.contains("-- root Module.Crate"),
+            "a root with none says nothing: {text}"
+        );
+        let files = vec![("solis/project.lst".to_string(), text)];
+        let roots = roots_in(&files);
+        assert_eq!(roots.len(), 1);
+        assert_eq!(roots["Fighter"], ["Ship", "Health"]);
+        assert!(
+            paths_in(&files).contains_key("Module.Fighter"),
+            "the paths still read"
+        );
     }
 
     #[test]

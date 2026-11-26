@@ -12,8 +12,6 @@ world: object World: method float time() native;
 world: object World: method entity find(string name) native;
 world: object World: method entity array within(Tag tag, vec3 place, float radius) native;
 world: object World: method entity nearest(Tag tag, vec3 place) native;
-world: object World: method entity spawn(Module which, vec3 place) native;
-world: object World: method entity spawnWith(Module which, vec3 place, SpawnValues array values) native;
 world: object World: method entity the(Component which) native;
 world: method entity:despawn() native;
 world: method bool entity:exists() native;
@@ -106,6 +104,7 @@ screens: event TypingFinished(Screen which);
 
 ## Made with new (fetch "solis/made":<Name>)
 
+<a module>: vec3 position, and its root's components' fields
 Shot: vec3 from, vec3 direction, float speed, float life, vec3 colour
 <a sound event>: vec3 at, entity on, bool everywhere
 <a timer>: float after, float every, float atHour
