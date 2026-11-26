@@ -21,8 +21,11 @@ The project lead, 2026-11-26:
   1. the "Can I make this?" check (the manual page);
   2. the platformer;
   3. the action platformer;
-  4. the farming game's small pieces;
-  5. dialogue, in full.
+  4. removing Rust and Lua as game languages (added the same day);
+  5. dialogue, in full;
+  6. the farming game's small pieces.
+
+  Dialogue was moved before the farming game's pieces the same day (the project lead).
 
 The list of tiny versions and their order is in [the scope reset](../plans/scope-reset.md#the-target-tiny-versions-cheapest-game-first).
 
