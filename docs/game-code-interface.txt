@@ -419,3 +419,7 @@ kit/cameras.lst: FollowCamera2D.entity bounds = nothing
 kit/cameras.lst: FollowCamera2D.vec3 deadZone = [1, 0.75, 0]
 kit/cameras.lst: FollowCamera2D.float smoothing = 0.2
 kit/cameras.lst: FollowCamera2D.vec3 speed = [0, 0, 0]
+kit/cameras.lst: FollowCamera2D.float shakeStrength = 0; -- [hidden]
+kit/cameras.lst: FollowCamera2D.float shakeLeft = 0; -- [hidden]
+kit/cameras.lst: FollowCamera2D.float shakeTime = 0; -- [hidden]
+kit/cameras.lst: FollowCamera2D.vec3 shaken = [0, 0, 0]; -- [hidden]

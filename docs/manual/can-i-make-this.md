@@ -10,7 +10,7 @@ Each need is marked:
 - **Recipe:** a few lines of game code do it, ready to copy from the recipe pages. A recipe is not a stopgap: what game code does well stays game code, so it's yours to change.
 - **Not yet:** it isn't there. It says when it comes, and what to do until then where there's a way.
 
-The games come in order of cost: the platformer first, then the action game, then the farming game. This page changes with every update, so it always says what you can do in the version you have.
+The games come in order of cost: the platformer first (everything it needs is here now), then the action game, then the farming game. This page changes with every update, so it always says what you can do in the version you have.
 
 > **Good to know:** checked against Solis itself on 2026-11-26, not guessed. If something here is wrong, it's a mistake in the manual: please report it.
 
@@ -40,7 +40,7 @@ Start with [your first platformer](first-platformer.md), then the [platformer re
 | Animations: run, jump, idle, facing left and right | Works | [Animating sprites](sprite-animation.md), the `Flip flip` field |
 | Tweens (things gliding to a new value) | Works | [Tweens](game-code.md#tweens) |
 | Tweens kept in save games | Not yet | Later, when a game asks; glide the value yourself in `update` where it must survive a save |
-| Screen shake | Not yet | The platformer's third update, on the kit's `FollowCamera2D` |
+| Screen shake | Works | Send `ShakeCamera` to the kit's `FollowCamera2D` ([Characters and cameras](characters-and-cameras.md)) |
 | A flash when hurt | Recipe | [A hurt flash](platformer-recipes.md#a-hurt-flash) (a blink; a white flash later) |
 | Hit-stop | Recipe | `World.gameSpeed` ([Hit-stop](platformer-recipes.md#hit-stop-the-game-stops-for-a-blink-on-a-big-hit)) |
 | Squash and stretch | Not yet | Later, when a game asks: game code can't size a sprite yet |
@@ -100,11 +100,10 @@ The engine's part is listed here; crops and seasons, shops, crafting, fishing, f
 
 ### What comes when
 In order, each a small update:
-1. **The platformer:** screen shake (one-way and moving platforms are in).
-2. **The action game:** aiming with the mouse, rays in 2D.
-3. **Rust and Lua stop being game languages:** Lust is the language games are written in.
-4. **Dialogue,** in full: conversations, the dialogue box and the conversation editor.
-5. **The farming game's pieces:** separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.
+1. **The action game:** aiming with the mouse, rays in 2D.
+2. **Rust and Lua stop being game languages:** Lust is the language games are written in.
+3. **Dialogue,** in full: conversations, the dialogue box and the conversation editor.
+4. **The farming game's pieces:** separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.
 
 What isn't on the list waits until a game asks for it: puzzle and turn-based tools, 3D games, multiplayer.
 

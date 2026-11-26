@@ -121,7 +121,7 @@ pass HitStop;
 end
 ```
 
-Four to six frames is a solid hit; more than ten feels like the game stuck. Put `HitStop` on one entity (the camera is a good home) and `send Freeze(5) to camera;` from the attack.
+Four to six frames is a solid hit; more than ten feels like the game stuck. Put `HitStop` on one entity (the camera is a good home) and `send Freeze(5) to camera;` from the attack. A shake with it lands harder still: `send ShakeCamera(0.3, 0.25) to camera;` ([the camera's shake](characters-and-cameras.md)).
 
 ### A hurt flash
 A hero that blinks after being hit tells the player they're safe for a moment. The component's `bool visible` field shows and hides its entity ([Hiding entities](game-code.md#hiding-entities-and-turning-colliders-off)).
