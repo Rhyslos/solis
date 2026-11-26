@@ -802,3 +802,83 @@ fn a_platform_taken_out_carries_nothing() {
     assert_eq!(flat.state().place(id(1)).unwrap().x, 0.0);
     assert!(flat.state().shifted.is_empty());
 }
+
+#[test]
+fn a_ray_meets_walls_and_colliders_on_the_ground() {
+    let mut flat = world(Vec2::new(0.0, 0.0), &[rect(3.0, -5.0, 4.0, 5.0)]);
+    flat.add(
+        id(6),
+        Vec2::new(0.0, -2.0),
+        FlatCollider {
+            shape: FlatShape::Box(Vec2::new(2.0, 1.0)),
+            center: Vec2::ZERO,
+            one_way: false,
+        },
+        false,
+    );
+    flat.move_characters(&[], 1.0 / 60.0);
+    let state = flat.state();
+    // Right from the character's middle: it passes out of itself and meets
+    // the map's wall, the map's entity.
+    let hit = state
+        .cast_ray(glam::Vec3::new(0.0, 0.0, 0.7), glam::Vec3::X, 10.0)
+        .unwrap();
+    assert_eq!(hit.entity, id(9));
+    assert!((hit.distance - 3.0).abs() < 1e-4, "{}", hit.distance);
+    assert_eq!(hit.normal, glam::Vec3::new(-1.0, 0.0, 0.0));
+    assert!(
+        (hit.point - glam::Vec3::new(3.0, 0.0, 0.7)).length() < 1e-4,
+        "keeps its height"
+    );
+    // Down: the solid box, its top facing up.
+    let hit = state
+        .cast_ray(glam::Vec3::ZERO, glam::Vec3::new(0.0, -1.0, 5.0), 10.0)
+        .unwrap();
+    assert_eq!(hit.entity, id(6));
+    assert!((hit.distance - 1.5).abs() < 1e-4, "{}", hit.distance);
+    assert_eq!(hit.normal, glam::Vec3::Y);
+    // Too short, nowhere to go, or not a number: nothing.
+    assert!(
+        state
+            .cast_ray(glam::Vec3::ZERO, glam::Vec3::X, 2.0)
+            .is_none()
+    );
+    assert!(
+        state
+            .cast_ray(glam::Vec3::ZERO, glam::Vec3::Z, 10.0)
+            .is_none()
+    );
+    assert!(
+        state
+            .cast_ray(glam::Vec3::NAN, glam::Vec3::X, 10.0)
+            .is_none()
+    );
+    assert!(
+        state
+            .cast_ray(glam::Vec3::ZERO, glam::Vec3::X, -1.0)
+            .is_none()
+    );
+}
+
+#[test]
+fn a_ray_meets_a_one_way_platform_only_coming_down_onto_it() {
+    let mut flat = world(Vec2::new(-10.0, 0.0), &[]);
+    one_way_platform(&mut flat, 2.0);
+    flat.move_characters(&[], 1.0 / 60.0);
+    let state = flat.state();
+    let down = state
+        .cast_ray(glam::Vec3::new(0.0, 3.0, 0.0), -glam::Vec3::Y, 5.0)
+        .unwrap();
+    assert_eq!(down.entity, id(5));
+    assert!((down.distance - 1.0).abs() < 1e-4);
+    assert!(
+        state
+            .cast_ray(glam::Vec3::new(0.0, 0.0, 0.0), glam::Vec3::Y, 5.0)
+            .is_none()
+    );
+    assert!(
+        state
+            .cast_ray(glam::Vec3::new(-5.0, 1.8, 0.0), glam::Vec3::X, 10.0)
+            .is_none()
+    );
+}

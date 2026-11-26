@@ -360,6 +360,61 @@ impl FlatState {
         (entry.collider == handle && !entry.character).then_some(id)
     }
 
+    /// The first thing a ray from `from` heading `direction` (on the
+    /// ground: its X and Y) meets within `reach` metres: a collider or a
+    /// map's wall, whose entity is the map's (the action game, A2).
+    /// Anything the ray starts inside is passed through, so a character
+    /// casting from its own middle doesn't hit itself; a one-way platform
+    /// is met only by a ray heading down that starts above its top.
+    /// Where it was met keeps `from`'s height.
+    pub fn cast_ray(
+        &self,
+        from: glam::Vec3,
+        direction: glam::Vec3,
+        reach: f32,
+    ) -> Option<crate::Hit> {
+        let way = direction.truncate().normalize_or_zero();
+        let start = from.truncate();
+        if !(start.is_finite() && reach.is_finite()) || reach <= 0.0 || way == Vec2::ZERO {
+            return None;
+        }
+        let one_way: Vec<rp::ColliderHandle> = self
+            .one_way
+            .iter()
+            .filter_map(|id| self.by_entity.get(id))
+            .map(|e| e.collider)
+            .collect();
+        let keep = |h: rp::ColliderHandle, c: &rp::Collider| {
+            if c.shape().contains_point(c.position(), start) {
+                return false;
+            }
+            !one_way.contains(&h) || (way.y < 0.0 && start.y >= c.compute_aabb().maxs.y)
+        };
+        let filter = rp::QueryFilter::default()
+            .exclude_sensors()
+            .predicate(&keep);
+        let queries = self.broad_phase.as_query_pipeline(
+            self.narrow_phase.query_dispatcher(),
+            &self.bodies,
+            &self.colliders,
+            filter,
+        );
+        let ray = rp::Ray::new(start, way);
+        let (handle, hit) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            queries.cast_ray_and_get_normal(&ray, reach.min(1.0e7), true)
+        }))
+        .ok()??;
+        let c = self.colliders.get(handle)?;
+        let entity = EntityId(reflect::Id::from_raw(u64::try_from(c.user_data).ok()?)?);
+        let along = way * hit.time_of_impact;
+        Some(crate::Hit {
+            entity,
+            distance: hit.time_of_impact,
+            point: from + glam::Vec3::new(along.x, along.y, 0.0),
+            normal: glam::Vec3::new(hit.normal.x, hit.normal.y, 0.0),
+        })
+    }
+
     /// The one-way platforms a move of the collider `skip` by `wanted`
     /// passes through: all of them unless it's coming down, and then
     /// those whose top is above its bottom (it's below them, or partly

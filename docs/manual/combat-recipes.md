@@ -235,6 +235,50 @@ end
 
 Sparks made this way fly straight and vanish; they don't fall or fade. Smoke, dust, rain and snow need a particle emitter, which comes later ([Can I make this?](can-i-make-this.md)).
 
+### Enemies that patrol and turn at edges
+An enemy walks one way until there's a wall in front of it or no ground ahead, then turns round. Two short rays answer both: one along the way it walks, one down from just in front of its feet. Give it a `Collider2D` ticked **Character**, about the size of its sprite.
+
+```lust
+-- walker.lst: walks back and forth, turning at walls and ledges.
+fetch "solis/physics":[Physics, RayHit];
+fetch "solis/animation":Flip;
+
+component Walker {
+    has {
+        float speed = 2; -- [unit "m/s"]
+        float side = 1; -- [hidden]
+        float fall = 0; -- [hidden]
+        Flip flip = Flip.None; -- [hidden]
+    }
+
+    method update(float dt) {
+        is grounded()? then {
+            fall = -1;
+            vec3 middle = position() + [0, 0.5, 0];
+            vec3 way = [side, 0, 0];
+            -- A wall within half a metre, or no ground just ahead: turn.
+            RayHit wall = Physics:castRay(middle, way, 0.5);
+            RayHit ground = Physics:castRay(middle + way * 0.5, [0, -1, 0], 1);
+            is wall.found || not ground.found? then {
+                side = -side;
+            }
+        }
+        fall = fall - 35 * dt;
+        is side < 0? then {
+            flip = Flip.Across;
+        } or {
+            flip = Flip.None;
+        }
+        walk([side * speed * dt, fall * dt, 0]);
+    }
+}
+
+pass Walker;
+end
+```
+
+The rays start half a metre up, from the enemy's middle, so they pass out of its own collider and don't meet the floor it stands on. For a bigger enemy, look further ahead and further down.
+
 ### Music that follows the fight
 Play the calm music on an entity, and when an enemy comes near the player, swap it for the battle music. `stopSounds()` stops the old with a short fade. Tick **Loop** on both sound events.
 
@@ -279,7 +323,7 @@ The recipes' settings are their fields, shown in Properties with their tips once
 
 ## Tips and common problems
 - **Problem:** the sword never hits. **Why:** no frame event on the attack clip, or the enemy lacks the Enemy tag. **Fix:** add the frame event in the Frames tab, and the tag under the enemy's name.
-- **Problem:** bullets fly through walls. **Why:** the bullet only looks for enemies. **Fix:** until 2D rays come ([Can I make this?](can-i-make-this.md)), keep its `life` short enough that it can't reach past a wall.
+- **Problem:** bullets fly through walls. **Why:** the bullet only looks for enemies. **Fix:** look ahead with a ray each tick and stop at what it meets: `RayHit hit = Physics:castRay(position(), way, speed * dt);` then `is hit.found? then { despawn(); }` ([Rays in 2D](walls-and-walking.md#rays-in-2d)).
 - **Problem:** the music restarts again and again. **Why:** an enemy is right on the edge of `near`. **Fix:** make the calm music wait until no enemy is within a little more than `near`.
 
 ## Related

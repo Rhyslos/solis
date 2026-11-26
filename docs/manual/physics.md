@@ -117,7 +117,7 @@ end
 | `push(vec3 impulse)` | A push, like a kick: a heavy body moves less than a light one. `[5, 0, 0]` gives a 1 kg crate 5 m/s along X. |
 | `vec3 velocity()` | How fast and which way it's moving, metres a second. |
 | `setVelocity(vec3 velocity)` | Makes it move this fast, this way, whatever its weight. |
-| `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | Looks along a line and gives back what it met, all at once: `hit.found` (whether anything was within reach), `hit.distance` (how far, or -1), `hit.entity` (whose collider, or nothing) and `hit.normal` (which way its surface faces: `[0, 0, 1]` for a floor). |
+| `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | Looks along a line and gives back what it met, all at once: `hit.found` (whether anything was within reach), `hit.distance` (how far, or -1), `hit.entity` (whose collider, or nothing) and `hit.normal` (which way its surface faces: `[0, 0, 1]` for a floor). A ray along the ground (its direction's third number 0) looks in 2D physics too ([Walls and walking](walls-and-walking.md#rays-in-2d)), and gives back the nearer. |
 
 Why one call for a ray? Each question a ray answers is worked out at once, so asking for the distance, the entity and the surface separately looked three times; `RayHit` keeps them together.
 

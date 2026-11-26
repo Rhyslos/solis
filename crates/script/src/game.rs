@@ -649,7 +649,18 @@ impl Host for ViewHost {
     }
 
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
-        self.view.physics.cast_ray(from, direction, reach)
+        // 3D physics and, for a ray along the ground (its direction has
+        // no height, as a 2D game's do), 2D physics too (the action game,
+        // A2): the nearer of what each meets. A 3D camera looking down
+        // past 2D walls doesn't meet them.
+        let deep = self.view.physics.cast_ray(from, direction, reach);
+        let flat = (direction.z == 0.0)
+            .then(|| self.view.flat.cast_ray(from, direction, reach))
+            .flatten();
+        match (deep, flat) {
+            (Some(a), Some(b)) => Some(if b.distance < a.distance { b } else { a }),
+            (a, b) => a.or(b),
+        }
     }
 
     fn has_tag(&self, which: EntityId, tag: &str) -> bool {
