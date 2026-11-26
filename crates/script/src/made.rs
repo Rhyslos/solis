@@ -8,14 +8,14 @@
 //! is checked, `like Made`, with a native `made()` (Lust alpha 80's
 //! things the engine makes): `new` hands the engine the thing, and
 //! Solis's `new` keeps only the fields written on it
-//! ([`crate::readings::values_new`]), so the engine knows which were. A
+//! (`readings::values_new`), so the engine knows which were. A
 //! class is named by its option (`Sound.Horn` is `Horn`); a sound whose
 //! name the game already uses has `Sound` added (`HornSound`), and a
 //! timer, named where its code makes it, is renamed by its writer.
 //!
 //! A timer, and a sound made without `at` or `on`, belong to the entity
 //! whose code is running (a sound with `everywhere = true` plays the
-//! same everywhere): [`crate::states::Running`] notes it for every
+//! same everywhere): `states::Running` notes it for every
 //! Lust component of a game that makes things.
 
 use crate::convert::{entity_of, vec3_of};
@@ -66,7 +66,7 @@ pub struct MadeList {
     pub classes: BTreeMap<String, (Kind, String)>,
 }
 
-/// What [`write`] gives back.
+/// What [`write()`] gives back.
 #[derive(Debug, Default)]
 pub struct Written {
     /// The files with `solis/made.lst` in.
