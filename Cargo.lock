@@ -2539,8 +2539,8 @@ dependencies = [
 
 [[package]]
 name = "lust"
-version = "2.0.0-alpha.74"
-source = "git+https://github.com/Rhyslos/Lust?rev=9fcd48c8654978f88264a07f0c8eb5325d82c2ca#9fcd48c8654978f88264a07f0c8eb5325d82c2ca"
+version = "2.0.0-alpha.80"
+source = "git+https://github.com/Rhyslos/Lust?rev=1a0a72763888f29142bc2969a24ac0c2e84e4c4f#1a0a72763888f29142bc2969a24ac0c2e84e4c4f"
 
 [[package]]
 name = "mach2"

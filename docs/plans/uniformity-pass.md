@@ -59,7 +59,7 @@ Built in this order, one pull request each, the manual, the sample games and the
 - **U3 One picture board:** the Tileset's picture on the shared board.
 - **U4 One dot:** every kind of the project's names with one dot, folders only on a clash, groups as values; the manual and samples moved; `World:find` out of the manual.
 - **U5 Setting with `=`:** the setters on a component's own entity as fields the engine reads (the sprite's, the sound's, the screen's, tags, visible, solid, velocity), then the game-wide objects' (`Screens.textSize`, `Window.fullscreen`, `Audio`, `World`).
-- **U6 Making with `new`:** the classes Solis writes for modules, sounds, timers and shots, and `new` replacing the spawning, playing, firing and timer calls.
+- **U6 Making with `new`:** a class Solis writes for each module, sound and timer, and one for shots, made by the engine through Lust alpha 80's `made()`; `new` replaces the spawning, playing, firing and timer calls (planned in detail below, 2026-11-26).
 
 Each is planned in detail when it starts, as the game stages are.
 
@@ -86,6 +86,46 @@ Each is planned in detail when it starts, as the game stages are.
 
 *As built (U4):* every kind is written flat by `project_names::one_dot`, with each name's file under it (`-- @Module.Fighter = ships/fighter`), read back by `paths_in` into `Compiled::name_paths`, which the running code gives Luau (`path_for` in the natives that spawn, play sounds, animate and read text) and the editor's Library keeps (`LibraryFiles::set_name_paths`: a clip finds its sheet and a crop its picture through the table, not by dots). `ClipFinished` names its clip through the table; renaming follows a file by its own name, and a clip's or crop's names along with its sheet's or picture's (`KnightWalk` follows `Knight`); moving a file or a folder renames nothing. The translations' check also finds a text key in its one-dot form. `World:find` is gone from the manual and kept for the Console. Groups (`clip.sheet`) wait on Lust (data on a state's options; asked of Lust). The samples aren't whole projects, so `--smoke` can't open them; the app's tests compile and run their code.
 
+### U6 in detail: making with `new` (planned 2026-11-26)
+
+Lust alpha 80 (Solis moved to it on the light path, 2026-11-26) lets an engine make things: a class in the engine's own files with a native method `made()` is handed to the engine by `new`, fields filled in, and `new` gives back what `made()` gives back (an entity, or nothing). Such a `new` can stand on its own line, and what it makes doesn't end with a Lust state (LUST.md, "Things the engine makes"). That's what the audit's first group was waiting for: Solis writes the classes, and nothing more is asked of Lust.
+
+**The project lead's answers (2026-11-26):**
+- **Class names:** the one-dot name (`Fighter` for `Module.Fighter`, `Horn` for `Sound.Horn`, `DoorOpens` for `Timer.DoorOpens`), with the kind added only where that name is taken by a component, class, object, state or another of these classes (`OrcModule` beside a component `Orc`, `FootstepSound` beside a module `Footstep`).
+- **A module's first values:** its root components' fields straight on the class (`new Key { position = here, item = Item.Red, count = 2 };`), and a field two root components share, or one called `position`, with its component in front (`healthHp`).
+- **Whose timer, whose sound:** the entity whose code is running. A timer made in a component's code is that entity's, and a sound made there without `at` follows it; nothing extra to write.
+
+**What changes for a game writer:**
+```lust
+-- Before
+entity key = World:spawnWith(Module.Key, here, [new PickupValues { item = Item.Red }]);
+Audio:playAt(Sound.Horn, gate);
+playSound(Sound.Footstep);
+startTimer(Timer.DoorOpens, 2.0);
+World:fire(muzzle, ahead, 30, 2, [1, 0.8, 0.2]);
+-- After
+entity key = new Key { position = here, item = Item.Red };
+new Horn { at = gate };
+new Footstep {};
+new DoorOpens { after = 2.0 };
+new Shot { from = muzzle, direction = ahead, speed = 30 };
+```
+`Timer.DoorOpens` stays the timer's name for `TimerFinished`, `stopTimer`, `timerRunning` and `timeLeft`; `Module.Key` and `Sound.Horn` stay names for fields and pickers.
+
+**How it's built:**
+1. **The classes, written with the names.** Each check of the code writes them into the engine's files beside the states they come from: a timer's and a sound's into `solis/project.lst`, a module's into `solis/components.lst`, since its fields' types are fetched from the game's files as the values classes' are (`component_code`). `Shot` is written once in `solis/world.lst`. One rule (beside `project_names::one_dot`) gives every name, adds the kind on a clash, and gives none, with a note in Problems, to one that still clashes.
+   - A module: `has { vec3 position = [0, 0, 0]; <its root's fields> }` and `method entity made() native;`.
+   - A sound: `has { vec3 at = [0, 0, 0]; }` and `method made() native;`.
+   - A timer: `has { float after = 0; float every = 0; float atHour = 0; }` and `method made() native;`.
+   - `Shot`: `from`, `direction`, `speed` (20), `life` (2) and `colour` (white), and `method made() native;`.
+2. **Only the fields written count.** A field left out reads as the component's own starting value, and Solis gives only those written, as the values classes do now (`readings::values_new`), so a key made without `item` keeps the module's own. A sound with `at` written plays there; without it, it follows the running entity, or plays everywhere when no entity's code is running (an object's or a screen's). A timer needs exactly one of `after`, `every` and `atHour`; none or two is a mistake on its line in the Console.
+3. **The running entity.** The runtime notes the entity and component whose code it's running (an update, an event, a start) for as long as it runs, and the `made` natives read it. A timer made where no entity's code runs is a mistake on its line ("a timer belongs to an entity: make it in a component's code").
+4. **The natives.** `<Class>_made` in `LUST_NATIVES` for each class, written with the classes and kept on the compiled code as the name table is (`Compiled::name_paths`), each calling what the old call called: `spawn_with`, `play_sound`, `start_timer` and `fire`. A timer or a sound made in a state still ends with it, as one started does now (decision 0126); a spawned entity doesn't.
+5. **One way to do each thing.** The old calls leave Lust's engine files and the manual. A Lust file that still uses one gets a mistake in Problems that writes out the `new` way (`old_names`, as for the rename of areas). Lua and Rust keep them, frozen until the catch-up phase (decision 0135). `PickupValues` and the other values classes go too, since nothing takes them.
+6. **Moved in the same pull request:** the manual's examples (spawning, sounds, timers, shots, the "Can I make this?" page where it says how), the kit's and the samples' Lust, the interface file, and `describe.rs`'s descriptions.
+
+**Tests:** the naming rule (clashes with components, classes, objects, states and each other; a name that still clashes), the classes written for a project and fuzzed with its names, each kind made by `new` in a running game (an entity given back with its first values; a sound at a place, on the entity, and everywhere; a timer after, every and at an hour; a shot), only the fields written given, the running entity in an update and in an event, a timer made outside a component refused on its line, a timer or a sound made in a state ending with it, the old calls refused with the new way written out, and the manual's examples and the samples' code compiling and running.
+
 ## The audit (2026-11-24)
 
 Written while Fixes 3's last pull requests waited on their checks. Nothing here is decided: each group ends in the question it puts to the project lead, and the proposals come as questions, one at a time, with a before and after.
@@ -96,7 +136,7 @@ Every engine call in [the interface file](../game-code-interface.txt) (112 calls
 
 **1. Making something in the world: `new`**: `World:spawn`, `World:spawnWith`, `World:fire`, `Audio:play`, `Audio:playAt`, `entity:playSound`, `entity:startTimer`, `startTimerEvery`, `startTimerAtHour`.
 - Shape: `new Module.Fighter { position = gate };`, `new Sound.Horn { at = place };`, `new Timer.DoorOpens { after = 2.0 };`, `new Shot { from = muzzle, speed = 30 };`. `spawn` and `spawnWith` become one: the braces hold the place and the root's values.
-- **Lust can't yet:** `new` makes a class, and `Module.Fighter` is a state option. Either Solis writes a class per module, sound and timer into the files it already writes (`solis/project.lst` gains `class Fighter { has { vec3 position; … } }`), or Lust lets a state option be made (asked of Lust). The first works today but doubles the names; the second is the clean one.
+- **Lust can't yet:** `new` makes a class, and `Module.Fighter` is a state option. Either Solis writes a class per module, sound and timer into the files it already writes (`solis/project.lst` gains `class Fighter { has { vec3 position; … } }`), or Lust lets a state option be made (asked of Lust). The first works today but doubles the names; the second is the clean one. *(Answered by Lust alpha 80's `made()`: Solis writes the classes; see U6 in detail above.)*
 - Question: one `new` for everything the world makes, through classes Solis writes, or ask Lust first?
 
 **2. Setting what something is: `=`**: The setters: `animate` and `animateFromStart` (as `animation = Clip.KnightWalk;`, with `restart = true;` or a second field), `stopAnimation` (`playing = false;`), `setVisible`, `setFlip`, `setSolid`, `setVelocity`, `moveTo` (`position = …`), `turnTo` and `face` (`rotation = …`), `setSoundPlaying`, `showScreen` and `hideScreen` (`screen = Screen.Hud;`), `addTag` and `removeTag` (a `tags` field), `Audio:setVolume`, `World:setGameSpeed`, `setTimeOfDay`, `setSeed`, every `Screens:set…` and `Window:set…`, and the maps' and animators' setters. Fixes 3's `facing` and `look` already work this way (`script::engine_fields`).

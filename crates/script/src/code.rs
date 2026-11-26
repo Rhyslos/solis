@@ -405,8 +405,8 @@ fn attempt(code: &Code, limits: crate::luau::Limits) -> Result<Checked, NotStart
 pub const COMPILE_LIMIT: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// Problems for runs of `!` longer than [`MAX_PREFIX_RUN`], refused
-/// before compiling. To the Lust compiler (2.0.0-alpha.74, rev 9fcd48c;
-/// first measured at rev 930afae) each `!` is a mistake of its own ("Lust
+/// before compiling. To the Lust compiler (measured at 2.0.0-alpha.74;
+/// guarded at alpha 80; first measured at rev 930afae) each `!` is a mistake of its own ("Lust
 /// writes not, not !"), and its time grows with the square of the number
 /// of mistakes: 64,000 in a row take it about 3 seconds and 128,000 more
 /// than 8, so a file full of them (1 MB) would take about ten minutes,
@@ -435,7 +435,8 @@ fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
 
 /// Problems for two components, classes, objects, nodes or schemas with
 /// the same name (two of one kind, or one of each), in one file or two.
-/// The Lust compiler (2.0.0-alpha.74, rev 9fcd48c, as at rev 930afae)
+/// The Lust compiler (found at rev 930afae, still at
+/// 2.0.0-alpha.74, guarded at alpha 80)
 /// never finishes such code (it orders classes by name), so it's found
 /// here first (by the hardening milestone's fuzzing, decision 0042), with
 /// what to do about it. Two things sharing a name any other way (an

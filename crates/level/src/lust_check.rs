@@ -1,5 +1,5 @@
 //! Checks a data file before Lust does. Lust (measured at rev 930afae;
-//! the same at 2.0.0-alpha.74, rev 9fcd48c) has no budget: each mistake
+//! the same at 2.0.0-alpha.74, and guarded at alpha 80) has no budget: each mistake
 //! it finds is compared with every one before it, and a name
 //! it can't find with every name it knows, so a file with thousands of
 //! mistakes takes it time that grows with their square (200 KB of `@`: 43
@@ -61,6 +61,9 @@ const LONGEST: usize = 200;
 
 /// The mistake for anything at a file's top level that isn't a `fetch`
 /// line, a `lock` value or `end`.
+/// What Lust says of a comment started the old way.
+const SLASH_COMMENT: &str = "comments start with --, so write -- here instead of //";
+
 const ONLY_VALUES: &str = "a data file holds only lock values (lock int version = 1;), after \
                            its fetch line and before end";
 
@@ -148,6 +151,7 @@ impl<'a> Reader<'a> {
             Some(Piece::Number(number)) => clip(number),
             Some(Piece::Symbol(symbol)) => format!("`{symbol}`"),
             Some(Piece::Stray(stray)) => format!("`{stray}`"),
+            Some(Piece::SlashComment) => return self.mistake(SLASH_COMMENT),
         };
         self.mistake(format!("{wanted} goes here, not {found}"))
     }
@@ -348,6 +352,17 @@ impl<'a> Classes<'a> {
     /// (see the top of this file), or says what on which line isn't. One
     /// pass, in time that grows only with the text's length.
     pub(crate) fn check(&self, text: &str) -> Result<(), DataError> {
+        // `//` was a comment until Lust alpha 75: wherever one is, Lust says
+        // it's a mistake, so it's the file's first.
+        // Only a file with `//` somewhere (text and URLs too) is read twice.
+        if text.contains("//") {
+            let mut pieces = Pieces::new(text);
+            while let Some((line, piece)) = pieces.next() {
+                if piece == Piece::SlashComment {
+                    return Err(error(line as usize, SLASH_COMMENT));
+                }
+            }
+        }
         let mut r = Reader::new(text);
         // The states and classes the file has fetched, each once.
         let mut fetched: Vec<&str> = Vec::new();

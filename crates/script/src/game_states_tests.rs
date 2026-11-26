@@ -60,7 +60,7 @@ fn old_way_lines(text: &str) -> Vec<u32> {
 
 /// A project as it was saved before alpha 74: the engine's files in
 /// `solis/`, and `main.lst` holding `main`.
-fn project(name: &str, main: &str) -> reflect::test_support::TempFolder {
+pub(super) fn project(name: &str, main: &str) -> reflect::test_support::TempFolder {
     let folder = reflect::test_support::TempFolder::new(&format!("script-{name}")).unwrap();
     let (files, _) = crate::describe::descriptions_for(
         "Test 1.0",
