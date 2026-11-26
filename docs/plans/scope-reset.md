@@ -131,7 +131,8 @@ The project lead, 2026-11-26 ([decision 0138](../decisions/0138-tiny-first-games
 2. **The platformer** (about 3): one-way platforms; being carried by moving platforms; screen shake. Running and jumping are game code already ([the first platformer](../manual/first-platformer.md)); coyote time and jump buffering are recipes; hit-stop is `World.gameSpeed`; paths in the editor wait (marker entities do).
 3. **The action platformer** (about 3): aiming with the mouse in the world; one simple particle emitter (sparks, muzzle flashes, later rain); "is there ground ahead" for bots, if it's missing. Melee is a recipe (frame events, `World:within` and tags); bullets are `fire`, with pools only if it's too slow; music follows the fight with the music fade from step 4.
    **Then, removing Rust and Lua as game languages** (about 5 or 6; the project lead, 2026-11-26: "we'll do the platformer update first, and then remove lua and rust later"). Lust stays the only language games are written in; the Lua engine underneath Lust stays. It reaches about 65 code files, 22 manual pages, the turret sample and the two-PC check's game (its Lua and Rust files rewritten in Lust, and the game recorded again). Waiting costs little: Rust and Lua are frozen, so it doesn't grow.
-4. **The farming game's small pieces** (about 12):
+4. **Dialogue, in full** (about 35): [the outline](dialogue/README.md), milestones 2 to 7. Moved before the farming game's pieces (the project lead, 2026-11-26).
+5. **The farming game's small pieces** (about 12):
    - a screen piece that tells game code it was clicked, and tips on hover (drag and drop waits);
    - loading another level at an entry point from game code (the fade is a screen fading, the door a trigger zone recipe; no world map);
    - sorting sprites by their feet on a layer;
@@ -141,7 +142,6 @@ The project lead, 2026-11-26 ([decision 0138](../decisions/0138-tiny-first-games
    - a fade from one music track to the next;
    - rain and snow on the particle emitter.
    Cutscenes are game code with timers and `moveTo`, and night lights are the lights there are.
-5. **Dialogue, in full** (about 35): [the outline](dialogue/README.md), milestones 2 to 7.
 
 ### Not on the list (waits until a game asks for it)
 
