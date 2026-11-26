@@ -178,8 +178,12 @@ event Resumed();
 event Quit();
 
 component Pauser {
+    has {
+        Screen screen = Screen.PauseMenu;
+    }
+
     on Resumed() {
-        hideScreen(Screen.PauseMenu);
+        screen = Screen.None;
     }
 }
 
@@ -223,13 +227,17 @@ end
 - The `{ }` may also change the screen's own fields (a tab picked, say). It can't change the game: send an event for that.
 - What a button sends reaches the game at the start of the next tick, before the components' `update`s.
 
-**Showing and hiding screens from game code.** Every entity can show one screen at a time. Its calls take the screen by name, from `solis/project.lst` (fetch `Screen` from `"solis/project"`):
+**Showing and hiding screens from game code.** Every entity can show one screen at a time. A component chooses its entity's with a field, `Screen screen`, set with `=` like any value: the screens come by name from `solis/project.lst` (fetch `Screen` from `"solis/project"`). A field says what's shown, so reading it back tells you, and there's no hide to forget.
 
-| Call | What it does |
+| Lust | What it does |
 |---|---|
-| `showScreen(Screen.PauseMenu)` | Shows that screen on the entity's Screen component, at the end of the tick. An entity without one is given one. |
-| `hideScreen(Screen.PauseMenu)` | Hides it, at the end of the tick, if the entity shows that screen. |
+| `Screen screen = Screen.None;` in the component's `has` | The screen its entity shows. The engine looks at it as each tick ends, and when it has changed (or the component has just started), shows that screen on the entity's Screen component. An entity without one is given one. |
+| `screen = Screen.PauseMenu;` | Shows the pause menu, at the end of the tick, and hides the screen the field held before. |
+| `screen = Screen.None;` | Hides the screen the field held, at the end of the tick. |
 | `screenShown(Screen.PauseMenu)` | Whether the entity shows that screen, as the tick started. |
+| `menus:showScreen(Screen.PauseMenu)`, `menus:hideScreen(Screen.PauseMenu)` | The same on another entity, whose code you aren't in. |
+
+Give `Screen screen` to one component of an entity: two would each show their own.
 
 In Lua they're `solis.entity.showScreen(self.me, "PauseMenu")`, `solis.entity.hideScreen(…)` and `solis.entity.screenShown(…)` (the screen's name as text), and a button's event arrives in `on_Resumed`. In Rust, through the component's host: `cx.host().show_screen(cx.me(), "PauseMenu", true)` (`false` hides it) and `cx.host().screen_shown(cx.me(), "PauseMenu")`.
 
@@ -239,7 +247,7 @@ Use another entity (a "Menus" entity) for a second screen shown at the same time
 
 **With the keys or a controller.** Once the game has the keys, **MenuMove** (the arrow keys, the d-pad or the left stick) moves the focus to the nearest button that way, shown with a blue ring; held down, it moves on again every tenth of a second. **MenuChoose** (Enter, Space or A) chooses the button with the focus, just as a click would. A menu's first button has the focus to start with, so Down moves to the second. The focus is on the topmost screen with buttons, and moving the mouse over a button moves the focus there (the ring hides until the keys are used again).
 
-While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, **MenuBack** (Backspace, B) and **Pause** (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: `is Input:pressed(Action.Pause)? then { showScreen(Screen.PauseMenu); }`. They're ordinary [input actions](input.md), rebindable in **File › Project settings › Input**.
+While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, **MenuBack** (Backspace, B) and **Pause** (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: `is Input:pressed(Action.Pause)? then { screen = Screen.PauseMenu; }`. They're ordinary [input actions](input.md), rebindable in **File › Project settings › Input**.
 
 **A pause menu.** `World:setGameSpeed(0)` stops the game while game code keeps running: game time, physics, projectiles and sprites stand still and every `dt` is 0, but components' `update`s, events and the screens go on, so a menu can be used. `World:setGameSpeed(1)` carries on (anything between 0 and 4 runs slower or faster). The Game panel's corner says *Game speed 0* meanwhile, and the speed is kept in save games. The turret sample has one: press P (or Start) while it plays.
 
@@ -251,15 +259,19 @@ fetch "solis/project":[Action, Screen];
 event Resumed();
 
 component Pauser {
+    has {
+        Screen screen = Screen.None;
+    }
+
     method update(float dt) {
         is Input:pressed(Action.Pause)? then {
-            showScreen(Screen.PauseMenu);
+            screen = Screen.PauseMenu;
             World:setGameSpeed(0);
         }
     }
 
     on Resumed() {
-        hideScreen(Screen.PauseMenu);
+        screen = Screen.None;
         World:setGameSpeed(1);
     }
 }
@@ -448,7 +460,7 @@ The **Screen** component:
 | Setting | What it does |
 |---|---|
 | Screen | Which screen: a file in the Library's `ui` folder, by its name (`ui/hud.lst` is **Hud**). |
-| Shown | Whether it's on screen. Game code shows and hides screens with `showScreen` and `hideScreen`. |
+| Shown | Whether it's on screen. Game code shows and hides screens with a component's `Screen screen` field. |
 | Order | Which screen is on top when several are shown: higher is on top. |
 | Glow | A soft light round everything on the screen, in each piece's own colour, this many pixels out (on its design size). 0 for none. |
 | Outline | A line just outside everything on the screen, this thick. 0 for none. |

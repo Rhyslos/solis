@@ -2321,17 +2321,18 @@ fn each_code_file_says_how_many_entities_use_its_components() {
 }
 
 /// Faces left while x is less than 3, then right.
-const FACER: &str = "component Facer {\n\
-        has { float x = 0; }\n\
+const FACER: &str = "fetch \"solis/animation\":Flip;\n\
+    component Facer {\n\
+        has { float x = 0; Flip flip = Flip.None; }\n\
         method update(float dt) {\n\
             x = x + 1;\n\
-            setFlip(x < 3, false);\n\
+            is x < 3? then { flip = Flip.Across; } or { flip = Flip.None; }\n\
         }\n\
     }\n\
     pass Facer;\nend\n";
 
 #[test]
-fn game_code_mirrors_a_sprite_with_set_flip() {
+fn game_code_mirrors_a_sprite_with_its_flip_field() {
     let mut w = Workbench::new(info());
     // It waits for whole ticks: a busy machine mustn't pause the game.
     unhurried(&mut w);

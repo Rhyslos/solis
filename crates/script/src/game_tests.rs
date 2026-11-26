@@ -147,7 +147,15 @@ impl GameWorld for TestWorld {
             if let Change::Tag(..) = change {
                 self.tag_changes.push(change.clone());
             }
-            if let Change::Facing(..) | Change::Look(..) = change {
+            if let Change::Facing(..)
+            | Change::Look(..)
+            | Change::PlayClip(..)
+            | Change::StopClip(_)
+            | Change::Flip(..)
+            | Change::Visible(..)
+            | Change::Solid(..)
+            | Change::ShowScreen(..) = change
+            {
                 self.sprite_changes.push(change.clone());
             }
             if let Change::State(_)

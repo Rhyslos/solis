@@ -1881,9 +1881,10 @@ impl Game {
             engine,
             told,
         );
-        // The fields the engine reads (a sprite's facing and look), as
-        // the tick's code left them, landed in the entities' order so
-        // every core count gives the same.
+        // The fields the engine reads (a sprite's facing, look and clip,
+        // a screen shown, …), as the tick's code left them, landed in the
+        // entities' order so every core count gives the same; one
+        // entity's keep the order they were read in.
         let mut read: Vec<Change> = self
             .all(|_| Job::EngineReads)
             .into_iter()
@@ -1894,9 +1895,16 @@ impl Game {
             .collect();
         if !read.is_empty() {
             read.sort_by_key(|c| match c {
-                Change::Facing(e, _) => (Some(*e), 0),
-                Change::Look(e, _) => (Some(*e), 1),
-                _ => (None, 2),
+                Change::Facing(e, _)
+                | Change::Look(e, _)
+                | Change::PlayClip(e, _, _)
+                | Change::StopClip(e)
+                | Change::Flip(e, _, _)
+                | Change::Visible(e, _)
+                | Change::Solid(e, _)
+                | Change::SoundPlaying(e, _)
+                | Change::ShowScreen(e, _, _) => Some(*e),
+                _ => None,
             });
             world.borrow_mut().apply(&read);
         }

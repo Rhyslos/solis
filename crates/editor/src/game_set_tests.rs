@@ -76,6 +76,9 @@ const ON_AN_ENTITY: &[(&str, Asks)] = &[
         Change::PlayClip(id(SIGN), "wave".into(), true)
     }),
     ("entity_stopAnimation", || Change::StopClip(id(SIGN))),
+    ("entity_restartAnimation", || {
+        Change::PlayClip(id(SIGN), String::new(), true)
+    }),
     ("entity_setFlip", || Change::Flip(id(SIGN), true, false)),
     ("entity_setVisible", || Change::Visible(id(SIGN), false)),
     ("entity_setSolid", || Change::Solid(id(SIGN), false)),

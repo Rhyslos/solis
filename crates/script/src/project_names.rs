@@ -194,20 +194,32 @@ pub const KIT_ACTIONS: [&str; 8] = [
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
     let files = |paths: &[String]| paths.iter().map(|p| file_entry(p)).collect::<Vec<_>>();
-    let module = flat_text("Module", &files(&names.modules), "module", &mut notes);
+    let module = flat_text(
+        "Module",
+        &files(&names.modules),
+        "module",
+        false,
+        &mut notes,
+    );
     let mut actions = names.actions.clone();
     for kit in KIT_ACTIONS {
         if !actions.iter().any(|a| a.eq_ignore_ascii_case(kit)) {
             actions.push(kit.to_string());
         }
     }
-    let action = names_text("Action", &actions, "input action", true, &mut notes);
-    let sound = flat_text("Sound", &files(&names.sounds), "sound event", &mut notes);
-    let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
+    let action = names_text("Action", &actions, "input action", true, false, &mut notes);
+    let sound = flat_text(
+        "Sound",
+        &files(&names.sounds),
+        "sound event",
+        false,
+        &mut notes,
+    );
+    let bus = names_text("Bus", &names.buses, "bus", false, false, &mut notes);
     let clips: Vec<_> = names.clips.iter().map(|p| part_entry(p)).collect();
-    let clip = flat_text("Clip", &clips, "sprite clip", &mut notes);
-    let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
-    let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
+    let clip = flat_text("Clip", &clips, "sprite clip", true, &mut notes);
+    let cue = names_text("Cue", &names.cues, "clip event", false, false, &mut notes);
+    let screen = names_text("Screen", &names.screens, "screen", false, true, &mut notes);
     // A picture, or a part cut out of one (a crop: the picture's path,
     // then the crop's name).
     let pictures: Vec<_> = (names.pictures.iter())
@@ -218,18 +230,25 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
             if crop { part_entry(p) } else { file_entry(p) }
         })
         .collect();
-    let picture = flat_text("Picture", &pictures, "picture", &mut notes);
-    let tag = names_text("Tag", &names.tags, "tag", true, &mut notes);
-    let timer = names_text("Timer", &names.timers, "timer", true, &mut notes);
-    let level = flat_text("Level", &files(&names.levels), "level", &mut notes);
-    let font = flat_text("Font", &files(&names.fonts), "font", &mut notes);
+    let picture = flat_text("Picture", &pictures, "picture", false, &mut notes);
+    let tag = names_text("Tag", &names.tags, "tag", true, false, &mut notes);
+    let timer = names_text("Timer", &names.timers, "timer", true, false, &mut notes);
+    let level = flat_text("Level", &files(&names.levels), "level", false, &mut notes);
+    let font = flat_text("Font", &files(&names.fonts), "font", false, &mut notes);
     // A text key's parts are all its own: `Shop.Welcome` is ShopWelcome.
     let keys: Vec<_> = (names.texts.iter())
         .map(|k| (String::new(), k.replace('.', "/"), k.clone()))
         .collect();
-    let text_state = flat_text("Text", &keys, "text key", &mut notes);
-    let language = names_text("Language", &names.languages, "language", true, &mut notes);
-    let look = names_text("Look", &names.looks, "look", true, &mut notes);
+    let text_state = flat_text("Text", &keys, "text key", false, &mut notes);
+    let language = names_text(
+        "Language",
+        &names.languages,
+        "language",
+        true,
+        false,
+        &mut notes,
+    );
+    let look = names_text("Look", &names.looks, "look", true, false, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -243,11 +262,13 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {sound}\n\n\
          -- The Mixer's buses: Audio:setVolume(Bus.Music, 0.5).\n\
          {bus}\n\n\
-         -- The sprites' clips, their sheet's name and their own: animate(Clip.FarmerWalk).\n\
+         -- The sprites' clips, their sheet's name and their own: animation = Clip.FarmerWalk;\n\
+         -- in a component holding Clip animation (Clip.None stops it).\n\
          {clip}\n\n\
          -- The clips' events: on CueReached(Cue cue) {{ is cue == Cue.Footstep? … }}.\n\
          {cue}\n\n\
-         -- The game's screens (files in ui/): showScreen(Screen.PauseMenu) for ui/pauseMenu.lst.\n\
+         -- The game's screens (files in ui/): screen = Screen.PauseMenu; for ui/pauseMenu.lst, in a\n\
+         -- component holding Screen screen (Screen.None shows none).\n\
          {screen}\n\n\
          -- The project's pictures, and the parts cut out of them with Atlas Crop named after\n\
          -- their picture: Picture.Tools for sprites/tools.png, and Picture.ToolsAxe for its Axe.\n\
@@ -354,6 +375,7 @@ fn flat_text(
     state: &str,
     entries: &[(String, String, String)],
     what: &str,
+    none: bool,
     notes: &mut Vec<String>,
 ) -> String {
     let mut entries: Vec<&(String, String, String)> = entries.iter().collect();
@@ -366,6 +388,10 @@ fn flat_text(
     let mut options: Vec<(String, &str)> = Vec::new();
     for (name, (_, _, path)) in one_dot(&asked).into_iter().zip(&entries) {
         match name {
+            Some(name) if none && name == NO_OPTION => notes.push(format!(
+                "The {what} {path} can't be named in game code: {state}.{NO_OPTION} means \
+                 none. Rename it to use it from code."
+            )),
             Some(name) => options.push((name, path.as_str())),
             None => notes.push(format!(
                 "The {what} {path} can't be named in game code: its name must start with a \
@@ -378,7 +404,10 @@ fn flat_text(
     let mut text = if options.is_empty() {
         format!("state {state} = [{NO_OPTION}];")
     } else {
-        let list: Vec<&str> = options.iter().map(|(name, _)| name.as_str()).collect();
+        let mut list: Vec<&str> = options.iter().map(|(name, _)| name.as_str()).collect();
+        if none {
+            list.insert(0, NO_OPTION);
+        }
         format!("state {state} = [{}];", list.join(", "))
     };
     for (name, path) in &options {
@@ -463,12 +492,21 @@ fn names_text(
     names: &[String],
     what: &str,
     exact: bool,
+    none: bool,
     notes: &mut Vec<String>,
 ) -> String {
     let mut options: Vec<String> = Vec::new();
+    if none {
+        options.push(NO_OPTION.to_string());
+    }
     for name in names {
         let option = option_name(name);
-        if option.is_none() || exact && option.as_deref() != Some(name.as_str()) {
+        if none && option.as_deref() == Some(NO_OPTION) {
+            notes.push(format!(
+                "The {what} \"{name}\" can't be named in game code: {state}.{NO_OPTION} means none. \
+                 Rename it to use it from code."
+            ));
+        } else if option.is_none() || exact && option.as_deref() != Some(name.as_str()) {
             notes.push(format!(
                 "The {what} \"{name}\" can't be named in game code: it must start with a capital, hold \
                  only letters, digits and _, not be all capitals, and not be one of Lust's own objects. \
@@ -891,11 +929,35 @@ mod tests {
     }
 
     #[test]
-    fn the_game_s_screens_are_a_state_of_their_names() {
-        let names = Names::standard().and_screens(&["PauseMenu", "Hud", "HUD"]);
+    fn clips_start_with_none_which_stops_a_sprite() {
+        let names = Names::standard().and_clips(&["sprites/farmer/walk"], &[]);
         let (text, notes) = project_file("Test 1.0", &names);
-        assert!(text.contains("state Screen = [PauseMenu, Hud];"), "{text}");
-        assert_eq!(notes.len(), 1, "HUD is all capitals: {notes:?}");
+        assert!(text.contains("state Clip = [None, FarmerWalk];"), "{text}");
+        assert!(
+            text.contains("-- @Clip.FarmerWalk = sprites/farmer/walk"),
+            "{text}"
+        );
+        assert!(
+            !text.contains("@Clip.None"),
+            "None stands for no file: {text}"
+        );
+        assert!(notes.is_empty(), "{notes:?}");
+    }
+
+    #[test]
+    fn the_game_s_screens_are_a_state_of_their_names() {
+        let names = Names::standard().and_screens(&["PauseMenu", "Hud", "HUD", "None"]);
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(
+            text.contains("state Screen = [None, PauseMenu, Hud];"),
+            "None first, for showing none (U5): {text}"
+        );
+        assert_eq!(
+            notes.len(),
+            2,
+            "HUD is all capitals, None means none: {notes:?}"
+        );
+        assert!(notes[1].contains("Screen.None means none"), "{notes:?}");
     }
 
     #[test]

@@ -154,12 +154,13 @@ fn the_screens_names_are_offered_for_a_screen_component() {
     assert!(Workbench::new(info()).screen_names().is_empty());
 }
 
-/// Game code that hides the menu when its button says so and shows the
-/// HUD instead, with the project's names.
+/// Game code that shows the HUD in place of the menu when its button says
+/// so (its `screen` field), with the project's names.
 const PAUSER: &str = "fetch \"solis/project\":Screen;\n\
     event Resumed();\n\
     component Pauser {\n\
         has {\n\
+            Screen screen = Screen.Menu;\n\
             int ticks = 0;\n\
             int resumed = 0;\n\
             bool sawMenu = false;\n\
@@ -170,8 +171,7 @@ const PAUSER: &str = "fetch \"solis/project\":Screen;\n\
         }\n\
         on Resumed() {\n\
             resumed = resumed + 1;\n\
-            hideScreen(Screen.Menu);\n\
-            showScreen(Screen.Hud);\n\
+            screen = Screen.Hud;\n\
         }\n\
     }\n\
     pass Pauser, Resumed;\nend\n";
@@ -717,11 +717,11 @@ const OPENER: &str = "fetch \"solis/project\":[Screen, Action];\n\
     event Resumed();\n\
     event Quit();\n\
     component Pauser {\n\
-        has { int held = 0; }\n\
+        has { int held = 0; Screen screen = Screen.None; }\n\
         method update(float dt) {\n\
             is Input:held(Action.Jump)? then {\n\
                 held = held + 1;\n\
-                showScreen(Screen.Menu);\n\
+                screen = Screen.Menu;\n\
             }\n\
         }\n\
     }\n\

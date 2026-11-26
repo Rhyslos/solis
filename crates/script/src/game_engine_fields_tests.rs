@@ -1,7 +1,8 @@
 //! Fields the engine reads (Fixes 3, decision 0136): a component's
 //! `Facing facing` turns its sprite and its `Look look` dresses it, from
 //! its first tick and then whenever its code changes them; the same on
-//! one core or four.
+//! one core or four. The uniformity pass's U5 adds the clip, the flip,
+//! visible, solid, soundPlaying and the screen shown.
 
 use super::tests::{TestWorld, id, unhurried};
 use super::*;
@@ -42,7 +43,10 @@ const GAME: &str = "fetch \"solis/animation\":Facing;\n\
     end\n";
 
 fn compile(main: &str) -> Arc<Compiled> {
-    let names = crate::project_names::Names::default().and_looks(&["KnightMain", "KnightMana"]);
+    let names = crate::project_names::Names::default()
+        .and_looks(&["KnightMain", "KnightMana"])
+        .and_clips(&["sprites/lamp/glow", "sprites/lamp/flicker"], &[])
+        .and_screens(&["Hud", "PauseMenu"]);
     let (mut files, _) = crate::describe::descriptions_for("Test 1.0", "solis", &names);
     files.push(("main.lst".into(), main.to_string()));
     let code = Code {
@@ -170,4 +174,125 @@ fn nearest_facing_rounds_a_way_to_one_of_eight() {
     let ticked = game.tick(1.0 / 60.0, &mut world);
     assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
     assert_eq!(world.said, ["North SouthWest South East"]);
+}
+
+/// A lamp whose fields change on its second to fifth ticks: every field
+/// U5 added, set with `=`.
+const LAMP: &str = "fetch \"solis/project\":[Clip, Screen];\n\
+    fetch \"solis/animation\":Flip;\n\n\
+    component Lamp {\n\
+        has {\n\
+            Clip animation = Clip.LampGlow;\n\
+            Flip flip = Flip.None;\n\
+            bool visible = true;\n\
+            bool solid = true;\n\
+            bool soundPlaying = false;\n\
+            Screen screen = Screen.None;\n\
+            int ticks = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            ticks += 1;\n\
+            is ticks == 2? then {\n\
+                animation = Clip.LampFlicker;\n\
+                flip = Flip.Both;\n\
+                screen = Screen.Hud;\n\
+            }\n\
+            is ticks == 3? then {\n\
+                visible = false;\n\
+                solid = false;\n\
+                soundPlaying = true;\n\
+                screen = Screen.PauseMenu;\n\
+            }\n\
+            is ticks == 4? then {\n\
+                animation = Clip.None;\n\
+                screen = Screen.None;\n\
+                restartAnimation();\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Lamp;\n\
+    end\n";
+
+/// The lamp on A, ticked five times: what landed, each with its tick.
+fn lamp(shards: usize) -> (Vec<(u32, Change)>, Vec<Change>) {
+    let mut world = TestWorld::with(&["A"]);
+    let mut game = unhurried(shards);
+    game.load(&compile(LAMP), &mut world).unwrap();
+    let empty = ComponentData::default();
+    assert!(
+        game.sync_many(vec![(id(1), "Lamp", &empty)], &mut world)
+            .is_empty()
+    );
+    let mut landed = Vec::new();
+    for tick in 1..=5 {
+        world.set_clock(u64::from(tick), f64::from(tick) / 60.0);
+        let ticked = game.tick(1.0 / 60.0, &mut world);
+        assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+        landed.extend(world.sprite_changes.drain(..).map(|c| (tick, c)));
+    }
+    (landed, world.sounds.clone())
+}
+
+#[test]
+fn every_field_a_component_sets_on_its_own_entity_lands_when_it_changes() {
+    let (landed, sounds) = lamp(1);
+    let e = id(1);
+    assert_eq!(
+        landed,
+        [
+            (1, Change::PlayClip(e, "glow".into(), false)),
+            (1, Change::Flip(e, false, false)),
+            (1, Change::Visible(e, true)),
+            (1, Change::Solid(e, true)),
+            (2, Change::PlayClip(e, "flicker".into(), false)),
+            (2, Change::Flip(e, true, true)),
+            (2, Change::ShowScreen(e, "Hud".into(), true)),
+            (3, Change::Visible(e, false)),
+            (3, Change::Solid(e, false)),
+            (3, Change::ShowScreen(e, "Hud".into(), false)),
+            (3, Change::ShowScreen(e, "PauseMenu".into(), true)),
+            (4, Change::PlayClip(e, String::new(), true)),
+            (4, Change::StopClip(e)),
+            (4, Change::ShowScreen(e, "PauseMenu".into(), false)),
+        ],
+        "a clip is found by its option, the screen shown before is hidden, Screen.None at the \
+         start shows nothing, and the restart lands with the tick's calls, before the fields"
+    );
+    assert_eq!(
+        sounds,
+        [
+            Change::SoundPlaying(e, false),
+            Change::SoundPlaying(e, true)
+        ]
+    );
+}
+
+#[test]
+fn every_field_lands_the_same_on_four_cores() {
+    assert_eq!(lamp(4), lamp(1));
+}
+
+#[test]
+fn a_component_gone_hides_the_screen_it_showed() {
+    let main = "fetch \"solis/project\":Screen;\n\
+        component Hud {\n    has {\n        Screen screen = Screen.Hud;\n    }\n}\n\
+        pass Hud;\nend\n";
+    let mut world = TestWorld::with(&["A"]);
+    let mut game = unhurried(1);
+    game.load(&compile(main), &mut world).unwrap();
+    let empty = ComponentData::default();
+    assert!(
+        game.sync_many(vec![(id(1), "Hud", &empty)], &mut world)
+            .is_empty()
+    );
+    game.tick(1.0 / 60.0, &mut world);
+    game.retain_only(std::collections::BTreeSet::new());
+    game.tick(1.0 / 60.0, &mut world);
+    assert_eq!(
+        world.sprite_changes,
+        [
+            Change::ShowScreen(id(1), "Hud".into(), true),
+            Change::ShowScreen(id(1), "Hud".into(), false)
+        ]
+    );
 }

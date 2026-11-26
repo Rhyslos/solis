@@ -3797,7 +3797,7 @@ After 121 ticks:
 </section>
 <section id="sound-events--sounds-that-keep-playing">
 <h3>Sounds that keep playing<a class="anchor" href="#sound-events--sounds-that-keep-playing" aria-label="Link to this section">#</a></h3>
-<p>An engine's hum, a campfire, a radio: add an <strong>AudioSource</strong> to the entity (Properties › <strong>+ Component</strong> › AudioSource), and type the sound event's name in <strong>Sound event</strong>, its place in the Library without <code>.solsound</code> (<code>sfx/engine</code>). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. <strong>Playing</strong> switches it off and on, and game code does the same with <code>setSoundPlaying</code> (<a href="#game-code--sounds">Game code: Sounds</a>). <strong>Volume</strong> makes it louder or quieter on top of the event's own.</p>
+<p>An engine's hum, a campfire, a radio: add an <strong>AudioSource</strong> to the entity (Properties › <strong>+ Component</strong> › AudioSource), and type the sound event's name in <strong>Sound event</strong>, its place in the Library without <code>.solsound</code> (<code>sfx/engine</code>). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. <strong>Playing</strong> switches it off and on, and game code does the same with a component's <code>bool soundPlaying</code> field (<code>soundPlaying = false;</code>; <a href="#game-code--sounds">Game code: Sounds</a>). <strong>Volume</strong> makes it louder or quieter on top of the event's own.</p>
 <p>Thousands of them are fine: only the most important are heard at once (the <a href="#mixer">Mixer</a>'s <strong>Heard at once</strong>), and the rest rest. A resting one isn't mixed at all, but it keeps its place in the sound: walk up to a campfire that was resting and it carries on where it would have been, not from the start. A save game keeps whether each was on or off.</p>
 </section>
 <section id="sound-events--tips-and-common-problems">
@@ -4926,7 +4926,7 @@ After 121 ticks:
 </section>
 <section id="game-code--hiding-entities-and-turning-colliders-off">
 <h3>Hiding entities and turning colliders off<a class="anchor" href="#game-code--hiding-entities-and-turning-colliders-off" aria-label="Link to this section">#</a></h3>
-<p>A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. Two calls switch those off and on again, on any entity:</p>
+<p>A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. A component switches those off and on for its own entity with two fields, set with <code>=</code> like any value:</p>
 <pre data-lang="lust"><code><span class="tk-c">-- orc.lst: an orc that falls and stops blocking the way.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 
@@ -4934,30 +4934,33 @@ After 121 ticks:
 
 <span class="tk-k">component</span> <span class="tk-n">Orc</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
-        <span class="tk-t">bool</span> fallen = <span class="tk-v">false</span><span class="tk-p">;</span>
+        <span class="tk-t">bool</span> solid = <span class="tk-v">true</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
     <span class="tk-f">on</span> <span class="tk-n">Died</span><span class="tk-p">() {</span>
-        fallen = <span class="tk-v">true</span><span class="tk-p">;</span>
-        setSolid<span class="tk-p">(</span><span class="tk-v">false</span><span class="tk-p">);</span>
+        solid = <span class="tk-v">false</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Glow</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> visible = <span class="tk-v">true</span><span class="tk-p">;</span>
         <span class="tk-t">bool</span> lit = <span class="tk-v">true</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
-        setVisible<span class="tk-p">(</span>lit<span class="tk-p">);</span>
+        visible = lit<span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
 <span class="tk-k">pass</span> <span class="tk-n">Died</span><span class="tk-p">,</span> <span class="tk-n">Orc</span><span class="tk-p">,</span> <span class="tk-n">Glow</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
 <ul>
-<li><strong><code>setSolid(false)</code></strong> takes the entity's collider out of the way: nothing bumps into it, <a href="#physics">rays</a> pass through it, and <a href="#trigger-zones">trigger zones</a> don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). <code>setSolid(true)</code> turns it back on.</li>
-<li><strong><code>setVisible(false)</code></strong> hides the entity <strong>and everything under it</strong>, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. <code>setVisible(true)</code> shows it again; a child of a hidden entity can't show on its own.</li>
+<li><strong>Why fields?</strong> A field says what the thing <em>is</em>, so reading it back (<code>is solid? then …</code>) tells you, and there's no call to forget. The engine looks at these fields as each tick ends, and changes the entity when one has changed, or when the component has just started.</li>
+<li><strong><code>bool solid</code></strong>: <code>false</code> takes the entity's collider out of the way: nothing bumps into it, <a href="#physics">rays</a> pass through it, and <a href="#trigger-zones">trigger zones</a> don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). <code>true</code> turns it back on.</li>
+<li><strong><code>bool visible</code></strong>: <code>false</code> hides the entity <strong>and everything under it</strong>, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. <code>true</code> shows it again; a child of a hidden entity can't show on its own.</li>
+<li><strong>The field's name and type</strong> are how the engine knows it: <code>bool visible</code> and <code>bool solid</code>, in the component's <code>has</code>. A field of another name is the component's own. Give each such field to one component of an entity: two would each set it their own way.</li>
+<li><strong>Another entity:</strong> <code>orc:setSolid(false)</code> and <code>orc:setVisible(false)</code> set them on an entity whose code you aren't in.</li>
 <li><strong>When:</strong> like a move, both happen at the end of the tick.</li>
 <li><strong>They last:</strong> both are saved in <a href="#save-games">save games</a>, kept when you edit the level while playing, and gone when you press <strong>Stop</strong>, like everything else the game did. Your level's files never change for them.</li>
 </ul>
@@ -5223,8 +5226,8 @@ After 121 ticks:
 <ul>
 <li><code>Audio:play(Sound.Theme)</code> plays it the same everywhere: music, the interface.</li>
 <li><code>Audio:playAt(Sound.Footstep, place)</code> plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is <strong>In the world</strong>).</li>
-<li><code>playSound(Sound.Engine)</code> plays it on the component's entity and follows it as it moves: an engine, a voice (<code>target:playSound(…)</code> on another). <code>stopSounds()</code> stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use <code>setSoundPlaying</code> for that).</li>
-<li><code>setSoundPlaying(playing)</code> turns the entity's <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> (a sound that keeps playing: an engine, a campfire) on or off.</li>
+<li><code>playSound(Sound.Engine)</code> plays it on the component's entity and follows it as it moves: an engine, a voice (<code>target:playSound(…)</code> on another). <code>stopSounds()</code> stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (set <code>soundPlaying</code> for that).</li>
+<li>A field <code>bool soundPlaying</code> in the component's <code>has</code> turns its entity's <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> (a sound that keeps playing: an engine, a campfire) on or off: <code>soundPlaying = true;</code>. On another entity, <code>target:setSoundPlaying(true)</code>.</li>
 <li><code>Audio:setVolume(Bus.Music, volume)</code> sets a <a href="#mixer">bus</a> for the rest of the play (the buses are the Mixer's, as <code>state Bus</code> in <code>solis/project.lst</code>; the UI bus is <code>Bus.Ui</code>, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.</li>
 </ul>
 <p>In Lua they're <code>solis.Audio:playAt(&quot;Footstep&quot;, solis.entity.position(self.me))</code> and so on (the option's name as text; <code>&quot;sfx/footstep&quot;</code> works too). In Rust, through the component's host: <code>cx.host().play_sound(&quot;sfx/footstep&quot;, SoundAt::Place(place))</code>, and <code>cx.host().set_bus_volume(&quot;Music&quot;, 0.5)</code>.</p>
@@ -5280,19 +5283,17 @@ After 121 ticks:
 <tr><td><code>solis/sound</code></td><td><code>Audio:setVolume(Bus bus, float volume)</code></td><td>Sets a bus's volume for the rest of the play, 0 to 1.</td></tr>
 <tr><td>any entity</td><td><code>playSound(Sound event)</code></td><td>Plays a sound event on the entity, following it.</td></tr>
 <tr><td>any entity</td><td><code>stopSounds()</code></td><td>Stops the sounds on the entity, with a short fade.</td></tr>
-<tr><td>any entity</td><td><code>setSoundPlaying(bool playing)</code></td><td>Turns the entity's AudioSource on or off.</td></tr>
+<tr><td>a component</td><td>field <code>bool soundPlaying</code></td><td>Turns its entity's AudioSource on or off (<code>target:setSoundPlaying(bool playing)</code> on another).</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Sound</code>, <code>state Bus</code></td><td>The project's sound events (<code>Sound.Footstep</code>) and the Mixer's buses (<code>Bus.Music</code>).</td></tr>
-<tr><td>any entity</td><td><code>animate(Clip clip)</code></td><td>Plays a clip on the entity's Sprite; already playing or finished it, it carries on as it is (<a href="#sprite-animation">Animating sprites</a>).</td></tr>
-<tr><td>any entity</td><td><code>animateFromStart(Clip clip)</code></td><td>Plays a clip from its beginning, whatever it was doing.</td></tr>
-<tr><td>any entity</td><td><code>stopAnimation()</code></td><td>Stops the entity's Sprite where it is in its clip.</td></tr>
-<tr><td>any entity</td><td><code>setFlip(bool across, bool down)</code></td><td>Mirrors the entity's Sprite: across faces it the other way, down turns it upside down.</td></tr>
-<tr><td>any entity</td><td><code>setVisible(bool shown)</code></td><td>Hides the entity and everything under it, or shows them again (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a>).</td></tr>
-<tr><td>any entity</td><td><code>setSolid(bool solid)</code></td><td>Turns the entity's collider off, or on again (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a>).</td></tr>
+<tr><td>a component</td><td>field <code>Clip animation</code></td><td>The clip its entity's Sprite plays; set to the one playing or finished, it carries on as it is; <code>Clip.None</code> stops it where it is (<a href="#sprite-animation">Animating sprites</a>). On another entity: <code>target:animate(Clip clip)</code>, <code>target:animateFromStart(Clip clip)</code>, <code>target:stopAnimation()</code>.</td></tr>
+<tr><td>any entity</td><td><code>restartAnimation()</code></td><td>Plays the clip its Sprite is playing again from its beginning.</td></tr>
+<tr><td>a component</td><td>field <code>Flip flip</code></td><td>Mirrors its entity's Sprite: <code>Flip.Across</code> faces it the other way, <code>Flip.Down</code> turns it upside down, <code>Flip.Both</code>, <code>Flip.None</code> (<code>fetch &quot;solis/animation&quot;:Flip;</code>). On another entity: <code>target:setFlip(bool across, bool down)</code>.</td></tr>
+<tr><td>a component</td><td>field <code>bool visible</code></td><td>Hides its entity and everything under it (<code>false</code>), or shows them again (<a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a>). On another entity: <code>target:setVisible(bool shown)</code>.</td></tr>
+<tr><td>a component</td><td>field <code>bool solid</code></td><td>Turns its entity's collider off (<code>false</code>), or on again. On another entity: <code>target:setSolid(bool solid)</code>.</td></tr>
 <tr><td><code>solis/animation</code></td><td>event <code>CueReached(Cue cue)</code></td><td>Sent when a sprite's clip reaches a frame with an event (bring it in with <code>fetch &quot;solis/animation&quot;:CueReached;</code>).</td></tr>
 <tr><td><code>solis/animation</code></td><td>event <code>ClipFinished(Clip clip)</code></td><td>Sent when a sprite's clip has played all its times.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Clip</code>, <code>state Cue</code></td><td>The sprites' clips, their sheet's name and the clip's (<code>Clip.FarmerWalk</code>), and their frame events (<code>Cue.Footstep</code>).</td></tr>
-<tr><td>any entity</td><td><code>showScreen(Screen which)</code></td><td>Shows one of the game's screens on the entity, at the end of the tick (<a href="#screens">Game screens</a>).</td></tr>
-<tr><td>any entity</td><td><code>hideScreen(Screen which)</code></td><td>Hides it, if the entity shows it.</td></tr>
+<tr><td>a component</td><td>field <code>Screen screen</code></td><td>The screen its entity shows, at the end of the tick; <code>Screen.None</code> shows none (<a href="#screens">Game screens</a>). On another entity: <code>target:showScreen(Screen which)</code>, <code>target:hideScreen(Screen which)</code>.</td></tr>
 <tr><td>any entity</td><td><code>screenShown(Screen which)</code></td><td>Whether the entity shows that screen, as the tick started.</td></tr>
 <tr><td>any entity</td><td><code>finishTyping(Screen which)</code></td><td>Shows all the text that screen is typing out, at the end of the tick; <code>TypingFinished</code> follows (<a href="#text-effects">Text effects</a>).</td></tr>
 <tr><td><code>solis/screens</code></td><td>event <code>TypingFinished(Screen which)</code></td><td>Sent to the entity showing a screen once its text has typed out (its Screen's Typing speed), with the next tick's input.</td></tr>
@@ -5984,8 +5985,12 @@ After 121 ticks:
 <span class="tk-k">event</span> <span class="tk-n">Quit</span><span class="tk-p">();</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Pauser</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Screen</span> screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
     <span class="tk-f">on</span> <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
-        hideScreen<span class="tk-p">(</span><span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">);</span>
+        screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -6023,20 +6028,23 @@ After 121 ticks:
 <li>The <code>{ }</code> may also change the screen's own fields (a tab picked, say). It can't change the game: send an event for that.</li>
 <li>What a button sends reaches the game at the start of the next tick, before the components' <code>update</code>s.</li>
 </ul>
-<p><strong>Showing and hiding screens from game code.</strong> Every entity can show one screen at a time. Its calls take the screen by name, from <code>solis/project.lst</code> (fetch <code>Screen</code> from <code>&quot;solis/project&quot;</code>):</p>
+<p><strong>Showing and hiding screens from game code.</strong> Every entity can show one screen at a time. A component chooses its entity's with a field, <code>Screen screen</code>, set with <code>=</code> like any value: the screens come by name from <code>solis/project.lst</code> (fetch <code>Screen</code> from <code>&quot;solis/project&quot;</code>). A field says what's shown, so reading it back tells you, and there's no hide to forget.</p>
 <div class="table-wrap"><table>
-<thead><tr><th>Call</th><th>What it does</th></tr></thead>
+<thead><tr><th>Lust</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td><code>showScreen(Screen.PauseMenu)</code></td><td>Shows that screen on the entity's Screen component, at the end of the tick. An entity without one is given one.</td></tr>
-<tr><td><code>hideScreen(Screen.PauseMenu)</code></td><td>Hides it, at the end of the tick, if the entity shows that screen.</td></tr>
+<tr><td><code>Screen screen = Screen.None;</code> in the component's <code>has</code></td><td>The screen its entity shows. The engine looks at it as each tick ends, and when it has changed (or the component has just started), shows that screen on the entity's Screen component. An entity without one is given one.</td></tr>
+<tr><td><code>screen = Screen.PauseMenu;</code></td><td>Shows the pause menu, at the end of the tick, and hides the screen the field held before.</td></tr>
+<tr><td><code>screen = Screen.None;</code></td><td>Hides the screen the field held, at the end of the tick.</td></tr>
 <tr><td><code>screenShown(Screen.PauseMenu)</code></td><td>Whether the entity shows that screen, as the tick started.</td></tr>
+<tr><td><code>menus:showScreen(Screen.PauseMenu)</code>, <code>menus:hideScreen(Screen.PauseMenu)</code></td><td>The same on another entity, whose code you aren't in.</td></tr>
 </tbody>
 </table></div>
+<p>Give <code>Screen screen</code> to one component of an entity: two would each show their own.</p>
 <p>In Lua they're <code>solis.entity.showScreen(self.me, &quot;PauseMenu&quot;)</code>, <code>solis.entity.hideScreen(…)</code> and <code>solis.entity.screenShown(…)</code> (the screen's name as text), and a button's event arrives in <code>on_Resumed</code>. In Rust, through the component's host: <code>cx.host().show_screen(cx.me(), &quot;PauseMenu&quot;, true)</code> (<code>false</code> hides it) and <code>cx.host().screen_shown(cx.me(), &quot;PauseMenu&quot;)</code>.</p>
 <p>Use another entity (a &quot;Menus&quot; entity) for a second screen shown at the same time. Which screens are open is part of the game: it's in save games and recordings.</p>
 <p><strong>The mouse while a screen has buttons.</strong> While a screen with buttons is shown, the pointer stays visible over the Game panel, even after you click the game to give it the keys, so you can click the buttons. A click on a button goes to the button, not to the game; a click anywhere else gives the game the mouse and keys as usual. When the last screen with buttons goes, the pointer is held by the game again.</p>
 <p><strong>With the keys or a controller.</strong> Once the game has the keys, <strong>MenuMove</strong> (the arrow keys, the d-pad or the left stick) moves the focus to the nearest button that way, shown with a blue ring; held down, it moves on again every tenth of a second. <strong>MenuChoose</strong> (Enter, Space or A) chooses the button with the focus, just as a click would. A menu's first button has the focus to start with, so Down moves to the second. The focus is on the topmost screen with buttons, and moving the mouse over a button moves the focus there (the ring hides until the keys are used again).</p>
-<p>While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, <strong>MenuBack</strong> (Backspace, B) and <strong>Pause</strong> (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: <code>is Input:pressed(Action.Pause)? then { showScreen(Screen.PauseMenu); }</code>. They're ordinary <a href="#input">input actions</a>, rebindable in <strong>File › Project settings › Input</strong>.</p>
+<p>While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, <strong>MenuBack</strong> (Backspace, B) and <strong>Pause</strong> (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: <code>is Input:pressed(Action.Pause)? then { screen = Screen.PauseMenu; }</code>. They're ordinary <a href="#input">input actions</a>, rebindable in <strong>File › Project settings › Input</strong>.</p>
 <p><strong>A pause menu.</strong> <code>World:setGameSpeed(0)</code> stops the game while game code keeps running: game time, physics, projectiles and sprites stand still and every <code>dt</code> is 0, but components' <code>update</code>s, events and the screens go on, so a menu can be used. <code>World:setGameSpeed(1)</code> carries on (anything between 0 and 4 runs slower or faster). The Game panel's corner says <em>Game speed 0</em> meanwhile, and the speed is kept in save games. The turret sample has one: press P (or Start) while it plays.</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
@@ -6047,15 +6055,19 @@ After 121 ticks:
 <span class="tk-k">event</span> <span class="tk-n">Resumed</span><span class="tk-p">();</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Pauser</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Screen</span> screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is</span> <span class="tk-o">Input</span><span class="tk-p">:</span>pressed<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Pause</span><span class="tk-p">)</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            showScreen<span class="tk-p">(</span><span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">);</span>
+            screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">;</span>
             <span class="tk-o">World</span><span class="tk-p">:</span>setGameSpeed<span class="tk-p">(</span><span class="tk-v">0</span><span class="tk-p">);</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
     <span class="tk-f">on</span> <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
-        hideScreen<span class="tk-p">(</span><span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">);</span>
+        screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
         <span class="tk-o">World</span><span class="tk-p">:</span>setGameSpeed<span class="tk-p">(</span><span class="tk-v">1</span><span class="tk-p">);</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -6220,7 +6232,7 @@ After 121 ticks:
 <thead><tr><th>Setting</th><th>What it does</th></tr></thead>
 <tbody>
 <tr><td>Screen</td><td>Which screen: a file in the Library's <code>ui</code> folder, by its name (<code>ui/hud.lst</code> is <strong>Hud</strong>).</td></tr>
-<tr><td>Shown</td><td>Whether it's on screen. Game code shows and hides screens with <code>showScreen</code> and <code>hideScreen</code>.</td></tr>
+<tr><td>Shown</td><td>Whether it's on screen. Game code shows and hides screens with a component's <code>Screen screen</code> field.</td></tr>
 <tr><td>Order</td><td>Which screen is on top when several are shown: higher is on top.</td></tr>
 <tr><td>Glow</td><td>A soft light round everything on the screen, in each piece's own colour, this many pixels out (on its design size). 0 for none.</td></tr>
 <tr><td>Outline</td><td>A line just outside everything on the screen, this thick. 0 for none.</td></tr>
@@ -7341,7 +7353,7 @@ Shop-Apples = { $count -&gt;
 <h4 id="sprite-animation--saving-and-undo">Saving and undo<a class="anchor" href="#sprite-animation--saving-and-undo" aria-label="Link to this section">#</a></h4>
 <p>Every change is saved at once and shows at once on every sprite playing the file. <strong>Ctrl+Z</strong> and <strong>Ctrl+Y</strong> over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step <strong>Ctrl+Z</strong> undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see <a href="#undo">Undo and redo</a>.</p>
 <h4 id="sprite-animation--in-game-code">In game code<a class="anchor" href="#sprite-animation--in-game-code" aria-label="Link to this section">#</a></h4>
-<p>Clips and their events are names Lust checks. Solis writes them into <code>solis/project.lst</code> whenever the sheets change: each clip as <code>state Clip</code>, under its sheet's path (<code>sprites/farmer.aseprite</code>'s walk is <code>Clip.FarmerWalk</code>), and each frame event as <code>state Cue</code> (<code>Cue.Footstep</code>). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:</p>
+<p>Clips and their events are names Lust checks. Solis writes them into <code>solis/project.lst</code> whenever the sheets change: each clip as <code>state Clip</code>, under its sheet's path (<code>sprites/farmer.aseprite</code>'s walk is <code>Clip.FarmerWalk</code>), with <code>Clip.None</code> for no clip, and each frame event as <code>state Cue</code> (<code>Cue.Footstep</code>). A misspelt clip is a mistake before the game runs. Which clip plays is a field of the component, <code>Clip animation</code>, set with <code>=</code>: a field says what the sprite <em>is</em> doing, so the component can read it back, and there's no call to make every tick. Bring in the names and the events at the top of a file:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Clip</span><span class="tk-p">,</span> <span class="tk-n">Cue</span><span class="tk-p">];</span>
@@ -7349,6 +7361,7 @@ Shop-Apples = { $count -&gt;
 
 <span class="tk-k">component</span> <span class="tk-n">Farmer</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Clip</span> animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">;</span>
         <span class="tk-t">int</span> steps = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
@@ -7362,7 +7375,7 @@ Shop-Apples = { $count -&gt;
     <span class="tk-c">-- Back to standing once the hoe swing is done.</span>
     <span class="tk-f">on</span> <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
         <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">);</span>
+            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -7417,24 +7430,34 @@ Shop-Apples = { $count -&gt;
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><p><code>animate(Clip.FarmerWalk)</code> plays a clip on the component's entity (<code>target:animate(…)</code> on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.</p>
+<li><p><strong><code>Clip animation</code></strong> in the component's <code>has</code> is the clip its entity's sprite plays: <code>animation = Clip.FarmerWalk;</code>. As each tick ends, the engine plays it if it has changed (or the component has just started): set to the clip already playing, or one it has finished, it carries on as it is; another clip starts from its beginning. Its starting value is the sprite's clip from the game's first tick.</p>
 </li>
-<li><p><code>animateFromStart(Clip.FarmerHoe)</code> plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.</p>
+<li><p><strong><code>restartAnimation()</code></strong> plays the clip the sprite is playing again from its beginning, whatever it was doing: a second swing after the first.</p>
 </li>
-<li><p><code>stopAnimation()</code> stops it where it is; <code>animate</code> with the same clip carries on from there.</p>
+<li><p><strong><code>animation = Clip.None;</code></strong> stops the sprite where it is; setting a clip again carries on from there.</p>
 </li>
-<li><p><code>setFlip(across, down)</code> mirrors the sprite (its <strong>Flip across</strong> and <strong>Flip up</strong> settings): <code>setFlip(true, false)</code> faces it the other way. So you draw a run facing right only once, and one <code>Run</code> clip does both ways, instead of a <code>RunLeft</code> as well:</p>
+<li><p><strong>Another entity's sprite:</strong> <code>orc:animate(Clip.OrcWalk)</code>, <code>orc:animateFromStart(…)</code> and <code>orc:stopAnimation()</code>.</p>
+</li>
+<li><p><strong><code>Flip flip</code></strong> mirrors the sprite (its <strong>Flip across</strong> and <strong>Flip up</strong> settings): <code>flip = Flip.Across;</code> faces it the other way, <code>Flip.Down</code> turns it upside down, <code>Flip.Both</code> does both and <code>Flip.None</code> neither (<code>Flip</code> is in <code>solis/animation</code>; on another entity, <code>orc:setFlip(true, false)</code>). So you draw a run facing right only once, and one <code>Run</code> clip does both ways, instead of a <code>RunLeft</code> as well:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/input&quot;</span><span class="tk-p">:</span><span class="tk-n">Input</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Action</span><span class="tk-p">,</span> <span class="tk-n">Clip</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/animation&quot;</span><span class="tk-p">:</span><span class="tk-n">Flip</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Runner</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Clip</span> animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroRun</span><span class="tk-p">;</span>
+        <span class="tk-n">Flip</span> flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-c">-- Face the way the player pushes.</span>
-        <span class="tk-t">bool</span> walkingLeft = <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Move</span><span class="tk-p">).</span>x &lt; <span class="tk-v">0</span><span class="tk-p">;</span>
-        setFlip<span class="tk-p">(</span>walkingLeft<span class="tk-p">,</span> <span class="tk-v">false</span><span class="tk-p">);</span>
-        animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroRun</span><span class="tk-p">);</span>
+        <span class="tk-f">is</span> <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Move</span><span class="tk-p">).</span>x &lt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">Across</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
+            flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -7464,7 +7487,7 @@ Shop-Apples = { $count -&gt;
     solis<span class="tk-p">.</span>entity<span class="tk-p">.</span>animate<span class="tk-p">(</span><span class="tk-f">self</span><span class="tk-p">.</span>me<span class="tk-p">,</span> <span class="tk-v">&quot;HeroRun&quot;</span><span class="tk-p">)</span>
 <span class="tk-k">end</span></code></pre>
 </div>
-<p>It's safe to call every tick, and like the other calls it lands at the end of the tick.</p>
+<p>The fields land at the end of the tick, like a move. Give each to one component of an entity: two would each set it their own way.</p>
 </li>
 <li><p>In Lua: <code>solis.entity.animate(e, &quot;FarmerWalk&quot;)</code>, <code>solis.entity.animateFromStart(e, …)</code>, <code>solis.entity.stopAnimation(e)</code> and <code>solis.entity.setFlip(e, true, false)</code>; a function called <code>on_CueReached(cue)</code> or <code>on_ClipFinished(clip)</code> reacts to the events, with the names as text. In Rust: <code>cx.host().play_clip(entity, &quot;walk&quot;, false)</code> (<code>true</code> to start it again), <code>stop_clip</code> and <code>set_flip(entity, true, false)</code>, and the events arrive in <code>handle</code> named <code>CueReached</code> and <code>ClipFinished</code>.</p>
 </li>
@@ -7484,6 +7507,7 @@ Shop-Apples = { $count -&gt;
     <span class="tk-k">has</span> <span class="tk-p">{</span>
         <span class="tk-n">Facing</span> facing = <span class="tk-o">Facing</span><span class="tk-p">.</span><span class="tk-s">South</span><span class="tk-p">;</span>
         <span class="tk-n">Look</span> look = <span class="tk-o">Look</span><span class="tk-p">.</span><span class="tk-s">KnightMain</span><span class="tk-p">;</span>
+        <span class="tk-n">Clip</span> animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">;</span>
         <span class="tk-t">bool</span> charged = <span class="tk-v">false</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
@@ -7492,9 +7516,9 @@ Shop-Apples = { $count -&gt;
         <span class="tk-f">is</span> push<span class="tk-p">:</span>length<span class="tk-p">()</span> &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             <span class="tk-c">-- Turn the way the player pushes: the walk plays that row.</span>
             facing = nearestFacing<span class="tk-p">([</span>push<span class="tk-p">.</span>x<span class="tk-p">,</span> push<span class="tk-p">.</span>y<span class="tk-p">]);</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightWalk</span><span class="tk-p">);</span>
+            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightWalk</span><span class="tk-p">;</span>
         <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
-            animate<span class="tk-p">(</span><span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">);</span>
+            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">KnightIdle</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
         <span class="tk-c">-- Mana armour while charged.</span>
         <span class="tk-f">is</span> charged<span class="tk-f">? then</span> <span class="tk-p">{</span>
@@ -7511,15 +7535,15 @@ Shop-Apples = { $count -&gt;
 <p><strong>Why it's built this way.</strong> Before clips had directions and looks, a knight with ten actions facing eight ways in two looks was 160 clips, each with its own name, and game code needed a lookup table to find the right one: one line for every action, direction and look.</p>
 <pre data-lang="text"><code>-- Before: a clip for every action, direction and look.
 check facing {
-    when North { animate(Clip.KnightWalkNorthMain); }
-    when NorthEast { animate(Clip.KnightWalkNorthEastMain); }
+    when North { animation = Clip.KnightWalkNorthMain; }
+    when NorthEast { animation = Clip.KnightWalkNorthEastMain; }
     -- … six more directions, then all eight again for the mana look,
     -- then the same for idle, swing, hurt and the other actions.
 }</code></pre>
 <p>Now the clip is named once and the facing and the look are values beside it, so the table is gone:</p>
 <pre data-lang="text"><code>-- After: one clip; the facing and the look choose its frames.
 facing = nearestFacing([push.x, push.y]);
-animate(Clip.KnightWalk);</code></pre>
+animation = Clip.KnightWalk;</code></pre>
 <p>Two mistakes are said in the Console, once a play for each entity, and change nothing:</p>
 <ul>
 <li><strong>A look from another clips file</strong>, <code>look = Look.OrcRed;</code> on the knight: the Console names the file the look belongs to and the looks this sprite can wear.</li>
@@ -7537,7 +7561,7 @@ animate(Clip.KnightWalk);</code></pre>
 <tr><td>Clip</td><td>The clip it plays. Empty: the clips file's clip marked <strong>Plays first</strong>, or with none, the still <strong>Frame</strong>.</td></tr>
 <tr><td>Look</td><td>Which of its clips file's looks it shows: the main one (empty), or another picture cut the same way, such as the knight in mana armour. Every clip plays in it. A look's picture should be the main one's size, or its cells won't line up (the Clip slot says so). A component's <code>look</code> field sets it while the game runs (<a href="#sprite-animation--facing-and-looks">Facing and looks</a>).</td></tr>
 <tr><td>Facing</td><td>Which way it faces: North, NorthEast, East, SouthEast, South, SouthWest, West or NorthWest. A clip with directions plays the row nearest it: with four directions, a diagonal keeps showing north or south if that's what it showed, and otherwise turns east or west; a mirrored west side plays its east row flipped. Turning mid-clip keeps its place in the clip. A component's <code>facing</code> field, or an animator that faces by a parameter, sets it while the game runs.</td></tr>
-<tr><td>Playing</td><td>Whether the clip moves on while the game runs. Game code's <code>animate</code> and <code>stopAnimation</code> turn it on and off.</td></tr>
+<tr><td>Playing</td><td>Whether the clip moves on while the game runs. A component's <code>animation</code> field turns it on (a clip) and off (<code>Clip.None</code>).</td></tr>
 <tr><td>Speed</td><td>1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed.</td></tr>
 <tr><td>Clip time</td><td>How far into the clip it is, in seconds. Give a crowd of copies different times so they don't all step in step.</td></tr>
 <tr><td>Frame</td><td>The frame shown when no clip plays.</td></tr>

@@ -877,10 +877,22 @@ impl Runtime {
 
     /// Ends a tick in phases; whether it ran past its budget (the rest of
     /// it waited, and events still waiting are dropped).
-    /// The fields the engine reads (a sprite's facing and look) that
-    /// changed since the last tick ended, or whose component started.
+    /// The fields the engine reads (a sprite's facing, look and clip, a
+    /// screen shown, …) that changed since the last tick ended, or whose
+    /// component started.
     pub(crate) fn engine_reads(&mut self) -> Vec<crate::game::Change> {
-        crate::engine_fields::changes(&self.engine_reads, &self.running, &mut self.engine_seen)
+        let paths = self
+            .luau
+            .lua
+            .app_data_ref::<std::sync::Arc<crate::project_names::NamePaths>>()
+            .map(|paths| std::sync::Arc::clone(&paths))
+            .unwrap_or_default();
+        crate::engine_fields::changes(
+            &self.engine_reads,
+            &self.running,
+            &mut self.engine_seen,
+            &paths,
+        )
     }
 
     pub(crate) fn finish_tick(&self) -> bool {
