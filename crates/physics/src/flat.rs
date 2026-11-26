@@ -43,6 +43,11 @@ pub const MAX_FLAT_MOVE: f32 = 4.0;
 /// 32 × 32 cells, so a checkerboard is the worst).
 pub const MAX_CHUNK_WALLS: usize = 512;
 
+/// How far below a one-way platform's top a character's bottom may be
+/// and still land on it, in metres: a little more than a [`SKIN`], so one
+/// standing on it (a skin above) or settled a hair into it stays on.
+const ONE_WAY_LEEWAY: f32 = 0.02;
+
 /// How many times a move slides along what it meets before stopping.
 const SLIDES: usize = 4;
 
@@ -72,6 +77,10 @@ pub struct FlatCollider {
     pub shape: FlatShape,
     /// Where its middle is, from the entity's place (at the feet, say).
     pub center: Vec2,
+    /// A one-way platform: it stops only a character coming down onto it
+    /// from above, and is passed through from below and the sides. Only
+    /// for a solid one; a character's is never one way.
+    pub one_way: bool,
 }
 
 impl FlatCollider {
@@ -144,6 +153,9 @@ pub struct FlatState {
     by_entity: BTreeMap<EntityId, Entry>,
     /// Each map's walls, by the map's entity and chunk.
     walls: BTreeMap<(EntityId, [u32; 2]), Vec<rp::ColliderHandle>>,
+    /// The solid entities that are one-way platforms, so a move looks
+    /// only at them.
+    one_way: std::collections::BTreeSet<EntityId>,
 }
 
 impl std::fmt::Debug for FlatState {
@@ -170,6 +182,7 @@ impl Default for FlatState {
             ccd: rp::CCDSolver::new(),
             by_entity: BTreeMap::new(),
             walls: BTreeMap::new(),
+            one_way: std::collections::BTreeSet::new(),
         }
     }
 }
@@ -254,6 +267,9 @@ impl FlatState {
         };
         let mut floor = false;
         let shape = c.shared_shape().clone();
+        // One-way platforms it isn't standing above, or that it isn't
+        // coming down onto, are passed through for the whole move.
+        let through = self.passed_through(skip, wanted);
         let options = ShapeCastOptions {
             max_time_of_impact: 1.0,
             target_distance: 0.0,
@@ -269,7 +285,9 @@ impl FlatState {
             if left.length_squared() < 1.0e-12 {
                 break;
             }
-            let keep = |h: rp::ColliderHandle, _: &rp::Collider| !passed.contains(&h);
+            let keep = |h: rp::ColliderHandle, _: &rp::Collider| {
+                !passed.contains(&h) && !through.contains(&h)
+            };
             let filter = rp::QueryFilter::default()
                 .exclude_collider(skip)
                 .exclude_sensors()
@@ -288,7 +306,7 @@ impl FlatState {
                 // Whatever the cast says, what it missed on the way to
                 // where it stops comes first.
                 let reach = cast.map_or(1.0, |(_, t, _)| t);
-                self.missed(skip, &*shape, at, left * reach)
+                self.missed(skip, &through, &*shape, at, left * reach)
                     .map(|(handle, s, normal)| (handle, s * reach, normal))
                     .or(cast)
             })) else {
@@ -319,6 +337,35 @@ impl FlatState {
         (if at.is_finite() { at } else { start }, floor)
     }
 
+    /// The one-way platforms a move of the collider `skip` by `wanted`
+    /// passes through: all of them unless it's coming down, and then
+    /// those whose top is above its bottom (it's below them, or partly
+    /// inside one it jumped up into), so it lands only on those it was
+    /// standing above as the move started.
+    fn passed_through(&self, skip: rp::ColliderHandle, wanted: Vec2) -> Vec<rp::ColliderHandle> {
+        if self.one_way.is_empty() {
+            return Vec::new();
+        }
+        let one_way = self
+            .one_way
+            .iter()
+            .filter_map(|id| self.by_entity.get(id))
+            .filter(|e| e.collider != skip);
+        let Some(mover) = self.colliders.get(skip) else {
+            return Vec::new();
+        };
+        let bottom = mover.compute_aabb().mins.y;
+        one_way
+            .filter(|e| {
+                let Some(c) = self.colliders.get(e.collider) else {
+                    return false;
+                };
+                wanted.y >= 0.0 || bottom < c.compute_aabb().maxs.y - ONE_WAY_LEEWAY
+            })
+            .map(|e| e.collider)
+            .collect()
+    }
+
     /// What a cast of `shape` from `from` by `by` missed: anything it would
     /// end deeper in than [`TOUCH`] but didn't start in. Rapier's cast
     /// (parry's GJK) can close in on the right time of impact, stall a
@@ -330,15 +377,19 @@ impl FlatState {
     fn missed(
         &self,
         skip: rp::ColliderHandle,
+        through: &[rp::ColliderHandle],
         shape: &dyn rp::Shape,
         from: Vec2,
         by: Vec2,
     ) -> Option<(rp::ColliderHandle, f32, Vec2)> {
         // What the move has slid past counts too: sliding on along one
-        // thing never takes it into another it passed.
+        // thing never takes it into another it passed. One-way platforms
+        // it passes through don't.
+        let keep = |h: rp::ColliderHandle, _: &rp::Collider| !through.contains(&h);
         let filter = rp::QueryFilter::default()
             .exclude_collider(skip)
-            .exclude_sensors();
+            .exclude_sensors()
+            .predicate(&keep);
         let queries = self.broad_phase.as_query_pipeline(
             self.narrow_phase.query_dispatcher(),
             &self.bodies,
@@ -482,6 +533,9 @@ impl Flat {
             .user_data(u128::from(id.0.raw()))
             .build();
         let handle = state.colliders.insert(made);
+        if collider.one_way && !character {
+            state.one_way.insert(id);
+        }
         state.by_entity.insert(
             id,
             Entry {
@@ -499,6 +553,7 @@ impl Flat {
             return;
         }
         let state = self.state_mut();
+        state.one_way.remove(&id);
         if let Some(entry) = state.by_entity.remove(&id) {
             state.colliders.remove(
                 entry.collider,

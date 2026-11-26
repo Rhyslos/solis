@@ -483,3 +483,31 @@ fn a_rebuild_keeps_the_wait_after_a_break() {
     }
     assert_eq!(tick(&mut world, walker, false), (true, false));
 }
+
+#[test]
+fn a_one_way_collider_is_landed_on_from_above_and_passed_from_below() {
+    let (mut world, _, farmer) = farm();
+    // A ledge 32 px wide and 8 px thick, its top half a metre above the
+    // farmer's middle.
+    let ledge = EntityId::random();
+    let data = EntityData::new("Ledge")
+        .with(&Transform {
+            position: Vec3::new(2.5, -4.75, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            shape: Shape2D::Box,
+            width: 32.0,
+            height: 8.0,
+            one_way: true,
+            ..Collider2D::default()
+        });
+    world.add_subtree(&[(ledge, data)]);
+    let at = walk(&mut world, farmer, Vec3::new(0.0, 0.1, 0.0), 20);
+    assert!(at.y > -3.6, "up through it: {at}");
+    let at = walk(&mut world, farmer, Vec3::new(0.0, -0.1, 0.0), 30);
+    assert!(
+        at.y - 0.25 >= -4.5 && at.y - 0.25 < -4.5 + 0.02,
+        "landed on it: {at}"
+    );
+}

@@ -13,6 +13,7 @@ fn circle(r: f32) -> FlatCollider {
     FlatCollider {
         shape: FlatShape::Circle(r),
         center: Vec2::ZERO,
+        one_way: false,
     }
 }
 
@@ -131,6 +132,7 @@ fn a_box_slides_along_seams_too() {
     let feet = FlatCollider {
         shape: FlatShape::Box(Vec2::new(0.6, 0.4)),
         center: Vec2::new(0.0, 0.2),
+        one_way: false,
     };
     flat.add(id(1), Vec2::new(0.5, SKIN), feet, true);
     for i in 0..50 {
@@ -160,6 +162,7 @@ fn characters_bump_into_each_other_and_solid_things() {
         FlatCollider {
             shape: FlatShape::Box(Vec2::new(4.0, 1.0)),
             center: Vec2::ZERO,
+            one_way: false,
         },
         false,
     );
@@ -230,6 +233,7 @@ fn nothing_that_isn_t_a_number_gets_in() {
         FlatCollider {
             shape: FlatShape::Circle(f32::NAN),
             center: Vec2::new(f32::INFINITY, 0.0),
+            one_way: false,
         },
         true,
     );
@@ -498,6 +502,7 @@ fn a_collider_s_centre_and_size_are_held_in_range_in_2d_too() {
     let far = FlatCollider {
         shape: FlatShape::Box(Vec2::splat(1.0e30)),
         center: Vec2::new(1.0e30, -f32::MAX),
+        one_way: false,
     };
     flat.add(id(1), place, far, true);
     assert!(colliders_in_range(&flat, place));
@@ -524,6 +529,7 @@ fn no_centre_or_size_hands_2d_rapier_a_number_out_of_range() {
                         _ => FlatShape::Box(Vec2::new(size, extremes[(k + 3) % 8])),
                     },
                     center: Vec2::new(across, -up),
+                    one_way: false,
                 };
                 let mut flat = world(Vec2::ZERO, &[rect(4.0, 2.0, 5.0, 4.0)]);
                 flat.add(id(1), place, collider, (i + k) % 2 == 0);
@@ -605,4 +611,78 @@ fn scale_check_500_flat_characters_walking() {
          {ms:.2} ms a tick (target {TARGET_MS} ms) {verdict}"
     );
     assert!(ms <= TARGET_MS, "{ms:.2} ms a tick");
+}
+
+/// A one-way platform 4 m wide, 0.5 m thick, its top at `top` (entity 5).
+fn one_way_platform(flat: &mut Flat, top: f32) {
+    flat.add(
+        id(5),
+        Vec2::new(0.0, top - 0.25),
+        FlatCollider {
+            shape: FlatShape::Box(Vec2::new(4.0, 0.5)),
+            center: Vec2::ZERO,
+            one_way: true,
+        },
+        false,
+    );
+}
+
+#[test]
+fn a_character_jumps_up_through_a_one_way_platform_and_lands_on_it() {
+    let mut flat = world(Vec2::ZERO, &[]);
+    one_way_platform(&mut flat, 2.0);
+    // Up through it from below: nothing stops it.
+    let at = walk(&mut flat, Vec2::new(0.0, 0.1), 40);
+    assert!((at.y - 4.0).abs() < 1e-4, "passed up through: {at}");
+    // Down onto it: it lands on top, grounded.
+    let at = walk(&mut flat, Vec2::new(0.0, -0.1), 40);
+    assert!(
+        at.y - 0.25 >= 2.0 && at.y - 0.25 < 2.0 + 2.0 * SKIN,
+        "landed on top: {at}"
+    );
+    assert!(flat.state().last_move(id(1)).unwrap().grounded);
+    // Walking along it, pressed down as a platformer does, it stays on.
+    let at = walk(&mut flat, Vec2::new(0.02, -0.02), 50);
+    assert!(at.y - 0.25 >= 2.0 && at.x > 0.9, "walked along it: {at}");
+}
+
+#[test]
+fn a_one_way_platform_lets_a_character_fall_back_down_from_inside_it() {
+    // Jumped up into it but not past its top: coming down, it falls out
+    // the bottom rather than landing halfway inside.
+    let mut flat = world(Vec2::new(0.0, 1.9), &[]);
+    one_way_platform(&mut flat, 2.0);
+    let at = walk(&mut flat, Vec2::new(0.0, -0.1), 20);
+    assert!(at.y < 0.0, "fell through: {at}");
+}
+
+#[test]
+fn a_one_way_platform_is_passed_through_from_the_side() {
+    let mut flat = world(Vec2::new(-3.0, 1.75), &[]);
+    one_way_platform(&mut flat, 2.0);
+    let at = walk(&mut flat, Vec2::new(0.1, 0.0), 60);
+    assert!(at.x > 2.9, "walked through it sideways: {at}");
+}
+
+#[test]
+fn a_one_way_platform_taken_out_stops_nothing() {
+    let mut flat = world(Vec2::new(0.0, 3.0), &[]);
+    one_way_platform(&mut flat, 2.0);
+    flat.remove(id(5));
+    assert!(flat.state().one_way.is_empty());
+    let at = walk(&mut flat, Vec2::new(0.0, -0.1), 40);
+    assert!(at.y < 0.0, "nothing to land on: {at}");
+    // Added again as an ordinary solid, it stops from below too.
+    flat.add(
+        id(5),
+        Vec2::new(0.0, 1.75),
+        FlatCollider {
+            shape: FlatShape::Box(Vec2::new(4.0, 0.5)),
+            center: Vec2::ZERO,
+            one_way: false,
+        },
+        false,
+    );
+    let at = walk(&mut flat, Vec2::new(0.0, 0.1), 40);
+    assert!(at.y < 1.5 - 0.25 + 1e-3, "stopped below the solid: {at}");
 }

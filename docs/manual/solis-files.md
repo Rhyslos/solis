@@ -363,6 +363,7 @@ The fields of the built-in components a 2D game uses, as a level writes them, wi
 | `width`, `height` | a box's size | `16.0`, `16.0` |
 | `across`, `up` | how far right and up of the entity's place its middle is | `0.0`, `0.0` |
 | `character` | walked by game code, sliding along walls; otherwise solid and still | `false` |
+| `one_way` | a one-way platform: landed on from above, passed through from below and the sides | `false` |
 
 **TileMap**: a tile map placed with its top-left corner on the entity ([Tile maps](tile-maps.md)).
 
