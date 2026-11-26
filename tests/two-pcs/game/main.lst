@@ -17,14 +17,14 @@
 
 fetch "solis/world":World;
 fetch "solis/input":Input;
-fetch "solis/project":[Action, Module, Timer, Sound];
+fetch "solis/project":[Action, Timer];
 fetch "solis/timers":TimerFinished;
 fetch "solis/tiles":Maps;
 fetch "solis/animation":Animators;
 fetch "solis/zones":[Entered, Exited, EnteredZone, LeftZone];
 fetch "solis/kit/character":[CharacterController];
 fetch "solis/kit/topdown":[TopDownController];
-fetch "solis/made":[Pulse, Bell, Sting, Hum, Blink, Shot];
+fetch "solis/made":[Pulse, Bell, Sting, Hum, Blink, Shot, DroneModule];
 
 event Hit(entity by, float damage);
 event Dented(int platesLeft);
@@ -105,7 +105,7 @@ component Hive {
         }
         is now && made < 40? then {
             vec3 at = position() + [World:randomRange(-2, 2), World:randomRange(-2, 2), 3];
-            entity drone = World:spawn(Module.Drone, at);
+            entity drone = new DroneModule { position = at };
             made = made + 1;
 
             -- Every fourth drone the swarm wakes or settles: what it

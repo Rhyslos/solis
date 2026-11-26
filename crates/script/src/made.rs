@@ -1,6 +1,8 @@
 //! What game code makes with `new` (the uniformity pass, U6;
 //! [decision 0137](../../../docs/decisions/0137-the-uniformity-pass.md)):
-//! `new Horn { at = gate };` plays `Sound.Horn` there, `new DoorOpens {
+//! `entity ship = new Fighter { position = gate, speed = 9 };` makes a
+//! copy of `Module.Fighter`, its root's components given the fields
+//! written; `new Horn { at = gate };` plays `Sound.Horn` there, `new DoorOpens {
 //! after = 2.0 };` starts the timer `Timer.DoorOpens`, and `new Shot {
 //! from = muzzle, direction = ahead };` fires a shot.
 //!
@@ -37,6 +39,9 @@ pub const SHOT: &str = "Shot";
 /// What a made class makes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
+    /// A copy of a module, made in the world (`Module.Fighter`); `new`
+    /// gives back its entity.
+    Module,
     /// A sound event played (`Sound.Horn`).
     Sound,
     /// A timer started on the running entity (`Timer.DoorOpens`).
@@ -50,6 +55,7 @@ impl Kind {
     /// reaches.
     fn key(self) -> &'static str {
         match self {
+            Self::Module => "solis_made_module",
             Self::Sound => "solis_made_sound",
             Self::Timer => "solis_made_timer",
             Self::Shot => "solis_made_shot",
@@ -62,8 +68,32 @@ impl Kind {
 /// for `Sound.Horn`; empty for a shot).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct MadeList {
-    /// By class name: what it makes, and its option.
-    pub classes: BTreeMap<String, (Kind, String)>,
+    /// By class name: what it makes.
+    pub classes: BTreeMap<String, MadeClass>,
+}
+
+/// A made class: what it makes, the option of the project's names it
+/// stands for (`Horn` for `Sound.Horn`; empty for a shot), and, for a
+/// module's, each of its fields that gives a root component a first value
+/// (the field, the component and the component's field).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MadeClass {
+    /// What it makes.
+    pub kind: Kind,
+    /// The option it stands for.
+    pub option: String,
+    /// A module's root components' fields: (its field, component, field).
+    pub fields: Vec<(String, String, String)>,
+}
+
+impl MadeClass {
+    fn of(kind: Kind, option: &str) -> Self {
+        Self {
+            kind,
+            option: option.to_string(),
+            fields: Vec::new(),
+        }
+    }
 }
 
 /// What [`write()`] gives back.
@@ -84,6 +114,18 @@ pub const TIMINGS: [&str; 3] = ["after", "every", "atHour"];
 /// each sound event in `solis/project.lst`, each timer the game's Lust
 /// makes ([`crate::timer_names::names_started`]), and the shot.
 pub fn write(folder: &str, files: &[(String, String)]) -> Written {
+    write_with(folder, files, &BTreeMap::new(), &BTreeMap::new())
+}
+
+/// [`write`], with each Lust component's fields (by component) and where
+/// their types come from (by type), from [`crate::component_code`]: a
+/// module's class takes its root components' fields.
+pub(crate) fn write_with(
+    folder: &str,
+    files: &[(String, String)],
+    fields: &BTreeMap<String, Vec<crate::component_code::Field>>,
+    sources: &BTreeMap<String, String>,
+) -> Written {
     let path = format!("{folder}/{FILE}.lst");
     let mut taken: BTreeSet<String> = BTreeSet::new();
     for (file, text) in files {
@@ -118,9 +160,99 @@ pub fn write(folder: &str, files: &[(String, String)]) -> Written {
         written
             .made
             .classes
-            .insert(SHOT.to_string(), (Kind::Shot, String::new()));
+            .insert(SHOT.to_string(), MadeClass::of(Kind::Shot, ""));
     }
     let states = crate::project_names::states_in(files);
+    let roots = crate::project_names::roots_in(files);
+    // The types the modules' fields need, by the file they come from.
+    let mut fetches: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+    let modules = states.get("Module").cloned().unwrap_or_default();
+    for module in modules
+        .iter()
+        .filter(|m| **m != crate::project_names::NO_OPTION)
+    {
+        let name = [module.clone(), format!("{module}Module")]
+            .into_iter()
+            .find(|n| !taken.contains(n) && !written.made.classes.contains_key(n));
+        let Some(name) = name else {
+            written.notes.push(format!(
+                "The module Module.{module} can't be made with new: {module} and {module}Module \
+                 are both names the game already uses. Rename one of them."
+            ));
+            continue;
+        };
+        let mut made = MadeClass::of(Kind::Module, module);
+        let mut lines = vec!["        vec3 position = [0, 0, 0];".to_string()];
+        let mut keys: BTreeSet<String> = ["position".to_string()].into_iter().collect();
+        let root: &[String] = roots.get(module).map_or(&[], Vec::as_slice);
+        // A field two of the root's components share is named with its
+        // component in front (healthHp).
+        let shared: BTreeSet<&str> = {
+            let mut seen = BTreeSet::new();
+            let mut twice = BTreeSet::new();
+            for component in root {
+                for field in fields.get(component).map_or(&[][..], Vec::as_slice) {
+                    if !seen.insert(field.name.as_str()) {
+                        twice.insert(field.name.as_str());
+                    }
+                }
+            }
+            twice
+        };
+        for component in root {
+            for field in fields.get(component).map_or(&[][..], Vec::as_slice) {
+                let mut key = field.name.clone();
+                if keys.contains(&key) || shared.contains(key.as_str()) {
+                    let mut chars = field.name.chars();
+                    let first = chars.next().map(|c| c.to_ascii_uppercase());
+                    key = format!(
+                        "{}{}{}",
+                        component[..1].to_ascii_lowercase(),
+                        &component[1..],
+                        first.map(String::from).unwrap_or_default() + chars.as_str()
+                    );
+                }
+                if keys.contains(&key) {
+                    written.notes.push(format!(
+                        "new {name} can't give {component}'s {} a first value: two of its fields \
+                         would be called {key}.",
+                        field.name
+                    ));
+                    continue;
+                }
+                if let Some(source) = sources.get(&field.kind) {
+                    fetches
+                        .entry(source.clone())
+                        .or_default()
+                        .insert(field.kind.clone());
+                } else if !crate::component_code::is_built_in(&field.kind) {
+                    continue;
+                }
+                lines.push(format!(
+                    "        {} {key} = {};",
+                    field.kind,
+                    field.own.as_deref().unwrap_or(&field.start)
+                ));
+                keys.insert(key.clone());
+                made.fields
+                    .push((key, component.clone(), field.name.clone()));
+            }
+        }
+        let root_said = if root.is_empty() {
+            String::new()
+        } else {
+            format!(" and its root's {}", root.join(", "))
+        };
+        classes.push(format!(
+            "-- Module.{module}: new {name} {{ position = place }}; makes a copy there, giving back\n\
+             -- its entity: entity made = new {name} {{ … }};. Its fields are where it's made{root_said}'s\n\
+             -- first values: only those written are given.\n\
+             class {name} like {BASE} {{\n    has {{\n{}\n    }}\n\n    method entity made() native;\n}}",
+            lines.join("\n")
+        ));
+        passed.push(name.clone());
+        written.made.classes.insert(name, made);
+    }
     let sounds = states.get("Sound").cloned().unwrap_or_default();
     for sound in sounds
         .iter()
@@ -147,7 +279,7 @@ pub fn write(folder: &str, files: &[(String, String)]) -> Written {
         written
             .made
             .classes
-            .insert(name, (Kind::Sound, sound.clone()));
+            .insert(name, MadeClass::of(Kind::Sound, sound));
     }
     for timer in crate::timer_names::names_in(files) {
         if taken.contains(&timer) || written.made.classes.contains_key(&timer) {
@@ -167,11 +299,19 @@ pub fn write(folder: &str, files: &[(String, String)]) -> Written {
         written
             .made
             .classes
-            .insert(timer.clone(), (Kind::Timer, timer));
+            .insert(timer.clone(), MadeClass::of(Kind::Timer, &timer));
     }
+    let fetched: String = fetches
+        .iter()
+        .map(|(from, names)| {
+            let names: Vec<&str> = names.iter().map(String::as_str).collect();
+            format!("fetch \"{from}\":[{}];\n", names.join(", "))
+        })
+        .collect();
     let text = format!(
         "-- Made by Solis: what game code makes with new. It's written again each time the\n\
-         -- code is checked, so changes made here don't last.\n\n{}\n\npass {};\nend\n",
+         -- code is checked, so changes made here don't last.\n\n{fetched}{}{}\n\npass {};\nend\n",
+        if fetched.is_empty() { "" } else { "\n" },
         classes.join("\n\n"),
         passed.join(", ")
     );
@@ -206,7 +346,7 @@ fn running_entity(lua: &Lua) -> Option<EntityId> {
 }
 
 /// The made class a thing is of, and what it makes.
-fn class_of(lua: &Lua, thing: &Table) -> mlua::Result<(String, Kind, String)> {
+fn class_of(lua: &Lua, thing: &Table) -> mlua::Result<(String, MadeClass)> {
     let class = thing
         .metatable()
         .and_then(|m| m.raw_get::<Table>("__parent").ok())
@@ -214,7 +354,7 @@ fn class_of(lua: &Lua, thing: &Table) -> mlua::Result<(String, Kind, String)> {
         .unwrap_or_default();
     let list = lua.app_data_ref::<std::sync::Arc<MadeList>>();
     match list.as_ref().and_then(|l| l.classes.get(&class)) {
-        Some((kind, option)) => Ok((class, *kind, option.clone())),
+        Some(made) => Ok((class, made.clone())),
         None => Err(mlua::Error::runtime(format!(
             "new {class} isn't one Solis makes any more: check the code again."
         ))),
@@ -242,10 +382,59 @@ pub(crate) fn lend<'s>(
         return Ok(());
     };
     natives.raw_set(
+        Kind::Module.key(),
+        scope.create_function(move |lua, thing: Table| {
+            let (class, made) = class_of(lua, &thing)?;
+            let Some(module) = crate::project_names::path_for(lua, "Module", &made.option) else {
+                return Ok(LuaValue::Nil);
+            };
+            let place = written(&thing, "position")
+                .as_ref()
+                .and_then(vec3_of)
+                .filter(|p| p.is_finite())
+                .unwrap_or(glam::Vec3::ZERO);
+            let layouts = lua
+                .app_data_ref::<crate::readings::Kept>()
+                .map(|kept| std::rc::Rc::clone(&kept.0))
+                .unwrap_or_default();
+            let mut values: crate::game::SpawnValues = Vec::new();
+            for (key, component, field) in &made.fields {
+                let Some(value) = written(&thing, key) else {
+                    continue;
+                };
+                let Some(kind) = layouts
+                    .get(component)
+                    .and_then(|l| l.iter().find(|f| f.name == *field))
+                    .map(|f| f.kind.clone())
+                else {
+                    continue;
+                };
+                let Some(value) = crate::convert::from_lua(&kind, &value) else {
+                    return Err(mlua::Error::runtime(format!(
+                        "new {class}: {component}'s {field} can't hold that value."
+                    )));
+                };
+                match values.iter_mut().find(|(c, _)| c == component) {
+                    Some((_, data)) => data.set(field, value),
+                    None => {
+                        let mut data = reflect::ComponentData::default();
+                        data.set(field, value);
+                        values.push((component.clone(), data));
+                    }
+                }
+            }
+            let made = h.borrow_mut().spawn_with(&module, place, values);
+            Ok(made.map_or(LuaValue::Nil, |id| {
+                lua.create_string(id.to_string())
+                    .map_or(LuaValue::Nil, LuaValue::String)
+            }))
+        })?,
+    )?;
+    natives.raw_set(
         Kind::Sound.key(),
         scope.create_function(move |lua, thing: Table| {
-            let (_, _, option) = class_of(lua, &thing)?;
-            let Some(event) = crate::project_names::path_for(lua, "Sound", &option) else {
+            let (_, made) = class_of(lua, &thing)?;
+            let Some(event) = crate::project_names::path_for(lua, "Sound", &made.option) else {
                 return Ok(());
             };
             let at = if let Some(at) = written(&thing, "at") {
@@ -268,7 +457,8 @@ pub(crate) fn lend<'s>(
     natives.raw_set(
         Kind::Timer.key(),
         scope.create_function(move |lua, thing: Table| {
-            let (class, _, timer) = class_of(lua, &thing)?;
+            let (class, made) = class_of(lua, &thing)?;
+            let timer = made.option;
             let Some(entity) = running_entity(lua) else {
                 return Err(mlua::Error::runtime(format!(
                     "new {class}: a timer belongs to an entity, so make it in a component's code."
@@ -342,8 +532,8 @@ pub(crate) fn keep(lua: &Lua, made: &std::sync::Arc<MadeList>) -> mlua::Result<(
         return Ok(());
     }
     let kinds = lua.create_table()?;
-    for (class, (kind, _)) in &made.classes {
-        kinds.raw_set(format!("{class}_made"), kind.key())?;
+    for (class, made) in &made.classes {
+        kinds.raw_set(format!("{class}_made"), made.kind.key())?;
     }
     let find = lua.create_function(move |_, (natives, key): (Table, LuaValue)| match kinds
         .raw_get::<LuaValue>(

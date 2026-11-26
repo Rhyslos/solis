@@ -17,7 +17,7 @@ use crate::code::CodeProblem;
 pub const RENAMED_STATES: &[(&str, &str, &str)] = &[(
     "Assembly",
     "Module",
-    "World:spawn(Module.Ships.Fighter, place), with fetch \"solis/project\":Module;",
+    "new Fighter { position = place }; for Module.Fighter, with fetch \"solis/made\":Fighter;",
 )];
 
 /// Each use of a renamed state's old name in the Lust `files`.
@@ -203,7 +203,11 @@ mod tests {
             "{}",
             found[0]
         );
-        assert!(found[0].message.contains("Module.Ships.Fighter"));
+        assert!(
+            found[0]
+                .message
+                .contains("new Fighter { position = place };")
+        );
     }
 
     #[test]

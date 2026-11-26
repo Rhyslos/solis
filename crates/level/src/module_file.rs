@@ -103,6 +103,44 @@ fn prefabs_are_modules(_: &mut LevelFile) -> Result<(), String> {
 const COMMENT: &str =
     "A module. Written by Solis; safe to edit by hand: a part per entity, a line per setting.";
 
+/// The components on a module's root, by name, as its file lists them
+/// (each setting `Ship.speed = 9.0`, or `Ship = {}` for one with no
+/// fields set), in order; none for a file that can't be read this way
+/// (an older layout, or one whose root is a copy of another module).
+/// What game code's `new` for the module takes first values for (the
+/// uniformity pass, U6b).
+pub fn root_components(text: &str) -> Vec<String> {
+    if is_old_layout(text) {
+        return Vec::new();
+    }
+    let Ok(values) = data::read(text, KIND, CLASSES, MAX_BYTES) else {
+        return Vec::new();
+    };
+    let root = data::get(&values, "root")
+        .ok()
+        .and_then(|r| r.as_text())
+        .unwrap_or_default()
+        .to_string();
+    let Some(part) = data::things(&values, "parts")
+        .iter()
+        .find(|p| data::field_text(p, "id") == root)
+    else {
+        return Vec::new();
+    };
+    let mut components: Vec<String> = Vec::new();
+    for setting in data::field_texts(part, "settings") {
+        let name = setting
+            .split(['.', '=', ' '])
+            .next()
+            .unwrap_or_default()
+            .trim();
+        if !name.is_empty() && !components.iter().any(|c| c == name) {
+            components.push(name.to_string());
+        }
+    }
+    components
+}
+
 /// Whether `text` is a module's older layout (an assembly's file), which
 /// [`read`] still reads and the app moves to a `.module.lst`.
 pub fn is_old_layout(text: &str) -> bool {

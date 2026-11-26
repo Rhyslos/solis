@@ -328,3 +328,24 @@ proptest! {
         prop_assert_eq!(read(&text, &registry).unwrap(), file);
     }
 }
+
+#[test]
+fn a_module_s_root_components_are_read_from_its_settings() {
+    let text = "-- A module.\nfetch \"solis/data/module\":[Part];\n\n\
+        lock int version = 2;\n\
+        lock string root = \"0000000000001\";\n\
+        lock Part array parts = [\n    \
+        new Part {\n        id = \"0000000000001\",\n        name = \"Fighter\",\n        \
+        order = \"a0\",\n        settings = [\"Transform.position = [0.0, 0.0, 0.0]\", \
+        \"Ship.speed = 9.0\", \"Ship.name = \\\"Ada\\\"\", \"Health = {}\"]\n    },\n    \
+        new Part {\n        id = \"0000000000002\",\n        name = \"Gun\",\n        \
+        parent = \"0000000000001\",\n        order = \"a1\",\n        settings = [\"Turret = {}\"]\n    },\n\
+        ];\nend\n";
+    assert_eq!(
+        root_components(text),
+        ["Transform", "Ship", "Health"],
+        "the root's own, each once, in order; not a part under it"
+    );
+    assert!(root_components("assembly version 4 root 0000000000001;\n").is_empty());
+    assert!(root_components("not a module").is_empty());
+}

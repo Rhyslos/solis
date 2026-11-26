@@ -291,14 +291,31 @@ impl GameCode {
         // older project's assets folder.
         let root = Some(project_root_of(assets));
         let root = root.as_deref();
+        let modules = asset_paths(
+            assets,
+            &[
+                asset_db::MODULE_ENDING,
+                &format!(".{}", asset_db::OLD_MODULE_EXTENSION),
+            ],
+        );
+        // Each module's root components, read from its file, for the
+        // classes game code makes them with (U6b). A file too big to be a
+        // module isn't read.
+        let module_roots = modules
+            .iter()
+            .filter_map(|module| {
+                let file = assets.join(format!("{module}{}", asset_db::MODULE_ENDING));
+                let small = std::fs::metadata(&file)
+                    .is_ok_and(|m| m.len() <= level::module_file::MAX_BYTES as u64);
+                let text = small
+                    .then(|| std::fs::read_to_string(&file).ok())
+                    .flatten()?;
+                Some((module.clone(), level::module_file::root_components(&text)))
+            })
+            .collect();
         let names = script::project_names::Names {
-            modules: asset_paths(
-                assets,
-                &[
-                    asset_db::MODULE_ENDING,
-                    &format!(".{}", asset_db::OLD_MODULE_EXTENSION),
-                ],
-            ),
+            modules,
+            module_roots,
             sounds: asset_paths(assets, &[&format!(".{}", sound::event::EXTENSION)]),
             buses: root
                 .map_or_else(sound::Mixer::default, |root| {
@@ -727,6 +744,35 @@ mod tests {
         finished(code);
         assert!(!code.waiting());
         code.take_notes()
+    }
+
+    #[test]
+    fn a_module_s_root_components_are_read_from_its_file_for_new() {
+        // U6b: new Chicken { eggs = 3 } takes the Hen on the module's root,
+        // as its file has it, on the first check.
+        let (_temp, assets) = folder("module-roots");
+        std::fs::create_dir_all(assets.join("animals")).unwrap();
+        let module = "-- A module.\nfetch \"solis/data/module\":[Part];\n\n\
+            lock int version = 2;\nlock string root = \"0000000000001\";\n\
+            lock Part array parts = [\n    new Part {\n        id = \"0000000000001\",\n        \
+            name = \"Chicken\",\n        order = \"a0\",\n        \
+            settings = [\"Hen.eggs = 1\"]\n    },\n];\nend\n";
+        std::fs::write(assets.join("animals/chicken.module.lst"), module).unwrap();
+        let main = "fetch \"solis/made\":Chicken;\n\
+            component Hen {\n    has {\n        int eggs = 0;\n    }\n}\n\
+            component Coop {\n    method update(float dt) {\n        \
+            entity made = new Chicken { position = [0, 0, 0], eggs = 3 };\n    }\n}\n\
+            pass Hen, Coop;\nend\n";
+        std::fs::write(assets.join("main.lst"), main).unwrap();
+        let mut code = GameCode::new("Test 1.0");
+        code.check(assets.clone());
+        let checked = finished(&mut code).expect("checked");
+        assert!(checked.problems.is_empty(), "{:?}", checked.problems);
+        let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
+        assert!(
+            project.contains("-- root Module.Chicken = Hen"),
+            "{project}"
+        );
     }
 
     #[test]

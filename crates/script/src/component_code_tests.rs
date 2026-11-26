@@ -34,14 +34,23 @@ fn each_component_gets_a_locked_reading_and_a_reader() {
         text.contains("method KnightReading entity:knight() native;"),
         "{text}"
     );
-    // The values class keeps the component's own plain starting values.
     assert!(
-        text.contains("class KnightValues like SpawnValues {\n    has {\n        bool hasKey = false;\n        int coins = 3;"),
-        "{text}"
+        text.ends_with("pass Component, KnightReading;\nend\n"),
+        "no values classes since U6b: {text}"
     );
-    assert!(
-        text.ends_with("pass Component, SpawnValues, KnightReading, KnightValues;\nend\n"),
-        "{text}"
+    // A module's class takes the fields, with the component's own plain
+    // starting values (crate::made).
+    let fields = &code.fields["Knight"];
+    let kept: Vec<(&str, &str, Option<&str>)> = fields
+        .iter()
+        .map(|f| (f.kind.as_str(), f.name.as_str(), f.own.as_deref()))
+        .collect();
+    assert_eq!(
+        kept,
+        [
+            ("bool", "hasKey", Some("false")),
+            ("int", "coins", Some("3"))
+        ]
     );
     assert_eq!(code.readable, [("Knight".into(), "knight".into())]);
     assert!(code.notes.is_empty());

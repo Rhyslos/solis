@@ -31,7 +31,7 @@ use reflect::{ComponentData, EntityId, Value};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":[Module, Action];\nfetch \"solis/kit/character\":[CharacterController];\n\
+const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":Action;\nfetch \"solis/made\":DroneModule;\nfetch \"solis/kit/character\":[CharacterController];\n\
     fetch \"solis/kit/cameras\":[ThirdPersonCamera];\n\
     \n\
     \n\
@@ -58,7 +58,7 @@ const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, 
     component Hive {\n\
         method update(float dt) {\n\
             is Input:pressed(Action.Interact)? then {\n\
-                entity made = World:spawn(Module.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
+                entity made = new DroneModule { position = [World:randomRange(-3, 3), World:randomRange(2, 6), 1] };\n\
             }\n\
         }\n\
     }\n\

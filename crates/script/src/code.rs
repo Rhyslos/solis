@@ -539,7 +539,12 @@ fn compile_here(
             reach.notes = written.notes;
             // What game code makes with new (the uniformity pass, U6):
             // solis/made.lst, written for this code too.
-            let made_now = crate::made::write(level::lust_data::ENGINE_FOLDER, &written.files);
+            let made_now = crate::made::write_with(
+                level::lust_data::ENGINE_FOLDER,
+                &written.files,
+                &written.fields,
+                &written.sources,
+            );
             reach.notes.extend(made_now.notes);
             made = made_now.made;
             let generated = made_now.files;

@@ -77,9 +77,9 @@ fn an_old_project_s_assemblies_become_modules_and_every_copy_and_spawn_finds_the
         level_placing(crate_id, "0J4M7Q2X9T5B2"),
     )
     .unwrap();
-    let code = "fetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
+    let code = "fetch \"solis/world\":World;\nfetch \"solis/made\":Chicken;\n\n\
                 component Coop {\n    method update(float dt) {\n        \
-                entity made = World:spawn(Module.Chicken, [0, 0, 0]);\n    }\n}\n\n\
+                entity made = new Chicken { position = [0, 0, 0] };\n    }\n}\n\n\
                 pass Coop;\nend\n";
     std::fs::write(assets.join("main.lst"), code).unwrap();
 
