@@ -134,6 +134,9 @@ struct Entry {
     last: FlatMove,
     /// Moved by game code, sliding (otherwise it stays where it's put).
     character: bool,
+    /// A character: the solid entity it last stood on, which carries it
+    /// when it moves.
+    standing_on: Option<EntityId>,
 }
 
 /// Everything 2D physics knows. Shared (`Arc`) with game code while a
@@ -156,6 +159,9 @@ pub struct FlatState {
     /// The solid entities that are one-way platforms, so a move looks
     /// only at them.
     one_way: std::collections::BTreeSet<EntityId>,
+    /// How far each solid entity was moved since characters last moved:
+    /// what it carries those standing on it.
+    shifted: BTreeMap<EntityId, Vec2>,
 }
 
 impl std::fmt::Debug for FlatState {
@@ -183,6 +189,7 @@ impl Default for FlatState {
             by_entity: BTreeMap::new(),
             walls: BTreeMap::new(),
             one_way: std::collections::BTreeSet::new(),
+            shifted: BTreeMap::new(),
         }
     }
 }
@@ -261,11 +268,16 @@ impl FlatState {
     /// stopping a skin short of what it meets and sliding along it.
     /// Where a move from `start` by `wanted` ends, sliding, and whether a
     /// floor (facing up) stopped it going down.
-    fn slide(&self, skip: rp::ColliderHandle, start: Vec2, wanted: Vec2) -> (Vec2, bool) {
+    fn slide(
+        &self,
+        skip: rp::ColliderHandle,
+        start: Vec2,
+        wanted: Vec2,
+    ) -> (Vec2, Option<rp::ColliderHandle>) {
         let Some(c) = self.colliders.get(skip) else {
-            return (start, false);
+            return (start, None);
         };
-        let mut floor = false;
+        let mut floor = None;
         let shape = c.shared_shape().clone();
         // One-way platforms it isn't standing above, or that it isn't
         // coming down onto, are passed through for the whole move.
@@ -331,10 +343,21 @@ impl FlatState {
             // meet a skin away, so a seam never catches it.
             at += left * t + normal * SKIN;
             left = rest - normal * into;
-            floor |= normal.y > GROUND;
+            if normal.y > GROUND {
+                floor = Some(handle);
+            }
             passed.push(handle);
         }
         (if at.is_finite() { at } else { start }, floor)
+    }
+
+    /// The solid entity whose collider is `handle`, if it's one (a map's
+    /// wall isn't).
+    fn solid_of(&self, handle: rp::ColliderHandle) -> Option<EntityId> {
+        let c = self.colliders.get(handle)?;
+        let id = EntityId(reflect::Id::from_raw(u64::try_from(c.user_data).ok()?)?);
+        let entry = self.by_entity.get(&id)?;
+        (entry.collider == handle && !entry.character).then_some(id)
     }
 
     /// The one-way platforms a move of the collider `skip` by `wanted`
@@ -543,6 +566,7 @@ impl Flat {
                 spec: collider,
                 character,
                 last: FlatMove::default(),
+                standing_on: None,
             },
         );
     }
@@ -554,6 +578,7 @@ impl Flat {
         }
         let state = self.state_mut();
         state.one_way.remove(&id);
+        state.shifted.remove(&id);
         if let Some(entry) = state.by_entity.remove(&id) {
             state.colliders.remove(
                 entry.collider,
@@ -576,7 +601,12 @@ impl Flat {
             return;
         };
         if let Some(c) = state.colliders.get_mut(entry.collider) {
-            c.set_translation(place + entry.spec.center());
+            let to = place + entry.spec.center();
+            let by = to - c.translation();
+            c.set_translation(to);
+            if !entry.character && by != Vec2::ZERO && by.is_finite() {
+                *state.shifted.entry(id).or_default() += by;
+            }
         }
     }
 
@@ -708,6 +738,13 @@ impl Flat {
     /// with a move, 2D physics is emptied and the rest aren't made
     /// ([`Self::take_broke`]).
     pub fn move_characters(&mut self, moves: &[(EntityId, Vec2)], seconds: f32) {
+        // Each character standing on a solid that moved is carried by it
+        // first, then makes its own move from there.
+        let carried = self.carry();
+        let moves = carried
+            .iter()
+            .map(|(id, by)| (*id, *by, true))
+            .chain(moves.iter().map(|(id, wanted)| (*id, *wanted, false)));
         if self
             .state
             .by_entity
@@ -721,7 +758,8 @@ impl Flat {
         // The character whose move is all Rapier hasn't caught up with
         // (none before one moves, whatever else changed by then).
         let mut last_moved = None;
-        for (id, wanted) in moves {
+        for (id, wanted, carried) in moves {
+            let id = &id;
             let Some(entry) = self.state.by_entity.get(id).copied() else {
                 continue;
             };
@@ -745,6 +783,8 @@ impl Flat {
                 wanted.clamp_length_max(MAX_FLAT_MOVE)
             };
             let (end, floor) = self.state.slide(entry.collider, start, wanted);
+            let standing_on = floor.and_then(|h| self.state.solid_of(h));
+            let floor = floor.is_some();
             let velocity = if seconds > 0.0 && seconds.is_finite() {
                 (end - start) / seconds
             } else {
@@ -760,9 +800,18 @@ impl Flat {
             };
             let state = self.state_mut();
             if let Some(e) = state.by_entity.get_mut(id) {
-                // Moves add up when it's asked twice in a tick.
+                // Moves add up when it's asked twice in a tick, and the
+                // ride is part of how fast it went; but only its own move
+                // says what it stands on.
                 e.last.velocity += last.velocity;
-                e.last.grounded |= last.grounded;
+                if !carried {
+                    e.last.grounded |= last.grounded;
+                    if floor {
+                        e.standing_on = standing_on;
+                    } else if !e.last.grounded {
+                        e.standing_on = None;
+                    }
+                }
             }
             if end != start {
                 if let Some(c) = state.colliders.get_mut(entry.collider) {
@@ -773,6 +822,22 @@ impl Flat {
             }
         }
         self.catch_up(last_moved);
+    }
+
+    /// Each character standing on a solid that was moved since characters
+    /// last moved, in entity order, with the solid's move: how far it's
+    /// carried. Forgets the solids' moves.
+    fn carry(&mut self) -> Vec<(EntityId, Vec2)> {
+        if self.state.shifted.is_empty() {
+            return Vec::new();
+        }
+        let shifted = std::mem::take(&mut self.state_mut().shifted);
+        self.state
+            .by_entity
+            .iter()
+            .filter(|(_, e)| e.character)
+            .filter_map(|(id, e)| Some((*id, *shifted.get(&e.standing_on?)?)))
+            .collect()
     }
 
     /// The characters moved since last asked, in entity order, with where

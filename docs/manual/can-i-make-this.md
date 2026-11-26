@@ -31,7 +31,7 @@ Start with [your first platformer](first-platformer.md), then the [platformer re
 | Wall jumps | Recipe | [A jump that feels right](platformer-recipes.md#a-jump-that-feels-right) |
 | One-way platforms, jumped up through and stood on | Works | **One way** on a `Collider2D` ([One-way platforms](walls-and-walking.md#one-way-platforms)); dropping down through one is game code (`setSolid(false)` for a moment) |
 | Moving platforms | Recipe | A solid `Collider2D` moved along a path ([Following a path](platformer-recipes.md#following-a-path-moving-platforms-patrolling-enemies)) |
-| Being carried along by a moving platform | Not yet | The platformer's second update. Until then a character on a moving platform stays where it is and the platform slides under it |
+| Being carried along by a moving platform | Works | A solid moved with `moveTo` carries who stands on it ([Moving platforms](walls-and-walking.md#moving-platforms)) |
 | Slopes | Not yet | Later, when a game asks: 2D colliders and tiles are boxes and circles |
 | Enemies and platforms following a path | Recipe | Empty entities as stops ([Following a path](platformer-recipes.md#following-a-path-moving-platforms-patrolling-enemies)) |
 | Paths drawn as lines in the editor | Not yet | Later, when a game asks; empty entities as stops do it now |
@@ -100,7 +100,7 @@ The engine's part is listed here; crops and seasons, shops, crafting, fishing, f
 
 ### What comes when
 In order, each a small update:
-1. **The platformer:** being carried by moving platforms, screen shake (one-way platforms are in).
+1. **The platformer:** screen shake (one-way and moving platforms are in).
 2. **The action game:** aiming with the mouse, rays in 2D.
 3. **Rust and Lua stop being game languages:** Lust is the language games are written in.
 4. **Dialogue,** in full: conversations, the dialogue box and the conversation editor.
