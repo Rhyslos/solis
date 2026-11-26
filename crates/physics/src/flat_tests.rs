@@ -686,3 +686,119 @@ fn a_one_way_platform_taken_out_stops_nothing() {
     let at = walk(&mut flat, Vec2::new(0.0, 0.1), 40);
     assert!(at.y < 1.5 - 0.25 + 1e-3, "stopped below the solid: {at}");
 }
+
+/// A solid platform 4 m wide, its top at y = 0 (entity 6), and a
+/// character standing on it (entity 1), settled by one move down.
+fn on_a_platform() -> Flat {
+    let mut flat = world(Vec2::new(0.0, 0.25 + SKIN), &[]);
+    flat.add(
+        id(6),
+        Vec2::new(0.0, -0.25),
+        FlatCollider {
+            shape: FlatShape::Box(Vec2::new(4.0, 0.5)),
+            center: Vec2::ZERO,
+            one_way: false,
+        },
+        false,
+    );
+    walk(&mut flat, Vec2::new(0.0, -0.02), 1);
+    assert!(flat.state().last_move(id(1)).unwrap().grounded);
+    flat
+}
+
+/// The platform moved by `by` each tick for `ticks` ticks, the character
+/// walked by `step` (or not at all when `None`) as it goes.
+fn ride(flat: &mut Flat, by: Vec2, step: Option<Vec2>, ticks: usize) -> Vec2 {
+    for _ in 0..ticks {
+        let to = flat.state().place(id(6)).unwrap() + by;
+        flat.set_place(id(6), to);
+        let moves: Vec<(EntityId, Vec2)> = step.map(|s| (id(1), s)).into_iter().collect();
+        flat.move_characters(&moves, 1.0 / 60.0);
+    }
+    flat.state().place(id(1)).unwrap()
+}
+
+#[test]
+fn a_moving_platform_carries_the_character_standing_on_it() {
+    let mut flat = on_a_platform();
+    let at = ride(
+        &mut flat,
+        Vec2::new(0.02, 0.0),
+        Some(Vec2::new(0.0, -0.02)),
+        50,
+    );
+    assert!((at.x - 1.0).abs() < 1e-3, "carried a metre: {at}");
+    assert!(
+        at.y >= 0.25 && at.y < 0.25 + 2.0 * SKIN,
+        "still on top: {at}"
+    );
+    assert!(flat.state().last_move(id(1)).unwrap().grounded);
+    assert_eq!(flat.moved().last().map(|m| m.0), Some(id(1)));
+}
+
+#[test]
+fn a_character_not_walked_is_carried_too() {
+    let mut flat = on_a_platform();
+    let at = ride(&mut flat, Vec2::new(-0.02, 0.0), None, 50);
+    assert!((at.x + 1.0).abs() < 1e-3, "carried a metre left: {at}");
+    assert_eq!(flat.moved(), vec![(id(1), at)], "the world follows it");
+}
+
+#[test]
+fn a_platform_going_up_lifts_it_and_going_down_keeps_it_on() {
+    let mut flat = on_a_platform();
+    let at = ride(
+        &mut flat,
+        Vec2::new(0.0, 0.03),
+        Some(Vec2::new(0.0, -0.02)),
+        40,
+    );
+    assert!(
+        at.y >= 1.2 + 0.25 && at.y < 1.2 + 0.25 + 3.0 * SKIN,
+        "lifted: {at}"
+    );
+    let at = ride(
+        &mut flat,
+        Vec2::new(0.0, -0.03),
+        Some(Vec2::new(0.0, -0.02)),
+        60,
+    );
+    assert!(
+        at.y >= -0.6 + 0.25 && at.y < -0.6 + 0.25 + 3.0 * SKIN,
+        "came down with it: {at}"
+    );
+    assert!(flat.state().last_move(id(1)).unwrap().grounded);
+}
+
+#[test]
+fn off_the_platform_it_is_carried_no_more() {
+    let mut flat = on_a_platform();
+    flat.set_walls(id(9), [0, 0], &[rect(-20.0, -1.0, -2.0, 0.0)]);
+    // A jump: in the air, it isn't standing on the platform.
+    walk(&mut flat, Vec2::new(0.0, 0.1), 3);
+    let at = ride(&mut flat, Vec2::new(0.05, 0.0), Some(Vec2::ZERO), 20);
+    assert!(at.x.abs() < 1e-4, "not carried while in the air: {at}");
+    // Walked off onto the ground beside it, it isn't carried either.
+    let mut flat = on_a_platform();
+    flat.set_walls(id(9), [0, 0], &[rect(-20.0, -1.0, -2.0, 0.0)]);
+    walk(&mut flat, Vec2::new(-0.1, -0.02), 30);
+    let before = flat.state().place(id(1)).unwrap();
+    assert!(before.x < -2.5, "on the ground: {before}");
+    let at = ride(
+        &mut flat,
+        Vec2::new(0.05, 0.0),
+        Some(Vec2::new(0.0, -0.02)),
+        20,
+    );
+    assert!((at.x - before.x).abs() < 1e-4, "stays put: {at}");
+}
+
+#[test]
+fn a_platform_taken_out_carries_nothing() {
+    let mut flat = on_a_platform();
+    flat.set_place(id(6), Vec2::new(1.0, -0.25));
+    flat.remove(id(6));
+    flat.move_characters(&[], 1.0 / 60.0);
+    assert_eq!(flat.state().place(id(1)).unwrap().x, 0.0);
+    assert!(flat.state().shifted.is_empty());
+}

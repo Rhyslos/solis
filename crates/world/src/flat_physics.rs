@@ -336,11 +336,13 @@ impl World {
         // Each character's move this tick, for game code's `grounded()`
         // and `velocity()`; none asked, they all stood still.
         self.walk_flat(walks);
-        if walks.is_empty() {
+        // Characters walked, or carried by what they stand on.
+        let moved = self.flat.moved();
+        if moved.is_empty() {
             return;
         }
         self.following = true;
-        for (id, place) in self.flat.moved() {
+        for (id, place) in moved {
             self.change_transform(id, |parent, mut t| {
                 // On the ground where physics put it, at the layer it was.
                 let layer = parent.transform_point3(t.position).z;

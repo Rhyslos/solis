@@ -1125,7 +1125,7 @@ footer p { color: var(--muted); }
 <tr><td>Wall jumps</td><td>Recipe</td><td><a href="#platformer-recipes--a-jump-that-feels-right">A jump that feels right</a></td></tr>
 <tr><td>One-way platforms, jumped up through and stood on</td><td>Works</td><td><strong>One way</strong> on a <code>Collider2D</code> (<a href="#walls-and-walking--one-way-platforms">One-way platforms</a>); dropping down through one is game code (<code>setSolid(false)</code> for a moment)</td></tr>
 <tr><td>Moving platforms</td><td>Recipe</td><td>A solid <code>Collider2D</code> moved along a path (<a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">Following a path</a>)</td></tr>
-<tr><td>Being carried along by a moving platform</td><td>Not yet</td><td>The platformer's second update. Until then a character on a moving platform stays where it is and the platform slides under it</td></tr>
+<tr><td>Being carried along by a moving platform</td><td>Works</td><td>A solid moved with <code>moveTo</code> carries who stands on it (<a href="#walls-and-walking--moving-platforms">Moving platforms</a>)</td></tr>
 <tr><td>Slopes</td><td>Not yet</td><td>Later, when a game asks: 2D colliders and tiles are boxes and circles</td></tr>
 <tr><td>Enemies and platforms following a path</td><td>Recipe</td><td>Empty entities as stops (<a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">Following a path</a>)</td></tr>
 <tr><td>Paths drawn as lines in the editor</td><td>Not yet</td><td>Later, when a game asks; empty entities as stops do it now</td></tr>
@@ -1198,7 +1198,7 @@ footer p { color: var(--muted); }
 <h4 id="can-i-make-this--what-comes-when">What comes when<a class="anchor" href="#can-i-make-this--what-comes-when" aria-label="Link to this section">#</a></h4>
 <p>In order, each a small update:</p>
 <ol class="steps">
-<li><strong>The platformer:</strong> being carried by moving platforms, screen shake (one-way platforms are in).</li>
+<li><strong>The platformer:</strong> screen shake (one-way and moving platforms are in).</li>
 <li><strong>The action game:</strong> aiming with the mouse, rays in 2D.</li>
 <li><strong>Rust and Lua stop being game languages:</strong> Lust is the language games are written in.</li>
 <li><strong>Dialogue,</strong> in full: conversations, the dialogue box and the conversation editor.</li>
@@ -1412,7 +1412,7 @@ footer p { color: var(--muted); }
 <ul>
 <li><strong>Problem:</strong> the hero can't wall jump. <strong>Why:</strong> it only counts as against a wall while you push towards it and it isn't moving sideways. <strong>Fix:</strong> hold the direction of the wall as you press Jump.</li>
 <li><strong>Problem:</strong> after a hit-stop the game stays frozen. <strong>Why:</strong> the entity with <code>HitStop</code> was removed while frozen, so nothing counted down. <strong>Fix:</strong> keep <code>HitStop</code> on something that stays, such as the camera.</li>
-<li><strong>Problem:</strong> the hero slides off a moving platform. <strong>Why:</strong> standing on a moving platform doesn't carry a character along yet. See <a href="#can-i-make-this">Can I make this?</a>.</li>
+<li><strong>Problem:</strong> the hero isn't carried by a platform following a path. <strong>Why:</strong> the platform's Collider2D is ticked Character, or it's moved by <code>walk</code>. <strong>Fix:</strong> untick Character and move it with <code>moveTo</code>, as <code>Patrol</code> does; then characters standing on it ride along (<a href="#walls-and-walking--moving-platforms">Moving platforms</a>).</li>
 </ul>
 </section>
 <section id="platformer-recipes--related">
@@ -9214,6 +9214,9 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <li>Play: jump up into it from below and you pass through; come down onto it and you land on top and stand there, <code>grounded()</code> true.</li>
 </ol>
 <p>It stops a character only when the character is coming down and its bottom was at or above the platform's top as the move began. So a character that jumps up into it but not past its top falls back out of the bottom, and one walking into its side passes through. Tile maps' terrains aren't one way yet: use an entity per platform.</p>
+<h4 id="walls-and-walking--moving-platforms">Moving platforms<a class="anchor" href="#walls-and-walking--moving-platforms" aria-label="Link to this section">#</a></h4>
+<p>A solid Collider2D that game code moves with <code>moveTo</code> (a lift, a ferry, a platform following a path from the <a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">platformer recipes</a>) <strong>carries the characters standing on it</strong>: as it moves, so do they, whether or not their own code walks them that tick. A platform going up lifts them; one going down takes them down with it. One-way platforms carry too.</p>
+<p>A character is carried while it stood on the platform at its last move. Once it jumps or walks off, it's carried no more. What's carried is the platform's whole move that tick, added to the character's own, so <code>velocity()</code> includes the ride.</p>
 </section>
 <section id="walls-and-walking--settings">
 <h3>Settings<a class="anchor" href="#walls-and-walking--settings" aria-label="Link to this section">#</a></h3>

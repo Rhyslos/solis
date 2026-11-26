@@ -198,7 +198,7 @@ The recipes' settings are their fields, shown in Properties with their tips once
 ## Tips and common problems
 - **Problem:** the hero can't wall jump. **Why:** it only counts as against a wall while you push towards it and it isn't moving sideways. **Fix:** hold the direction of the wall as you press Jump.
 - **Problem:** after a hit-stop the game stays frozen. **Why:** the entity with `HitStop` was removed while frozen, so nothing counted down. **Fix:** keep `HitStop` on something that stays, such as the camera.
-- **Problem:** the hero slides off a moving platform. **Why:** standing on a moving platform doesn't carry a character along yet. See [Can I make this?](can-i-make-this.md).
+- **Problem:** the hero isn't carried by a platform following a path. **Why:** the platform's Collider2D is ticked Character, or it's moved by `walk`. **Fix:** untick Character and move it with `moveTo`, as `Patrol` does; then characters standing on it ride along ([Moving platforms](walls-and-walking.md#moving-platforms)).
 
 ## Related
 - [Your first platformer](first-platformer.md), which this builds on.

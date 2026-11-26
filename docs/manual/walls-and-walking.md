@@ -176,6 +176,11 @@ In a platformer, a **one-way platform** is a ledge the hero jumps up through fro
 
 It stops a character only when the character is coming down and its bottom was at or above the platform's top as the move began. So a character that jumps up into it but not past its top falls back out of the bottom, and one walking into its side passes through. Tile maps' terrains aren't one way yet: use an entity per platform.
 
+### Moving platforms
+A solid Collider2D that game code moves with `moveTo` (a lift, a ferry, a platform following a path from the [platformer recipes](platformer-recipes.md#following-a-path-moving-platforms-patrolling-enemies)) **carries the characters standing on it**: as it moves, so do they, whether or not their own code walks them that tick. A platform going up lifts them; one going down takes them down with it. One-way platforms carry too.
+
+A character is carried while it stood on the platform at its last move. Once it jumps or walks off, it's carried no more. What's carried is the platform's whole move that tick, added to the character's own, so `velocity()` includes the ride.
+
 ## Settings
 **Collider2D**
 

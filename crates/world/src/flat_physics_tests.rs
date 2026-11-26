@@ -511,3 +511,39 @@ fn a_one_way_collider_is_landed_on_from_above_and_passed_from_below() {
         "landed on it: {at}"
     );
 }
+
+#[test]
+fn a_solid_moved_carries_the_farmer_standing_on_it() {
+    let (mut world, _, farmer) = farm();
+    // A raft 32 px wide and 8 px thick, its top just under the farmer's
+    // circle, moved half a metre right over 25 ticks.
+    let raft = EntityId::random();
+    let data = EntityData::new("Raft")
+        .with(&Transform {
+            position: Vec3::new(2.5, -6.0, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            shape: Shape2D::Box,
+            width: 32.0,
+            height: 8.0,
+            ..Collider2D::default()
+        });
+    world.add_subtree(&[(raft, data)]);
+    walk(&mut world, farmer, Vec3::new(0.0, -0.05, 0.0), 5);
+    let before = world.global(farmer).unwrap().w_axis.truncate();
+    for i in 1..=25 {
+        world.change_transform(raft, |_, mut t| {
+            t.position = Vec3::new(2.5 + i as f32 * 0.02, -6.0, 0.0);
+            Some(t)
+        });
+        world.move_character(farmer, Vec3::new(0.0, -0.01, 0.0));
+        world.step_physics();
+    }
+    let at = world.global(farmer).unwrap().w_axis.truncate();
+    assert!(
+        (at.x - before.x - 0.5).abs() < 1e-3,
+        "rode the raft: {before} to {at}"
+    );
+    assert_eq!(at.z, 0.2, "on its own layer still");
+}
