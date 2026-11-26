@@ -1106,6 +1106,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/input` | `vec3 Input:axis(Action action)` | An axis action's x and y. |
 | `solis/input` | `string Input:binding(Action action)` | The key that sets an action off, for "Press F". |
 | `solis/input` | `Input:rebind(Action action, string input)` | Binds a new input to an action, from the next tick. |
+| `solis/input` | `vec3 Input:pointer()` | The place in the world under the pointer, over a 2D game's picture ([Input](input.md)). |
+| `solis/input` | `bool Input.pointerShown` | Whether the pointer is shown and free while the game has the mouse; `Input.pointerShown = true;` shows it from the end of the tick. |
 | `solis/project` | `state Action` | The project's input actions (`Action.Jump`), from File › Project settings › Input. |
 | `solis/physics` | `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | What a line meets first: `found`, `distance`, `entity` and `normal` ([Physics](physics.md)). |
 | any entity | `vec3 position()` | Where the entity is in the world, in metres. |

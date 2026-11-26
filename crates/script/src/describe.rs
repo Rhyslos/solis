@@ -305,6 +305,14 @@ pub const OBJECT_FIELDS: &[ObjectField] = &[
         getter: "fullscreen",
         setter: "setFullscreen",
     },
+    ObjectField {
+        object: "Input",
+        name: "pointerShown",
+        kind: "bool",
+        start: "false",
+        getter: "pointerShown",
+        setter: "setPointerShown",
+    },
 ];
 
 /// The calls that are `new` in Lust now (the uniformity pass, U6a and U6b;
@@ -1037,6 +1045,27 @@ pub const NATIVES: &[Native] = &[
         owner: "Input",
         lust: "method rebind(Action action, string input) native;",
         about: "Binds an input (\"E\", \"Mouse Right\", \"Pad Y\") to an action from the next tick, in place of its inputs of the same kind: what a controls menu does. Lasts while the game plays.",
+    },
+    Native {
+        file: "input",
+        name: "pointer",
+        owner: "Input",
+        lust: "method vec3 pointer() native;",
+        about: "The place in the world under the pointer, over a 2D game's picture, as the tick started (at the camera's height): where to aim. Before the pointer has been over the game, the middle of the view. Show the pointer with Input.pointerShown = true.",
+    },
+    Native {
+        file: "input",
+        name: "pointerShown",
+        owner: "Input",
+        lust: "method bool pointerShown() native;",
+        about: "Whether the pointer is shown and free over the game, as the tick started.",
+    },
+    Native {
+        file: "input",
+        name: "setPointerShown",
+        owner: "Input",
+        lust: "method setPointerShown(bool shown) native;",
+        about: "Shows the pointer and frees it over the game (true), for aiming and clicking, or hides it and holds it in the window while the game has the mouse (false), so moving the mouse turns a camera. False as the game starts; from the end of the tick.",
     },
     Native {
         file: "physics",

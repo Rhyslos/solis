@@ -566,3 +566,64 @@ fn the_input_page_names_every_key_and_button() {
         assert!(listed(modifier), "{modifier}");
     }
 }
+
+/// Reads where the pointer is in the world each tick, and asks for it
+/// shown.
+const AIMER: &str = "fetch \"solis/input\":Input;\n\n\
+    component Walker {\n\
+        has {\n\
+            vec3 at = [0, 0, 0];\n\
+        }\n\
+        method update(float dt) {\n\
+            at = Input:pointer();\n\
+            Input.pointerShown = true;\n\
+        }\n\
+    }\n\
+    pass Walker;\nend\n";
+
+#[test]
+fn the_pointer_over_the_game_s_picture_reaches_game_code_which_shows_it() {
+    let mut w = with_a_walker();
+    w.set_program(Some(program(AIMER)));
+    w.play();
+    tick(&mut w);
+    assert!(w.pointer_wanted(), "game code asked for it shown");
+    // Three quarters across and a quarter down the picture inside its
+    // bars: right of and above the view's middle (no camera: the world's
+    // middle), by a quarter of the view each way.
+    let area = crate::game_screens::ScreensArea {
+        origin: [100, 50],
+        size: [400, 200],
+        step: None,
+    };
+    let ctx = egui::Context::default();
+    w.game_panel_done(
+        &ctx,
+        crate::game_panel::GamePanelOut {
+            clicked: false,
+            pointer: Some([400.0, 100.0]),
+            area,
+        },
+    );
+    tick(&mut w);
+    tick(&mut w);
+    let id = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
+    let game = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let at = match game.values(id, "Walker").unwrap().get("at") {
+        Some(reflect::Value::List(v)) => v.clone(),
+        other => panic!("{other:?}"),
+    };
+    let size = {
+        let p = level::pixels::PixelSettings::default();
+        [
+            p.base[0] as f64 * f64::from(p.pixel_size()),
+            p.base[1] as f64 * f64::from(p.pixel_size()),
+        ]
+    };
+    let float = |v: &reflect::Value| match v {
+        reflect::Value::Float(f) => *f,
+        other => panic!("{other:?}"),
+    };
+    assert!((float(&at[0]) - size[0] / 4.0).abs() < 1e-4, "{at:?}");
+    assert!((float(&at[1]) - size[1] / 4.0).abs() < 1e-4, "{at:?}");
+}

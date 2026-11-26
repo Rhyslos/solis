@@ -152,7 +152,7 @@ pass Bullet;
 end
 ```
 
-Save an entity with the bullet's sprite and `Bullet` as a module called `bolt` (right-click it in the Level panel, **Make module…**). The gun makes one and tells it which way to fly:
+The gun aims with the right stick when it's pushed, and at the mouse otherwise ([Aiming with the mouse](input.md)). Save an entity with the bullet's sprite and `Bullet` as a module called `bolt` (right-click it in the Level panel, **Make module…**). The gun makes one and tells it which way to fly:
 
 ```lust
 -- gun.lst: fires a bullet on Fire, the way the player aims, with a muzzle flash.
@@ -169,10 +169,17 @@ component Gun {
     }
 
     method update(float dt) {
+        -- Show the pointer to aim with.
+        is not Input.pointerShown? then {
+            Input.pointerShown = true;
+        }
         cooldown = cooldown - 1;
-        -- Aim with the right stick, or straight ahead when it's still.
+        -- Aim with the right stick, or else at the mouse.
         vec3 aim = Input:axis(Action.Look);
         is aim:length() < 0.2? then {
+            aim = Input:pointer() - position();
+        }
+        is aim:length() < 0.01? then {
             aim = [1, 0, 0];
         }
         is Input:held(Action.Fire) && cooldown <= 0? then {

@@ -22,7 +22,7 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `pixels/` | 2D settings files (`.solpix`): the standard ones, ones that fill the window, and ones with values the reader must put right or skip. |
 | `playtest_file/` | Playtest files: a usual one, one the reader puts right (Windows line endings, a name with characters a file can't have, a window too big and too small, and the `folder` line older copies held), and one it refuses (a level outside the assets). |
 | `project_file/` | A small project file. |
-| `recording/` | Recordings of play (`.solrec`): a long one, and short ones of formats 1 and 2, so the upgrader is fuzzed too. |
+| `recording/` | Recordings of play (`.solrec`): a long one, short ones of formats 1 and 2, so the upgrader is fuzzed too, and one of format 6 with the pointer's lines. |
 | `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too, and one with a single very long line (thousands of words where a body has sixteen), which the reader refuses without listing them all. |
 | `sidecar/` | Sidecars (`.solmeta`) of the sample models. |
 | `sound_event/` | A full sound event, an empty one and a looping 2D one. |

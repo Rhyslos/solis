@@ -35,7 +35,7 @@ pub use bindings::{
     Action, ActionKind, Bindings, BindingsError, FORMAT as BINDINGS_FORMAT, MAX_ACTIONS,
     MAX_INPUTS, MENU_ACTIONS, MENU_BACK, MENU_CHOOSE, MENU_MOVE, PAUSE,
 };
-pub use devices::{Devices, Pad};
+pub use devices::{Devices, MAX_POINTER, Pad};
 pub use frame::{
     ActionState, Frame, MAX_SENT, MAX_SENT_NAME, MAX_SENT_TEXT, MAX_SENT_VALUES, Sent,
 };

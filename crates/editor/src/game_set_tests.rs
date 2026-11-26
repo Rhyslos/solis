@@ -184,6 +184,11 @@ const NOT_ON_AN_ENTITY: &[&str] = &[
     "Input_axis",
     "Input_binding",
     "Input_rebind",
+    // Where the pointer is, and whether it's shown: the player's view of
+    // the game, never an entity's (the action game, A1).
+    "Input_pointer",
+    "Input_pointerShown",
+    "Input_setPointerShown",
     "entity_velocity",
     "Physics_castRay",
     "entity_grounded",

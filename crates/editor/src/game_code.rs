@@ -356,6 +356,9 @@ pub(crate) struct ViewCache {
     /// Whether game code asked to close the game (`Window:quit()`,
     /// decision 0093).
     pub(crate) quit: bool,
+    /// Whether game code asked for the pointer shown and free over the
+    /// game (`Input.pointerShown`; the action game, A1).
+    pub(crate) pointer_shown: bool,
     /// The tags as this tick started (stage 1, tags): made once a tick,
     /// as it begins, and read by every phase and core.
     pub(crate) tags: Arc<script::TagView>,
@@ -666,6 +669,11 @@ impl GameWorld for PlayWorld<'_> {
                     0.0,
                 )
             },
+            view_centre: self
+                .world
+                .camera()
+                .map_or(glam::Vec3::ZERO, |(_, _, global)| global.w_axis.truncate()),
+            pointer_shown: self.cache.pointer_shown,
             zones: self.world.inside_zones(),
             tags: Arc::clone(&self.cache.tags),
             day_length: self.world.day_length(),
@@ -691,6 +699,7 @@ impl GameWorld for PlayWorld<'_> {
                 Change::GameSpeed(speed) => self.world.set_speed(speed),
                 Change::TimeOfDay(hour) => self.world.set_time_of_day(hour),
                 Change::Quit => self.cache.quit = true,
+                Change::PointerShown(shown) => self.cache.pointer_shown = shown,
                 Change::Setting(change) => {
                     self.cache.settings = self.cache.settings.with(change);
                     if self.cache.asked.len() < 64 {

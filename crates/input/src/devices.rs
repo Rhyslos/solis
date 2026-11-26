@@ -5,6 +5,10 @@ use crate::{Action, ActionKind, ActionState, Bindings, DEAD_ZONE, Frame};
 use glam::Vec2;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// How far outside the game's picture a pointer place is kept, in
+/// pictures: a window much wider than the picture still points beside it.
+pub const MAX_POINTER: f32 = 16.0;
+
 /// A gamepad's state: its buttons down (by [`crate::PAD_BUTTONS`] name)
 /// and its sticks (x right, y up, each -1 to 1).
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -34,6 +38,9 @@ pub struct Devices {
     /// Which actions were held at the last tick, for presses and
     /// releases.
     was_held: BTreeSet<String>,
+    /// Where the pointer last was over the game's picture (a fraction of
+    /// it across and down), once it has been.
+    pointer: Option<Vec2>,
 }
 
 impl Devices {
@@ -72,6 +79,16 @@ impl Devices {
         self.went_down.clear();
         self.motion = Vec2::ZERO;
         self.wheel = 0.0;
+    }
+
+    /// The pointer is over the game's picture at `at`, a fraction of it
+    /// across and down (its top left 0, 0; its bottom right 1, 1). It's
+    /// kept while the pointer is away. Places far outside it, or that
+    /// aren't numbers, are left out.
+    pub fn pointer_at(&mut self, at: Vec2) {
+        if at.is_finite() && at.abs().max_element() <= MAX_POINTER {
+            self.pointer = Some(at);
+        }
     }
 
     /// The mouse wheel turned `notches` (up is positive; a trackpad gives
@@ -244,6 +261,7 @@ impl Devices {
         Frame {
             actions,
             sent: Vec::new(),
+            pointer: self.pointer,
         }
     }
 }

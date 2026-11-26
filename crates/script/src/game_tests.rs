@@ -39,6 +39,10 @@ pub(super) struct TestWorld {
     /// tick starts.
     pub(super) speed: Option<f64>,
     pub(super) hour: Option<f64>,
+    /// Where the pointer is over the game's picture (the action game,
+    /// A1), and whether game code asked for it shown.
+    pub(super) pointer: Option<glam::Vec2>,
+    pub(super) pointer_shown: bool,
 }
 
 impl TestWorld {
@@ -113,7 +117,10 @@ impl GameWorld for TestWorld {
             seed: self.seed,
             physics: Arc::default(),
             flat: Arc::default(),
-            input: Arc::default(),
+            input: Arc::new(input::Frame {
+                pointer: self.pointer,
+                ..input::Frame::default()
+            }),
             bindings: Arc::default(),
             animator_states: Arc::default(),
             screens: Arc::default(),
@@ -123,7 +130,9 @@ impl GameWorld for TestWorld {
             maps: Arc::default(),
             map_places: Arc::default(),
             map_bounds: Arc::default(),
-            view_size: Vec3::ZERO,
+            view_size: Vec3::new(20.0, 10.0, 0.0),
+            view_centre: Vec3::new(100.0, 50.0, 3.0),
+            pointer_shown: self.pointer_shown,
             zones: Arc::new(self.zones.clone()),
             tags: Arc::clone(&self.tags),
             day_length: 24.0 * 60.0,
@@ -136,6 +145,9 @@ impl GameWorld for TestWorld {
 
     fn apply(&mut self, changes: &[Change]) {
         for change in changes {
+            if let Change::PointerShown(shown) = change {
+                self.pointer_shown = *shown;
+            }
             if let Change::Seed(seed) = change {
                 self.seed = *seed;
             }
@@ -1120,4 +1132,74 @@ fn zones_events_and_inside_reach_lust_the_same_on_any_number_of_shards() {
         ]
     );
     assert_eq!(one, zone_game(4));
+}
+
+#[test]
+fn the_pointer_is_a_place_in_the_world_and_game_code_shows_it() {
+    let code = compiled(
+        "fetch \"solis/input\":Input;\n\n\
+         component Aim {\n\
+             has {\n\
+                 vec3 at = [0, 0, 0];\n\
+                 bool shown = false;\n\
+             }\n\
+             method update(float dt) {\n\
+                 at = Input:pointer();\n\
+                 shown = Input.pointerShown;\n\
+                 Input.pointerShown = true;\n\
+             }\n\
+         }\n\
+         pass Aim;\nend\n",
+    );
+    let mut world = TestWorld::with(&["Hero"]);
+    let mut game = unhurried(1);
+    game.load(&code, &mut world).unwrap();
+    assert!(
+        game.sync_many([(id(1), "Aim", &ComponentData::default())], &mut world)
+            .is_empty()
+    );
+    let read = |game: &mut Game| {
+        let values = game.values(id(1), "Aim").unwrap();
+        (values.get("at").cloned(), values.get("shown").cloned())
+    };
+    // Never over the game yet: the middle of the view.
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    assert_eq!(
+        read(&mut game),
+        (
+            Some(Value::floats(&[100.0, 50.0, 3.0])),
+            Some(Value::Bool(false))
+        )
+    );
+    assert!(world.pointer_shown, "asked for it shown");
+    // A quarter across and down the picture: left of and above the middle.
+    world.pointer = Some(glam::Vec2::new(0.25, 0.25));
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    assert_eq!(
+        read(&mut game),
+        (
+            Some(Value::floats(&[95.0, 52.5, 3.0])),
+            Some(Value::Bool(true))
+        )
+    );
+}
+
+#[test]
+fn a_pointer_place_that_isn_t_one_is_the_middle() {
+    let centre = Vec3::new(1.0, 2.0, 3.0);
+    let size = Vec3::new(4.0, 2.0, 0.0);
+    assert_eq!(pointer_in_world(None, centre, size), centre);
+    assert_eq!(
+        pointer_in_world(Some(glam::Vec2::new(f32::NAN, 0.0)), centre, size),
+        centre
+    );
+    assert_eq!(
+        pointer_in_world(Some(glam::Vec2::new(1.0, 1.0)), centre, size),
+        Vec3::new(3.0, 1.0, 3.0)
+    );
+    let huge = Vec3::new(f32::MAX, f32::MAX, 0.0);
+    assert_eq!(
+        pointer_in_world(Some(glam::Vec2::new(16.0, -16.0)), centre, huge),
+        centre
+    );
 }
