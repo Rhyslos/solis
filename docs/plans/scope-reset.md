@@ -143,6 +143,14 @@ The project lead, 2026-11-26 ([decision 0138](../decisions/0138-tiny-first-games
    - rain and snow on the particle emitter.
    Cutscenes are game code with timers and `moveTo`, and night lights are the lights there are.
 
+### What the check found (2026-11-26)
+
+[Can I make this?](../manual/can-i-make-this.md) checked every need against the code. Changes to the list above:
+- **The platformer** stays three milestones: **P1** one-way platforms (a `Collider2D` setting), **P2** characters carried by the solid they stand on when it moves, **P3** screen shake on the kit's `FollowCamera2D`. The jump, coyote time, buffering, wall jumps, hit-stop, a hurt blink and paths are [recipes](../manual/platformer-recipes.md).
+- **The action platformer** is two milestones, not three: **A1** the mouse's place in the world (`Input:pointer()`), **A2** rays in 2D (`Physics:castRay` looked only at 3D physics). Sparks and muzzle flashes are bursts of projectiles, a [recipe](../manual/combat-recipes.md); the particle emitter moves to the farming game's pieces, with rain and snow. Music follows the fight by swapping tracks (`stopSounds()` fades), so it no longer waits for the music fade.
+- **The farming game's pieces** lose three: sprites already sort by their feet, a screen's `button` already tells game code it was clicked, and save slots are already named by game code (`Saves:saveTo("slot2")`); "which cells hold this" is a recipe (a loop over the map) until a big map is too slow. They gain the particle emitter (for rain and snow).
+- Left until a game asks: slopes, paths drawn in the editor, components that draw in the editor, tweens in saves, squash and stretch, rumble, pools, bots that jump and drop.
+
 ### Not on the list (waits until a game asks for it)
 
 Puzzle and turn-based tools (grid-step movement, game tests, advanced tiling), the renderer rework and materials, palette tricks, mods and Git, multiplayer, and the 3D track.
