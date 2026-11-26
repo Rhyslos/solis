@@ -38,11 +38,12 @@ const VALUES_OF: &str = "__solisKind";
 /// Lust's own way of making a thing, in its runtime.
 const LUST_NEW: &str = "function L.new(c, ...)\n  local o = setmetatable({}, c)\n  c.__fields(o)\n";
 
-/// Solis's: a values class (one `like SpawnValues`) keeps only the fields
+/// Solis's: a values class (one `like SpawnValues`), and a class the
+/// engine makes (`like Made`, [`crate::made`]), keeps only the fields
 /// written, in the braces of its `new` or set after, on the object itself;
 /// reading one not written gives its starting value, kept once on a
 /// table of the class's own. Any other class is made as Lust makes it.
-const SOLIS_NEW: &str = "function L.new(c, ...)\n  local o; local p = rawget(c, \"__parent\"); if p and rawget(p, \"__name\") == \"SpawnValues\" then local m = rawget(c, \"__solisMeta\"); if not m then local d = {}; c.__fields(d); local name = rawget(c, \"__name\"); m = { __parent = c, __solisKind = string.sub(name, 1, #name - 6), __index = function(_, k) local v = d[k]; if v ~= nil then return v end; return c[k] end }; rawset(c, \"__solisMeta\", m) end; o = setmetatable({}, m)\n  else o = setmetatable({}, c); c.__fields(o) end\n";
+const SOLIS_NEW: &str = "function L.new(c, ...)\n  local o; local p = rawget(c, \"__parent\"); if p and (rawget(p, \"__name\") == \"SpawnValues\" or rawget(p, \"__name\") == \"Made\") then local m = rawget(c, \"__solisMeta\"); if not m then local d = {}; c.__fields(d); local name = rawget(c, \"__name\"); m = { __parent = c, __solisKind = string.sub(name, 1, #name - 6), __index = function(_, k) local v = d[k]; if v ~= nil then return v end; return c[k] end }; rawset(c, \"__solisMeta\", m) end; o = setmetatable({}, m)\n  else o = setmetatable({}, c); c.__fields(o) end\n";
 
 /// Lust's chunk with [`SOLIS_NEW`] in place of Lust's `L.new` start: only
 /// the runtime changes, on as many lines as Lust's own, so no line moves

@@ -25,13 +25,53 @@ pub const MAX_NAMES: usize = 1_024;
 /// skipped, and so is the engine's own folder (which describes the
 /// engine, and holds no game's timers).
 pub fn names_started(code: &Code) -> Vec<String> {
+    names_in(&code.files)
+}
+
+/// [`names_started`] of the game's Lust `files` (path and text): also
+/// each timer made with `new` (the uniformity pass, U6): `new DoorOpens {
+/// after = 2 }` names `DoorOpens`, a `new` of a name that isn't a sound
+/// event's or something the game declares, with `after`, `every` or
+/// `atHour` in its braces.
+pub fn names_in(files: &[(String, String)]) -> Vec<String> {
     let mut names = BTreeSet::new();
-    for (path, text) in &code.files {
+    let states = crate::project_names::states_in(files);
+    let sounds: BTreeSet<&str> = states
+        .get("Sound")
+        .map(|s| s.iter().map(String::as_str).collect())
+        .unwrap_or_default();
+    let mut declared: BTreeSet<String> = BTreeSet::new();
+    for (path, text) in files {
+        if crate::describe::in_engine_folder(path) {
+            continue;
+        }
+        for (_, found) in level::lust_guard::scan(text) {
+            if let level::lust_guard::Found::Declared(_, name) = found {
+                declared.insert(name.to_owned());
+            }
+        }
+    }
+    for (path, text) in files {
         if crate::describe::in_engine_folder(path) {
             continue;
         }
         let words = words_of(text);
         for (i, word) in words.iter().enumerate() {
+            // new Name { … after = … }
+            if word == "new"
+                && let [name, open, ..] = &words[i + 1..]
+                && open == "{"
+                && crate::timers::valid_name(name)
+                && !sounds.contains(name.as_str())
+                && !declared.contains(name)
+                && timing_inside(&words[i + 3..])
+            {
+                names.insert(name.clone());
+                if names.len() >= MAX_NAMES {
+                    return names.into_iter().collect();
+                }
+                continue;
+            }
             if !STARTS.contains(&word.as_str()) {
                 continue;
             }
@@ -50,6 +90,27 @@ pub fn names_started(code: &Code) -> Vec<String> {
         }
     }
     names.into_iter().collect()
+}
+
+/// Whether the braces that `words` start inside (just after the `{`)
+/// set one of a timer's fields at their own level: `after =`.
+fn timing_inside(words: &[String]) -> bool {
+    let mut depth = 0usize;
+    for (i, word) in words.iter().enumerate() {
+        match word.as_str() {
+            "{" | "[" | "(" => depth += 1,
+            "}" | "]" | ")" if depth == 0 => return false,
+            "}" | "]" | ")" => depth -= 1,
+            w if depth == 0
+                && crate::made::TIMINGS.contains(&w)
+                && words.get(i + 1).is_some_and(|n| n == "=") =>
+            {
+                return true;
+            }
+            _ => {}
+        }
+    }
+    false
 }
 
 /// The words and marks of Lust `text`, with its comments and text left

@@ -16,13 +16,14 @@ Why not count seconds yourself, in a field? You can (`left = left - dt;`), but a
 ## How to use it
 
 ### Start a timer, and hear it finish
-Inside a component, call `startTimer` with the timer's name and how many seconds to wait. When the time has passed, the component gets the event `TimerFinished`, carrying which timer it was:
+Inside a component, make the timer with `new`, saying how many seconds to wait: `new DoorOpens { after = 2.0 };`. Making something is always `new` in game code, a timer as much as a sound or a shot, and each timer is a class Solis writes into `solis/made.lst`, which you fetch by name. When the time has passed, the component gets the event `TimerFinished`, carrying which timer it was:
 
 ```lust
 -- door.lst: a door that opens two seconds after its switch is pulled.
 fetch "solis/world":World;
 fetch "solis/project":Timer;
 fetch "solis/timers":TimerFinished;
+fetch "solis/made":DoorOpens;
 
 event SwitchPulled();
 
@@ -33,7 +34,7 @@ component Door {
 
     -- The switch sends this; the door waits two seconds.
     on SwitchPulled() {
-        startTimer(Timer.DoorOpens, 2.0);
+        new DoorOpens { after = 2.0 };
         World:say("The door rumbles...");
     }
 
@@ -109,22 +110,23 @@ function Door:on_TimerFinished(which)
 end
 ```
 
-**Naming a timer.** In Lust a timer's name is one of the game's `Timer` names, `Timer.DoorOpens`, which you bring in with `fetch "solis/project":Timer;`. There's no list to keep anywhere: **the call that starts a timer names it.** Solis reads your Lust, finds every name a `startTimer`, `startTimerEvery` or `startTimerAtHour` gives, and writes them into `solis/project.lst` as the state `Timer`. So a name misspelt anywhere else (`stopTimer(Timer.DoorOpnes)`, `is which == Timer.DorOpens?`) is a mistake in [Problems](problems.md) before the game runs. In Lua and Rust a timer is its name as text (`"DoorOpens"`): a capital letter first, then letters, digits and `_`.
+**Naming a timer.** There's no list to keep anywhere: **the `new` that makes a timer names it.** Solis reads your Lust, finds every `new` of a name that isn't anything else with `after`, `every` or `atHour` in its braces, and writes each as a class into `solis/made.lst` (`new DoorOpens { … }`, fetched with `fetch "solis/made":DoorOpens;`) and as one of the game's `Timer` names into `solis/project.lst` (`Timer.DoorOpens`, for `TimerFinished`, `stopTimer` and the rest, fetched with `fetch "solis/project":Timer;`). A timer's name can't be one the game already uses (a component called `DoorOpens`, say): the Console says so, and you give the timer another. So a name misspelt anywhere else (`stopTimer(Timer.DoorOpnes)`, `is which == Timer.DorOpens?`) is a mistake in [Problems](problems.md) before the game runs. In Lua and Rust a timer is its name as text (`"DoorOpens"`): a capital letter first, then letters, digits and `_`.
 
-**A timer is its component's own.** Two components can each have a timer called `Wave`, even on the same entity, and they never mix: `TimerFinished` goes only to the component that started the timer, and the other components on the entity don't hear it. That's also why the calls are made **bare, inside the component** (`startTimer(...)`, not `other:startTimer(...)`): starting a timer on another entity, or in a game-wide object or a tween, is a mistake that stops with its line.
+**A timer is its component's own.** Two components can each have a timer called `Wave`, even on the same entity, and they never mix: `TimerFinished` goes only to the component that started the timer, and the other components on the entity don't hear it. That's also why a timer is made **inside the component's own code**, and belongs to the entity whose code makes it: made in a game-wide object's update, where no entity's code runs, it's a mistake that stops with its line.
 
 **Starting a timer that's already running starts it again** from the new time: the old wait is forgotten. So start a timer once, when the thing happens (the switch is pulled), not every tick: started every tick, it never finishes.
 
 **How long:** the seconds are rounded to the nearest tick (a 60th of a second). `0` finishes on the next tick, never in the same one. The longest wait is about 115 days of game time.
 
 ### Repeat every few seconds
-`startTimerEvery` finishes again and again, until you stop it:
+`every` finishes again and again, until you stop it:
 
 ```lust
 -- spawner.lst: a wave every five seconds, until the tenth.
 fetch "solis/world":World;
 fetch "solis/project":[Timer, Module];
 fetch "solis/timers":TimerFinished;
+fetch "solis/made":Wave;
 
 component Spawner {
     has {
@@ -135,7 +137,7 @@ component Spawner {
     method update(float dt) {
         -- Start once, on the first tick.
         is not started? then {
-            startTimerEvery(Timer.Wave, 5.0);
+            new Wave { every = 5.0 };
             started = true;
         }
     }
@@ -223,13 +225,14 @@ end
 A repeating timer keeps its **rhythm**: each turn is counted from the last turn, not from when your code handled it, so it never drifts. At a game speed so fast that several turns pass in one tick, it finishes once that tick and carries on in step. The shortest repeat is one tick.
 
 ### Each day at a time of day
-With [day and night](sky-fog-and-exposure.md) on the Environment, the game has a clock. `startTimerAtHour` finishes each day as that clock passes an hour (`6.5` is half past six), until you stop it:
+With [day and night](sky-fog-and-exposure.md) on the Environment, the game has a clock. `atHour` finishes each day as that clock passes an hour (`6.5` is half past six), until you stop it:
 
 ```lust
 -- rooster.lst: crows each morning, and a bed that skips to the morning.
 fetch "solis/world":World;
 fetch "solis/project":Timer;
 fetch "solis/timers":TimerFinished;
+fetch "solis/made":Dawn;
 
 component Rooster {
     has {
@@ -238,7 +241,7 @@ component Rooster {
 
     method update(float dt) {
         is not started? then {
-            startTimerAtHour(Timer.Dawn, 6.0);
+            new Dawn { atHour = 6.0 };
             started = true;
         }
     }
@@ -313,15 +316,15 @@ end
 ### Stop a timer, and ask about one
 | Call | What it does |
 |---|---|
-| `startTimer(Timer.X, seconds)` | Finishes once, that many seconds of game time from now. |
-| `startTimerEvery(Timer.X, seconds)` | Finishes every that many seconds, until stopped. |
-| `startTimerAtHour(Timer.X, hour)` | Finishes each day as the day's clock passes that hour, until stopped. |
-| `stopTimer(Timer.X)` | Stops it, so it doesn't finish. One that isn't running changes nothing. |
-| `timerRunning(Timer.X)` | Whether it's running: `is timerRunning(Timer.DoorOpens)? then { … }`. |
-| `timeLeft(Timer.X)` | The seconds of game time left; 0 when it isn't running. |
+| `new DoorOpens { after = seconds };` | Finishes once, that many seconds of game time from now. |
+| `new DoorOpens { every = seconds };` | Finishes every that many seconds, until stopped. |
+| `new DoorOpens { atHour = hour };` | Finishes each day as the day's clock passes that hour, until stopped. |
+| `stopTimer(Timer.DoorOpens)` | Stops it, so it doesn't finish. One that isn't running changes nothing. |
+| `timerRunning(Timer.DoorOpens)` | Whether it's running: `is timerRunning(Timer.DoorOpens)? then { … }`. |
+| `timeLeft(Timer.DoorOpens)` | The seconds of game time left; 0 when it isn't running. |
 | `on TimerFinished(Timer which)` | Heard when one of this component's timers finishes. |
 
-Starting and stopping land at the **end of the tick**, as moves do, and `timerRunning` and `timeLeft` answer as the tick started: a timer started this tick is running from the next. In Lua they're `solis.entity.startTimer(self.me, "DoorOpens", 2.0)` and so on; in Rust, through the component's host: `start_timer`, `stop_timer` and `timer_left` (which gives `None` when the timer isn't running).
+A `new` takes exactly one of `after`, `every` and `atHour`: none, or two, stops with its line. Starting and stopping land at the **end of the tick**, as moves do, and `timerRunning` and `timeLeft` answer as the tick started: a timer started this tick is running from the next. In Lua they're `solis.entity.startTimer(self.me, "DoorOpens", 2.0)` and so on; in Rust, through the component's host: `start_timer`, `stop_timer` and `timer_left` (which gives `None` when the timer isn't running).
 
 ### Order
 Timers that finish in the same tick are heard in the tick's **first round of events**, after the components' `update`s, in a fixed order: the one due earliest first, then by entity (in the order of their IDs), then by component (by name), then in the order they were started. So the same game comes out the same on one core or sixteen.
@@ -340,6 +343,7 @@ Timers that finish in the same tick are heard in the tick's **first round of eve
 fetch "solis/world":World;
 fetch "solis/project":Timer;
 fetch "solis/timers":TimerFinished;
+fetch "solis/made":NextStep;
 
 state Step = [WalkThere, WaitThere, WaitAfterHello, WalkHome, Home];
 
@@ -355,7 +359,7 @@ component Messenger {
         -- Walking takes every tick; waiting is the timer's.
         is step == Step.WalkThere && arrived(well, dt)? then {
             step = Step.WaitThere;
-            startTimer(Timer.NextStep, 1.0);
+            new NextStep { after = 1.0 };
         }
         is step == Step.WalkHome && arrived(home, dt)? then {
             step = Step.Home;
@@ -367,7 +371,7 @@ component Messenger {
         is step == Step.WaitThere? then {
             World:say("Hello!");
             step = Step.WaitAfterHello;
-            startTimer(Timer.NextStep, 2.0);
+            new NextStep { after = 2.0 };
         } or is step == Step.WaitAfterHello? then {
             step = Step.WalkHome;
         }
@@ -519,13 +523,14 @@ Timers have no settings of their own: they're started and stopped by game code. 
 Timers have no shortcuts.
 
 ## Tips and common problems
-- **Problem:** a timer never finishes. **Why:** it's started again every tick (`startTimer` in `update` with nothing around it), so each start pushes it back. **Fix:** start it once, when the thing happens, or check `timerRunning` first.
-- **Problem:** Problems says `Timer.DoorOpnes` isn't a Timer. **Why:** no `startTimer` in the game's Lust names it: a typo, or the timer was renamed. **Fix:** use the name the start call gives, or start the timer under that name.
-- **Problem:** Problems says a timer's name isn't a `Timer`, though it's set in a variable first (`Timer next = Timer.Later;`). **Why:** only a start call names a timer. **Fix:** start it by name somewhere (`startTimer(Timer.Later, …)`), even if other code chooses which to start.
+- **Problem:** a timer never finishes. **Why:** it's made again every tick (a `new` in `update` with nothing around it), so each start pushes it back. **Fix:** start it once, when the thing happens, or check `timerRunning` first.
+- **Problem:** Problems says `Timer.DoorOpnes` isn't a Timer. **Why:** no `new` in the game's Lust makes it: a typo, or the timer was renamed. **Fix:** use the name its `new` gives, or make the timer under that name.
+- **Problem:** Problems says a timer's name isn't a `Timer`, though it's set in a variable first (`Timer next = Timer.Later;`). **Why:** only a `new` names a timer. **Fix:** start it by name somewhere (`new Later { after = … }`), even if other code chooses which to start.
 - **Problem:** a timer stopped when the code changed while playing. **Why:** its name, or its component, is gone from the new code; the Console says which. **Fix:** start it again, under its new name.
 - **Problem:** a timer stopped, and its `TimerFinished` never came, though nothing stopped it. **Why:** it was started while its component was in a state of its own, and the state changed. **Fix:** start it after setting the new state, or call `keepStarted()` after starting it ([States that start and stop](states.md)).
-- **Problem:** `timerRunning` says no just after `startTimer`. **Why:** starts land at the end of the tick, so every core sees the same timers during it. **Fix:** nothing to fix: from the next tick it says yes.
-- **Problem:** `startTimer` stops with "a timer belongs to the component that starts it". **Why:** it was called on another entity, or in a game-wide object or a tween. **Fix:** send that entity an event, and let its own component start its timer.
+- **Problem:** `timerRunning` says no just after the timer's `new`. **Why:** starts land at the end of the tick, so every core sees the same timers during it. **Fix:** nothing to fix: from the next tick it says yes.
+- **Problem:** a timer's `new` stops with "a timer belongs to an entity". **Why:** it was made where no entity's code runs: a game-wide object's update. **Fix:** send an entity an event, and let its own component make the timer.
+- **Problem:** Problems says a timer "is in solis/made.lst". **Why:** the file makes it with `new` without fetching it. **Fix:** add `fetch "solis/made":DoorOpens;` at the top, as the message says.
 
 ## Related
 - [Game code](game-code.md): components, events, the tick, tweens and game-wide objects.

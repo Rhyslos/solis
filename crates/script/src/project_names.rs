@@ -257,8 +257,8 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {module}\n\n\
          -- The project's input actions (Edit > Input actions…): Input:pressed(Action.Jump).\n\
          {action}\n\n\
-         -- The project's sound events, by their files' names: Audio:play(Sound.Footstep) for\n\
-         -- sfx/footstep.\n\
+         -- The project's sound events, by their files' names: Sound.Footstep for sfx/footstep,\n\
+         -- played with new Footstep {{ … }}; (solis/made.lst).\n\
          {sound}\n\n\
          -- The Mixer's buses: Audio:setVolume(Bus.Music, 0.5).\n\
          {bus}\n\n\
@@ -275,7 +275,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {picture}\n\n\
          -- The project's tags (Project settings > Tags): is hasTag(Tag.Enemy)?, World:nearest(Tag.Enemy, place).\n\
          {tag}\n\n\
-         -- The game's timers, each named where code starts it: startTimer(Timer.DoorOpens, 2.0).\n\
+         -- The game's timers, each named where code makes it: new DoorOpens {{ after = 2.0 }};.\n\
          {timer}\n\n\
          -- The project's levels: Level.Cave for forest/cave.sollevel.\n\
          {level}\n\n\

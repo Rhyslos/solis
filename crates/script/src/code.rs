@@ -106,6 +106,9 @@ pub struct Compiled {
     /// The file each of the project's names stands for (`Module.Fighter`
     /// to `ships/fighter`), read from `solis/project.lst` (decision 0137).
     pub name_paths: std::sync::Arc<crate::project_names::NamePaths>,
+    /// The classes game code makes with `new` (the uniformity pass, U6):
+    /// `solis/made.lst`, written for this code ([`crate::made`]).
+    pub made: std::sync::Arc<crate::made::MadeList>,
 }
 
 /// The text keys `files` (the game's code) use, in small letters: those
@@ -203,6 +206,23 @@ fn moved_message(message: String) -> String {
                     field.object, field.object
                 );
             }
+        }
+    }
+    // A call that's new now (the uniformity pass, U6a): `Audio:playAt(…)`
+    // is `new Footstep { at = place };`.
+    for (key, written) in crate::describe::MADE_NOW {
+        let Some(native) = crate::describe::NATIVES.iter().find(|n| n.key() == *key) else {
+            continue;
+        };
+        let missing = match native.owner {
+            "entity" => {
+                message == format!("there's no method called {}.", native.name)
+                    || message.ends_with(&format!(" has no {}.", native.name))
+            }
+            owner => message == format!("{owner} has no method called {}.", native.name),
+        };
+        if missing {
+            return format!("{} is made with new now: write {written}", native.shown());
         }
     }
     for moved in crate::describe::MOVED {
@@ -498,6 +518,7 @@ fn compile_here(
     let mut problems = Vec::new();
     let mut lust = None;
     let mut reach = crate::component_code::Reach::default();
+    let mut made = crate::made::MadeList::default();
     let own_lust = code.has_own_lust();
     if own_lust {
         let mut missing = check_entry(code);
@@ -516,7 +537,12 @@ fn compile_here(
                 crate::component_code::write(level::lust_data::ENGINE_FOLDER, &code.files, ENTRY);
             reach.readable = written.readable;
             reach.notes = written.notes;
-            let generated = written.files;
+            // What game code makes with new (the uniformity pass, U6):
+            // solis/made.lst, written for this code too.
+            let made_now = crate::made::write(level::lust_data::ENGINE_FOLDER, &written.files);
+            reach.notes.extend(made_now.notes);
+            made = made_now.made;
+            let generated = made_now.files;
             // Without the editor's files for things the game never
             // fetches, which would want engine objects it never reaches.
             let files = crate::reach::for_lust(&generated, ENTRY);
@@ -585,6 +611,7 @@ fn compile_here(
         components: reach,
         engine_reads: Vec::new(),
         name_paths: Default::default(),
+        made: std::sync::Arc::new(made),
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.

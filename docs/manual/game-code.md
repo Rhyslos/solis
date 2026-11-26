@@ -178,7 +178,7 @@ So a game runs the same way on a computer with 2 cores or 32. Most code never no
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
-**When code changes too much at once:** a loop that calls `moveTo`, `World:fire`, `World:spawn` or `World:say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
+**When code changes too much at once:** a loop that calls `moveTo`, `new Shot`, `World:spawn` or `World:say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
 
 **When the whole tick is too slow:** if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
 
@@ -458,7 +458,7 @@ Other code files can sit in any folder of the project. Fetch them by their path 
 Lasers, bolts and tracer rounds come in their thousands, so they aren't entities: they're [projectiles](concepts.md#game-code), which Solis moves itself, every tick, on every core.
 
 ```lust
-fetch "solis/world":World;
+fetch "solis/made":Shot;
 
 component Turret {
     has {
@@ -468,7 +468,7 @@ component Turret {
     method update(float dt) {
         cooldown = cooldown - 1;
         is cooldown <= 0? then {
-            World:fire(position(), [0, 1, 0], 60, 2, [4, 0.3, 0.2]);
+            new Shot { from = position(), direction = [0, 1, 0], speed = 60, colour = [4, 0.3, 0.2] };
             cooldown = 30;
         }
     }
@@ -522,7 +522,7 @@ function Turret:update(dt)
 end
 ```
 
-`fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser.
+A shot is made with `new`, like anything the game makes: `new Shot { … }` fires one, from `solis/made`. Its fields are where it starts (`from`), which way it flies (`direction`, any length), its `speed` in metres a second (20 if left out), how long it lives in seconds (`life`, 2 if left out), and its `colour` as red, green and blue (white if left out). Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser. In Lua it's still `solis.World:fire(from, direction, speed, life, colour)`.
 
 - It flies in a straight line and disappears when its time is up. It doesn't hit anything: lasers are kept out of [physics](physics.md) so a million can fly. To see what a shot would hit, look along its line with `castRay`.
 - It's drawn in the **Game** panel as a glowing streak, as long as it flies in two frames. Streaks add their light where they cross.
@@ -968,11 +968,10 @@ end
 
 ## Sounds
 
-Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, named from the file, so `sfx/footstep.solsound` is `Sound.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
+Game code plays a [sound event](sound-events.md) by making it with `new`, like anything else the game makes. Solis writes a class for each event into `solis/made.lst`, named from its file, so `sfx/footstep.solsound` is `Footstep` (and `Sound.Footstep` in `solis/project.lst`, for fields and pickers). Fetch the ones a file plays from `solis/made`. A misspelt or deleted event is a mistake before the game runs, and an event whose name the game already uses for something else has `Sound` added (`FootstepSound`; the Console says so).
 
 ```lust
-fetch "solis/sound":Audio;
-fetch "solis/project":Sound;
+fetch "solis/made":Footstep;
 
 component Walker {
     has {
@@ -982,7 +981,7 @@ component Walker {
     method update(float dt) {
         steps = steps + 1;
         is steps % 30 == 0? then {
-            Audio:playAt(Sound.Footstep, position());
+            new Footstep { at = position() };
         }
     }
 }
@@ -1027,9 +1026,11 @@ function Walker:update(dt)
 end
 ```
 
-- `Audio:play(Sound.Theme)` plays it the same everywhere: music, the interface.
-- `Audio:playAt(Sound.Footstep, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
-- `playSound(Sound.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (set `soundPlaying` for that).
+- `new Engine {};` plays it on the entity whose code makes it, following it as it moves: an engine, a voice.
+- `new Footstep { at = place };` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
+- `new Hurt { on = target };` plays it on another entity, following it.
+- `new Theme { everywhere = true };` plays it the same everywhere: music, the interface. So does `new Theme {};` made where no entity's code runs (a game-wide object's update).
+- `stopSounds()` stops the sounds on the component's entity (`target:stopSounds()` on another), with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (set `soundPlaying` for that).
 - A field `bool soundPlaying` in the component's `has` turns its entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off: `soundPlaying = true;`. On another entity, `target:setSoundPlaying(true)`.
 - `Audio:setVolume(Bus.Music, volume)` sets a [bus](mixer.md) for the rest of the play (the buses are the Mixer's, as `state Bus` in `solis/project.lst`; the UI bus is `Bus.Ui`, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
@@ -1058,7 +1059,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `float World:time()` | How long the game has been running, in seconds. |
 | `solis/world` | `entity World:the(Component which)` | The one entity with this component, as the tick started; none, or more than one, stops the component ([Reading other entities](#reading-other-entities)). |
 | `solis/components` | `KnightReading entity:knight()`, one for each component | A copy of another entity's component as the tick started, read-only, or `nothing` ([Reading other entities](#reading-other-entities)). |
-| `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
+| `solis/made` | `new Shot { vec3 from, vec3 direction, float speed, float life, vec3 colour }` | Fires a projectile (see Projectiles, above). |
 | `solis/world` | `entity World:spawn(Module which, vec3 place)` | Makes a copy of one of the project's modules at a place (see Making and removing entities, below). |
 | `solis/world` | `entity World:spawnWith(Module which, vec3 place, SpawnValues array values)` | Makes a copy as `spawn` does, its root's components given these values before their first update ([Spawning with values](#spawning-with-values)). |
 | `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
@@ -1079,10 +1080,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |
 | `solis/project` | `state Module` | The project's modules, by their files' names (`Module.Fighter`). |
-| `solis/sound` | `Audio:play(Sound event)` | Plays a sound event the same everywhere (see Sounds, above). |
-| `solis/sound` | `Audio:playAt(Sound event, vec3 place)` | Plays a sound event at a place in the world. |
+| `solis/made` | `new Footstep { vec3 at, entity on, bool everywhere }`, one for each sound event | Plays a sound event: on the entity whose code makes it, at a place (`at`), on another entity (`on`), or the same everywhere (`everywhere = true`) (see Sounds, above). |
 | `solis/sound` | `Audio:setVolume(Bus bus, float volume)` | Sets a bus's volume for the rest of the play, 0 to 1. |
-| any entity | `playSound(Sound event)` | Plays a sound event on the entity, following it. |
 | any entity | `stopSounds()` | Stops the sounds on the entity, with a short fade. |
 | a component | field `bool soundPlaying` | Turns its entity's AudioSource on or off (`target:setSoundPlaying(bool playing)` on another). |
 | `solis/project` | `state Sound`, `state Bus` | The project's sound events (`Sound.Footstep`) and the Mixer's buses (`Bus.Music`). |
@@ -1099,8 +1098,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `finishTyping(Screen which)` | Shows all the text that screen is typing out, at the end of the tick; `TypingFinished` follows ([Text effects](text-effects.md)). |
 | `solis/screens` | event `TypingFinished(Screen which)` | Sent to the entity showing a screen once its text has typed out (its Screen's Typing speed), with the next tick's input. |
 | `solis/project` | `state Screen` | The game's screens, by their files in `ui/` (`Screen.PauseMenu` for `ui/pauseMenu.lst`). |
-| a component | `startTimer(Timer which, float seconds)` | Starts one of the component's timers: `TimerFinished` comes that many seconds of game time later; started again if it runs ([Timers](timers.md)). |
-| a component | `startTimerEvery(Timer which, float seconds)`, `startTimerAtHour(Timer which, float hour)` | A timer that finishes every so often, or each day as the day's clock passes an hour, until stopped. |
+| `solis/made` | `new DoorOpens { float after, float every, float atHour }`, one for each timer | Starts one of the component's timers, named where it's made: `after = 2` finishes once, that many seconds of game time later (started again if it runs); `every = 5` again and again; `atHour = 6` each day as the day's clock passes that hour ([Timers](timers.md)). |
 | a component | `stopTimer(Timer which)`, `bool timerRunning(Timer which)`, `float timeLeft(Timer which)` | Stops a timer; whether it runs, and the seconds it has left, as the tick started. |
 | `solis/timers` | event `TimerFinished(Timer which)` | Sent to the component that started a timer when it finishes, in the tick's first round of events. |
 | `solis/project` | `state Timer` | The game's timers, each named where its Lust starts it (`Timer.DoorOpens`). |
@@ -1138,7 +1136,8 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `positionOf(e)`, `moveTo(e, p)` | `e:position()`, `e:moveTo(p)` (bare for the component's own entity) |
 | `rotationOf(e)`, `turnTo(e, r)`, `nameOf(e)`, `despawn(e)` | `e:rotation()`, `e:turnTo(r)`, `e:name()`, `e:despawn()` |
 | `turnTo(this, facingAlong(d))` | `face(d)` |
-| `say`, `time`, `frameTime`, `find`, `fire`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
+| `say`, `time`, `frameTime`, `find`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
+| `fire` | `new Shot { from = muzzle, direction = ahead };` |
 | `spawn("ships/fighter", p)` | `World:spawn(Module.Fighter, p)` |
 | `Assembly.Ships.Fighter`, `fetch "solis/project":Assembly;` (assemblies are called modules, [decision 0118](../decisions/0118-the-editor-rethink.md)) | `Module.Fighter`, `fetch "solis/project":Module;`. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change. |
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
@@ -1146,8 +1145,8 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |
 | `push(e, f)`, `velocityOf(e)`, `setVelocity(e, v)` | `e:push(f)`, `e:velocity()`, `e:setVelocity(v)` |
 | `moveCharacter(e, w)`, `onGround(e)` | `e:walk(w)`, `e:grounded()` |
-| `playSound("sfx/x")`, `playSoundAt("sfx/x", p)` | `Audio:play(Sound.X)`, `Audio:playAt(Sound.X, p)` |
-| `playSoundOn("sfx/x", e)`, `stopSoundsOn(e)`, `setSoundPlaying(e, b)` | `e:playSound(Sound.X)`, `e:stopSounds()`, `e:setSoundPlaying(b)` |
+| `playSound("sfx/x")`, `playSoundAt("sfx/x", p)` | `new X { everywhere = true };`, `new X { at = p };` |
+| `playSoundOn("sfx/x", e)`, `stopSoundsOn(e)`, `setSoundPlaying(e, b)` | `new X { on = e };`, `e:stopSounds()`, `e:setSoundPlaying(b)` |
 | `setBusVolume("Music", v)` | `Audio:setVolume(Bus.Music, v)` |
 | `playClip(e, "walk")`, `replayClip`, `stopClip(e)` | `e:animate(Clip.FarmerWalk)`, `e:animateFromStart(…)`, `e:stopAnimation()` |
 | `on AnimationCue(string name)`, `on ClipFinished(string clip)` | `on CueReached(Cue cue)`, `on ClipFinished(Clip clip)` |

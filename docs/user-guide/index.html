@@ -1351,7 +1351,7 @@ footer p { color: var(--muted); }
 <li><strong>Picker:</strong> a field holding one of the project's names (a sound, a picture, a module…), shown as a list to search and pick from, with pictures and a ▶ for sounds; a file dragged from the Library onto it sets it. See <a href="#game-code--field-hints-and-the-projects-names">Game code</a>.</li>
 <li><strong>Native method:</strong> a method Lust knows the name and values of, but whose work is done by the engine, such as <code>moveTo</code> or <code>World:say</code>. The engine's are listed in the <code>solis</code> folder Solis writes into each project.</li>
 <li><strong>Mistake (in code):</strong> something the checker finds before the code runs, such as a misspelt name or text where a number should be. Solis lists each one with its file, line and column (how far along the line).</li>
-<li><strong>Projectile:</strong> something small and fast a game fires in its thousands (a laser, a bullet), which isn't an entity: Solis moves it every tick until its time is up, and draws all of them in one go. Game code fires one with <code>fire</code>. See <a href="#game-code--projectiles">Game code</a>.</li>
+<li><strong>Projectile:</strong> something small and fast a game fires in its thousands (a laser, a bullet), which isn't an entity: Solis moves it every tick until its time is up, and draws all of them in one go. Game code fires one with <code>new Shot { … }</code>. See <a href="#game-code--projectiles">Game code</a>.</li>
 <li><strong>Game-wide object:</strong> one thing for the whole game rather than an entity (a clock, the money, the weather), written as a Lust <code>object</code>. Solis runs its <code>update</code> once a tick before any component, and keeps it in save games; components read it but only its own <code>update</code> changes it. See <a href="#game-code--game-wide-objects">Game code</a>.</li>
 <li><strong>Spawn:</strong> game code making an entity while the game runs (a copy of a <a href="#modules">module</a>); <strong>despawn</strong> takes one away. See <a href="#game-code--making-and-removing-entities">Game code</a>.</li>
 <li><strong>Benchmark:</strong> a ready-made test of how much a computer can play at once. Solis's is two fleets of ships firing lasers: see <a href="#benchmark">The benchmark</a>.</li>
@@ -1361,7 +1361,7 @@ footer p { color: var(--muted); }
 <li><strong>Event:</strong> a message one component sends to an entity, such as &quot;you were hit, for 2.5&quot;. Each of that entity's components that cares reacts to it. Events let components work together without knowing about each other, even when they're written in different languages.</li>
 <li><strong>Data table:</strong> a file of rows and typed columns, such as every item with its price, edited in the Table tab like a spreadsheet. Game code reads a row by its ID (<code>Items:row(Item.IronSword).price</code>) with every row and column checked before the game runs; while the game plays, tables don't change. See <a href="#data-tables">Data tables</a>.</li>
 <li><strong>Tag:</strong> a label you give entities, such as Enemy or Collectible, so game code can find every entity of a kind: &quot;all enemies within 3 m&quot;, &quot;the nearest collectible&quot;. The project keeps its own list of tags (Project settings › Tags), and game code names each as <code>Tag.Enemy</code>, so a misspelt tag is a mistake before the game runs. See <a href="#tags">Tags</a>.</li>
-<li><strong>Timer:</strong> a named wait a component starts in game code (&quot;open in 2 seconds&quot;, &quot;every 5 seconds&quot;, &quot;each day at six&quot;), after which it hears <code>TimerFinished</code>. Timers count <strong>game time</strong>, in whole ticks, so they follow the game's speed and stand still while it's paused, and they're kept in save games. Each is named where code starts it (<code>startTimer(Timer.DoorOpens, 2.0)</code>), so a misspelt name elsewhere is a mistake before the game runs. One started while its component is in a state of its own ends with that state (<a href="#states">States that start and stop</a>). See <a href="#timers">Timers</a>.</li>
+<li><strong>Timer:</strong> a named wait a component starts in game code (&quot;open in 2 seconds&quot;, &quot;every 5 seconds&quot;, &quot;each day at six&quot;), after which it hears <code>TimerFinished</code>. Timers count <strong>game time</strong>, in whole ticks, so they follow the game's speed and stand still while it's paused, and they're kept in save games. Each is named where code starts it (<code>new DoorOpens { after = 2.0 }</code>), so a misspelt name elsewhere is a mistake before the game runs. One started while its component is in a state of its own ends with that state (<a href="#states">States that start and stop</a>). See <a href="#timers">Timers</a>.</li>
 <li><a id="concepts--text-key"></a><strong>Text key:</strong> the name a line of the game's text is found by, a group and a name such as <code>Shop.Welcome</code>, made once and never changed. Game code names it <code>Text.ShopWelcome</code>, so a misspelt key is a mistake before the game runs. See <a href="#translations">Translations</a>.</li>
 <li><a id="concepts--main-language"></a><strong>Main language:</strong> the language a game is written in (English unless you choose another). Its text is shown wherever another language has no line yet, so a game works before anything is translated. See <a href="#translations">Translations</a>.</li>
 <li><a id="concepts--fluent"></a><strong>Fluent:</strong> the format each language's text is kept in (<code>.ftl</code> files), which translators know: a key, <code>=</code>, and its words, with values in <code>{ $name }</code> and plural forms each language writes in its own shape. See <a href="#translations">Translations</a>.</li>
@@ -3783,7 +3783,7 @@ After 121 ticks:
 <tr><td>Volume</td><td>How loud, in decibels (dB): 0 is as recorded, −6 about half as loud, +6 about twice. The second number is how much each play may be louder or quieter: 1 to 3 dB is subtle and natural.</td></tr>
 <tr><td>Pitch</td><td>How high or low, in semitones (st): 12 is an octave up. The second number is how much each play may differ: 0.5 to 2 st keeps footsteps fresh without sounding odd.</td></tr>
 <tr><td>Bus</td><td>Which <a href="#mixer">bus</a> it plays through (Music, Effects, Voice, Ambience, UI, or one of your own), so its fader, ducking and a game's options turn it up or down with the others.</td></tr>
-<tr><td>Loop</td><td>Plays again from the start when it ends: an engine hum, a siren, music. Played by game code, it goes on until <code>stopSounds</code> stops it or the game stops, so play it on an entity (<code>playSoundOn</code>) to be able to stop it. An <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> always loops, whatever this says.</td></tr>
+<tr><td>Loop</td><td>Plays again from the start when it ends: an engine hum, a siren, music. Played by game code, it goes on until <code>stopSounds</code> stops it or the game stops, so play it on an entity (<code>new Engine {};</code> in its code, or <code>new Engine { on = target };</code>) to be able to stop it. An <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> always loops, whatever this says.</td></tr>
 <tr><td>Placement</td><td><strong>In the world</strong>: it comes from a place, quieter far away and from its direction (a footstep, a door). It plays as one channel (mono), mixed down from stereo if need be, so it can come from one side. <strong>Everywhere</strong>: heard the same wherever you are, as recorded, in stereo if the file is (music, the interface). Each take in the list says whether its file is mono or stereo.</td></tr>
 <tr><td>Full until, Silent past</td><td>For sounds in the world: full volume up to the first distance, silent past the second, in metres. A footstep might be 2 m and 30 m; an explosion 10 m and 300 m.</td></tr>
 <tr><td>Fade</td><td>How it gets quieter between the two distances. <strong>Realistic</strong> drops quickly at first, as sound does outdoors; <strong>Even</strong> drops steadily; <strong>None</strong> stays full until the far distance.</td></tr>
@@ -3908,7 +3908,7 @@ After 121 ticks:
 <li>In Properties, <strong>+ Component › ReverbZone</strong>.</li>
 <li>Pick its <strong>Shape</strong>: a <strong>Box</strong> for rooms, halls and tunnels (set its <strong>Size</strong> along X, Y and Z), or a <strong>Ball</strong> for caves and domes (set its <strong>Radius</strong>). With the entity selected, the zone is outlined in the viewport in teal, so you can see what it covers. It grows, turns and moves with its entity.</li>
 <li>Pick what it <strong>Sounds like</strong>, and its <strong>Strength</strong>.</li>
-<li>Press <strong>Play</strong> and move the camera in and out: sounds placed in the world (<code>Audio:playAt</code>, an entity's <code>playSound</code>, AudioSources) echo inside, and the echo fades in across the <strong>Soft edge</strong> as you go in.</li>
+<li>Press <strong>Play</strong> and move the camera in and out: sounds placed in the world (<code>new Footstep { at = place };</code>, a sound on an entity, AudioSources) echo inside, and the echo fades in across the <strong>Soft edge</strong> as you go in.</li>
 </ol>
 <p>Only sounds placed <strong>In the world</strong> get the echo; music and the interface, heard the same everywhere, don't. Echoes follow their bus: turn a bus down or mute it in the <a href="#mixer">Mixer</a> and its echoes go with it.</p>
 </section>
@@ -4444,7 +4444,7 @@ After 121 ticks:
 </ul>
 <p>So a game runs the same way on a computer with 2 cores or 32. Most code never notices: a unit chasing another simply aims at where the other was a sixtieth of a second ago. Code that needs to see a move straight away should move things from one component, or tell the other with an event.</p>
 <p><strong>When something goes wrong while it runs,</strong> such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: &quot;Divider on Splitter stopped: main.lst, line 8: …&quot;. The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.</p>
-<p><strong>When code changes too much at once:</strong> a loop that calls <code>moveTo</code>, <code>World:fire</code>, <code>World:spawn</code> or <code>World:say</code> hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.</p>
+<p><strong>When code changes too much at once:</strong> a loop that calls <code>moveTo</code>, <code>new Shot</code>, <code>World:spawn</code> or <code>World:say</code> hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.</p>
 <p><strong>When the whole tick is too slow:</strong> if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game <strong>pauses</strong>, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press <strong>Pause</strong> or <strong>Play</strong> to carry on. Without this, the game would try to catch up and the editor would hardly respond.</p>
 <p><strong>What game code says</strong> goes to the Console a line at a time. A very long line is cut short, and past 200 lines in one tick the rest are counted (&quot;Game code said 800 more lines just now&quot;), so a component that talks too much can't drown the Console or fill the computer's memory.</p>
 </section>
@@ -4699,7 +4699,7 @@ After 121 ticks:
 <p>Lasers, bolts and tracer rounds come in their thousands, so they aren't entities: they're <a href="#concepts--game-code">projectiles</a>, which Solis moves itself, every tick, on every core.</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
-<pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
+<pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Shot</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Turret</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
@@ -4709,7 +4709,7 @@ After 121 ticks:
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         cooldown = cooldown - <span class="tk-v">1</span><span class="tk-p">;</span>
         <span class="tk-f">is</span> cooldown &lt;= <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-o">World</span><span class="tk-p">:</span>fire<span class="tk-p">(</span>position<span class="tk-p">(), [</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">1</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">],</span> <span class="tk-v">60</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">, [</span><span class="tk-v">4</span><span class="tk-p">,</span> <span class="tk-v">0.3</span><span class="tk-p">,</span> <span class="tk-v">0.2</span><span class="tk-p">]);</span>
+            <span class="tk-k">new</span> <span class="tk-n">Shot</span> <span class="tk-p">{</span> from = position<span class="tk-p">(),</span> direction = <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">1</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">],</span> speed = <span class="tk-v">60</span><span class="tk-p">,</span> <span class="tk-t">colour</span> = <span class="tk-p">[</span><span class="tk-v">4</span><span class="tk-p">,</span> <span class="tk-v">0.3</span><span class="tk-p">,</span> <span class="tk-v">0.2</span><span class="tk-p">] };</span>
             cooldown = <span class="tk-v">30</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -4756,7 +4756,7 @@ After 121 ticks:
     <span class="tk-k">end</span>
 <span class="tk-k">end</span></code></pre>
 </div>
-<p><code>fire</code> takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: <code>[4, 0.3, 0.2]</code> is a hot red laser.</p>
+<p>A shot is made with <code>new</code>, like anything the game makes: <code>new Shot { … }</code> fires one, from <code>solis/made</code>. Its fields are where it starts (<code>from</code>), which way it flies (<code>direction</code>, any length), its <code>speed</code> in metres a second (20 if left out), how long it lives in seconds (<code>life</code>, 2 if left out), and its <code>colour</code> as red, green and blue (white if left out). Above 1 glows brighter: <code>[4, 0.3, 0.2]</code> is a hot red laser. In Lua it's still <code>solis.World:fire(from, direction, speed, life, colour)</code>.</p>
 <ul>
 <li>It flies in a straight line and disappears when its time is up. It doesn't hit anything: lasers are kept out of <a href="#physics">physics</a> so a million can fly. To see what a shot would hit, look along its line with <code>castRay</code>.</li>
 <li>It's drawn in the <strong>Game</strong> panel as a glowing streak, as long as it flies in two frames. Streaks add their light where they cross.</li>
@@ -5171,11 +5171,10 @@ After 121 ticks:
 </section>
 <section id="game-code--sounds">
 <h3>Sounds<a class="anchor" href="#game-code--sounds" aria-label="Link to this section">#</a></h3>
-<p>Game code plays <a href="#sound-events">sound events</a> by the project's names for them: Solis writes each event into <code>solis/project.lst</code> as <code>state Sound</code>, named from the file, so <code>sfx/footstep.solsound</code> is <code>Sound.Footstep</code>. A misspelt or deleted event is a mistake before the game runs. Fetch <code>Audio</code> from <code>solis/sound</code> and <code>Sound</code> from <code>solis/project</code>:</p>
+<p>Game code plays a <a href="#sound-events">sound event</a> by making it with <code>new</code>, like anything else the game makes. Solis writes a class for each event into <code>solis/made.lst</code>, named from its file, so <code>sfx/footstep.solsound</code> is <code>Footstep</code> (and <code>Sound.Footstep</code> in <code>solis/project.lst</code>, for fields and pickers). Fetch the ones a file plays from <code>solis/made</code>. A misspelt or deleted event is a mistake before the game runs, and an event whose name the game already uses for something else has <code>Sound</code> added (<code>FootstepSound</code>; the Console says so).</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
-<pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/sound&quot;</span><span class="tk-p">:</span><span class="tk-n">Audio</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Sound</span><span class="tk-p">;</span>
+<pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Footstep</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Walker</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
@@ -5185,7 +5184,7 @@ After 121 ticks:
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         steps = steps + <span class="tk-v">1</span><span class="tk-p">;</span>
         <span class="tk-f">is</span> steps % <span class="tk-v">30</span> == <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-o">Audio</span><span class="tk-p">:</span>playAt<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-p">,</span> position<span class="tk-p">());</span>
+            <span class="tk-k">new</span> <span class="tk-n">Footstep</span> <span class="tk-p">{</span> at = position<span class="tk-p">() };</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -5224,9 +5223,11 @@ After 121 ticks:
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><code>Audio:play(Sound.Theme)</code> plays it the same everywhere: music, the interface.</li>
-<li><code>Audio:playAt(Sound.Footstep, place)</code> plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is <strong>In the world</strong>).</li>
-<li><code>playSound(Sound.Engine)</code> plays it on the component's entity and follows it as it moves: an engine, a voice (<code>target:playSound(…)</code> on another). <code>stopSounds()</code> stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (set <code>soundPlaying</code> for that).</li>
+<li><code>new Engine {};</code> plays it on the entity whose code makes it, following it as it moves: an engine, a voice.</li>
+<li><code>new Footstep { at = place };</code> plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is <strong>In the world</strong>).</li>
+<li><code>new Hurt { on = target };</code> plays it on another entity, following it.</li>
+<li><code>new Theme { everywhere = true };</code> plays it the same everywhere: music, the interface. So does <code>new Theme {};</code> made where no entity's code runs (a game-wide object's update).</li>
+<li><code>stopSounds()</code> stops the sounds on the component's entity (<code>target:stopSounds()</code> on another), with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (set <code>soundPlaying</code> for that).</li>
 <li>A field <code>bool soundPlaying</code> in the component's <code>has</code> turns its entity's <a href="#sound-events--sounds-that-keep-playing">AudioSource</a> (a sound that keeps playing: an engine, a campfire) on or off: <code>soundPlaying = true;</code>. On another entity, <code>target:setSoundPlaying(true)</code>.</li>
 <li><code>Audio:setVolume(Bus.Music, volume)</code> sets a <a href="#mixer">bus</a> for the rest of the play (the buses are the Mixer's, as <code>state Bus</code> in <code>solis/project.lst</code>; the UI bus is <code>Bus.Ui</code>, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.</li>
 </ul>
@@ -5256,7 +5257,7 @@ After 121 ticks:
 <tr><td><code>solis/world</code></td><td><code>float World:time()</code></td><td>How long the game has been running, in seconds.</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:the(Component which)</code></td><td>The one entity with this component, as the tick started; none, or more than one, stops the component (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
 <tr><td><code>solis/components</code></td><td><code>KnightReading entity:knight()</code>, one for each component</td><td>A copy of another entity's component as the tick started, read-only, or <code>nothing</code> (<a href="#game-code--reading-other-entities">Reading other entities</a>).</td></tr>
-<tr><td><code>solis/world</code></td><td><code>World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)</code></td><td>Fires a projectile (see Projectiles, below).</td></tr>
+<tr><td><code>solis/made</code></td><td><code>new Shot { vec3 from, vec3 direction, float speed, float life, vec3 colour }</code></td><td>Fires a projectile (see Projectiles, above).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:spawn(Module which, vec3 place)</code></td><td>Makes a copy of one of the project's modules at a place (see Making and removing entities, below).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>entity World:spawnWith(Module which, vec3 place, SpawnValues array values)</code></td><td>Makes a copy as <code>spawn</code> does, its root's components given these values before their first update (<a href="#game-code--spawning-with-values">Spawning with values</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>float World:frameTime()</code></td><td>How long the last frame took, in seconds of real time (1/60 at 60 frames a second).</td></tr>
@@ -5277,10 +5278,8 @@ After 121 ticks:
 <tr><td><code>solis/world</code></td><td><code>Saves:saveTo(string slot)</code></td><td>Saves the whole game in a slot, at the end of the tick (<a href="#save-games">Save games</a>).</td></tr>
 <tr><td><code>solis/world</code></td><td><code>Saves:loadFrom(string slot)</code></td><td>Loads the game saved in a slot, at the end of the tick.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Module</code></td><td>The project's modules, by their files' names (<code>Module.Fighter</code>).</td></tr>
-<tr><td><code>solis/sound</code></td><td><code>Audio:play(Sound event)</code></td><td>Plays a sound event the same everywhere (see Sounds, above).</td></tr>
-<tr><td><code>solis/sound</code></td><td><code>Audio:playAt(Sound event, vec3 place)</code></td><td>Plays a sound event at a place in the world.</td></tr>
+<tr><td><code>solis/made</code></td><td><code>new Footstep { vec3 at, entity on, bool everywhere }</code>, one for each sound event</td><td>Plays a sound event: on the entity whose code makes it, at a place (<code>at</code>), on another entity (<code>on</code>), or the same everywhere (<code>everywhere = true</code>) (see Sounds, above).</td></tr>
 <tr><td><code>solis/sound</code></td><td><code>Audio:setVolume(Bus bus, float volume)</code></td><td>Sets a bus's volume for the rest of the play, 0 to 1.</td></tr>
-<tr><td>any entity</td><td><code>playSound(Sound event)</code></td><td>Plays a sound event on the entity, following it.</td></tr>
 <tr><td>any entity</td><td><code>stopSounds()</code></td><td>Stops the sounds on the entity, with a short fade.</td></tr>
 <tr><td>a component</td><td>field <code>bool soundPlaying</code></td><td>Turns its entity's AudioSource on or off (<code>target:setSoundPlaying(bool playing)</code> on another).</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Sound</code>, <code>state Bus</code></td><td>The project's sound events (<code>Sound.Footstep</code>) and the Mixer's buses (<code>Bus.Music</code>).</td></tr>
@@ -5297,8 +5296,7 @@ After 121 ticks:
 <tr><td>any entity</td><td><code>finishTyping(Screen which)</code></td><td>Shows all the text that screen is typing out, at the end of the tick; <code>TypingFinished</code> follows (<a href="#text-effects">Text effects</a>).</td></tr>
 <tr><td><code>solis/screens</code></td><td>event <code>TypingFinished(Screen which)</code></td><td>Sent to the entity showing a screen once its text has typed out (its Screen's Typing speed), with the next tick's input.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Screen</code></td><td>The game's screens, by their files in <code>ui/</code> (<code>Screen.PauseMenu</code> for <code>ui/pauseMenu.lst</code>).</td></tr>
-<tr><td>a component</td><td><code>startTimer(Timer which, float seconds)</code></td><td>Starts one of the component's timers: <code>TimerFinished</code> comes that many seconds of game time later; started again if it runs (<a href="#timers">Timers</a>).</td></tr>
-<tr><td>a component</td><td><code>startTimerEvery(Timer which, float seconds)</code>, <code>startTimerAtHour(Timer which, float hour)</code></td><td>A timer that finishes every so often, or each day as the day's clock passes an hour, until stopped.</td></tr>
+<tr><td><code>solis/made</code></td><td><code>new DoorOpens { float after, float every, float atHour }</code>, one for each timer</td><td>Starts one of the component's timers, named where it's made: <code>after = 2</code> finishes once, that many seconds of game time later (started again if it runs); <code>every = 5</code> again and again; <code>atHour = 6</code> each day as the day's clock passes that hour (<a href="#timers">Timers</a>).</td></tr>
 <tr><td>a component</td><td><code>stopTimer(Timer which)</code>, <code>bool timerRunning(Timer which)</code>, <code>float timeLeft(Timer which)</code></td><td>Stops a timer; whether it runs, and the seconds it has left, as the tick started.</td></tr>
 <tr><td><code>solis/timers</code></td><td>event <code>TimerFinished(Timer which)</code></td><td>Sent to the component that started a timer when it finishes, in the tick's first round of events.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Timer</code></td><td>The game's timers, each named where its Lust starts it (<code>Timer.DoorOpens</code>).</td></tr>
@@ -5336,7 +5334,8 @@ After 121 ticks:
 <tr><td><code>positionOf(e)</code>, <code>moveTo(e, p)</code></td><td><code>e:position()</code>, <code>e:moveTo(p)</code> (bare for the component's own entity)</td></tr>
 <tr><td><code>rotationOf(e)</code>, <code>turnTo(e, r)</code>, <code>nameOf(e)</code>, <code>despawn(e)</code></td><td><code>e:rotation()</code>, <code>e:turnTo(r)</code>, <code>e:name()</code>, <code>e:despawn()</code></td></tr>
 <tr><td><code>turnTo(this, facingAlong(d))</code></td><td><code>face(d)</code></td></tr>
-<tr><td><code>say</code>, <code>time</code>, <code>frameTime</code>, <code>find</code>, <code>fire</code>, <code>random</code>, <code>randomRange</code>, <code>randomInt</code>, <code>setSeed</code></td><td>the same names on <code>World</code>: <code>World:say(words)</code></td></tr>
+<tr><td><code>say</code>, <code>time</code>, <code>frameTime</code>, <code>find</code>, <code>random</code>, <code>randomRange</code>, <code>randomInt</code>, <code>setSeed</code></td><td>the same names on <code>World</code>: <code>World:say(words)</code></td></tr>
+<tr><td><code>fire</code></td><td><code>new Shot { from = muzzle, direction = ahead };</code></td></tr>
 <tr><td><code>spawn(&quot;ships/fighter&quot;, p)</code></td><td><code>World:spawn(Module.Fighter, p)</code></td></tr>
 <tr><td><code>Assembly.Ships.Fighter</code>, <code>fetch &quot;solis/project&quot;:Assembly;</code> (assemblies are called modules, <a href="https://github.com/Rhyslos/solis/blob/main/docs/decisions/0118-the-editor-rethink.md" target="_blank" rel="noopener">decision 0118<span class="out" aria-hidden="true">↗</span></a>)</td><td><code>Module.Fighter</code>, <code>fetch &quot;solis/project&quot;:Module;</code>. The old name is a mistake that says the new one. Rust and Lua name a module by its path as text, which didn't change.</td></tr>
 <tr><td><code>saveGame(slot)</code>, <code>loadGame(slot)</code></td><td><code>Saves:saveTo(slot)</code>, <code>Saves:loadFrom(slot)</code></td></tr>
@@ -5344,8 +5343,8 @@ After 121 ticks:
 <tr><td><code>bindingOf(&quot;Jump&quot;)</code>, <code>rebind(&quot;Jump&quot;, key)</code></td><td><code>Input:binding(Action.Jump)</code>, <code>Input:rebind(Action.Jump, key)</code></td></tr>
 <tr><td><code>push(e, f)</code>, <code>velocityOf(e)</code>, <code>setVelocity(e, v)</code></td><td><code>e:push(f)</code>, <code>e:velocity()</code>, <code>e:setVelocity(v)</code></td></tr>
 <tr><td><code>moveCharacter(e, w)</code>, <code>onGround(e)</code></td><td><code>e:walk(w)</code>, <code>e:grounded()</code></td></tr>
-<tr><td><code>playSound(&quot;sfx/x&quot;)</code>, <code>playSoundAt(&quot;sfx/x&quot;, p)</code></td><td><code>Audio:play(Sound.X)</code>, <code>Audio:playAt(Sound.X, p)</code></td></tr>
-<tr><td><code>playSoundOn(&quot;sfx/x&quot;, e)</code>, <code>stopSoundsOn(e)</code>, <code>setSoundPlaying(e, b)</code></td><td><code>e:playSound(Sound.X)</code>, <code>e:stopSounds()</code>, <code>e:setSoundPlaying(b)</code></td></tr>
+<tr><td><code>playSound(&quot;sfx/x&quot;)</code>, <code>playSoundAt(&quot;sfx/x&quot;, p)</code></td><td><code>new X { everywhere = true };</code>, <code>new X { at = p };</code></td></tr>
+<tr><td><code>playSoundOn(&quot;sfx/x&quot;, e)</code>, <code>stopSoundsOn(e)</code>, <code>setSoundPlaying(e, b)</code></td><td><code>new X { on = e };</code>, <code>e:stopSounds()</code>, <code>e:setSoundPlaying(b)</code></td></tr>
 <tr><td><code>setBusVolume(&quot;Music&quot;, v)</code></td><td><code>Audio:setVolume(Bus.Music, v)</code></td></tr>
 <tr><td><code>playClip(e, &quot;walk&quot;)</code>, <code>replayClip</code>, <code>stopClip(e)</code></td><td><code>e:animate(Clip.FarmerWalk)</code>, <code>e:animateFromStart(…)</code>, <code>e:stopAnimation()</code></td></tr>
 <tr><td><code>on AnimationCue(string name)</code>, <code>on ClipFinished(string clip)</code></td><td><code>on CueReached(Cue cue)</code>, <code>on ClipFinished(Clip clip)</code></td></tr>
@@ -9381,13 +9380,14 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <section id="timers--how-to-use-it">
 <h3>How to use it<a class="anchor" href="#timers--how-to-use-it" aria-label="Link to this section">#</a></h3>
 <h4 id="timers--start-a-timer-and-hear-it-finish">Start a timer, and hear it finish<a class="anchor" href="#timers--start-a-timer-and-hear-it-finish" aria-label="Link to this section">#</a></h4>
-<p>Inside a component, call <code>startTimer</code> with the timer's name and how many seconds to wait. When the time has passed, the component gets the event <code>TimerFinished</code>, carrying which timer it was:</p>
+<p>Inside a component, make the timer with <code>new</code>, saying how many seconds to wait: <code>new DoorOpens { after = 2.0 };</code>. Making something is always <code>new</code> in game code, a timer as much as a sound or a shot, and each timer is a class Solis writes into <code>solis/made.lst</code>, which you fetch by name. When the time has passed, the component gets the event <code>TimerFinished</code>, carrying which timer it was:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- door.lst: a door that opens two seconds after its switch is pulled.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Timer</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">DoorOpens</span><span class="tk-p">;</span>
 
 <span class="tk-k">event</span> <span class="tk-n">SwitchPulled</span><span class="tk-p">();</span>
 
@@ -9398,7 +9398,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 
     <span class="tk-c">-- The switch sends this; the door waits two seconds.</span>
     <span class="tk-f">on</span> <span class="tk-n">SwitchPulled</span><span class="tk-p">() {</span>
-        startTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">DoorOpens</span><span class="tk-p">,</span> <span class="tk-v">2.0</span><span class="tk-p">);</span>
+        <span class="tk-k">new</span> <span class="tk-n">DoorOpens</span> <span class="tk-p">{</span> after = <span class="tk-v">2.0</span> <span class="tk-p">};</span>
         <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;The door rumbles...&quot;</span><span class="tk-p">);</span>
     <span class="tk-p">}</span>
 
@@ -9467,18 +9467,19 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
     <span class="tk-k">end</span>
 <span class="tk-k">end</span></code></pre>
 </div>
-<p><strong>Naming a timer.</strong> In Lust a timer's name is one of the game's <code>Timer</code> names, <code>Timer.DoorOpens</code>, which you bring in with <code>fetch &quot;solis/project&quot;:Timer;</code>. There's no list to keep anywhere: <strong>the call that starts a timer names it.</strong> Solis reads your Lust, finds every name a <code>startTimer</code>, <code>startTimerEvery</code> or <code>startTimerAtHour</code> gives, and writes them into <code>solis/project.lst</code> as the state <code>Timer</code>. So a name misspelt anywhere else (<code>stopTimer(Timer.DoorOpnes)</code>, <code>is which == Timer.DorOpens?</code>) is a mistake in <a href="#problems">Problems</a> before the game runs. In Lua and Rust a timer is its name as text (<code>&quot;DoorOpens&quot;</code>): a capital letter first, then letters, digits and <code>_</code>.</p>
-<p><strong>A timer is its component's own.</strong> Two components can each have a timer called <code>Wave</code>, even on the same entity, and they never mix: <code>TimerFinished</code> goes only to the component that started the timer, and the other components on the entity don't hear it. That's also why the calls are made <strong>bare, inside the component</strong> (<code>startTimer(...)</code>, not <code>other:startTimer(...)</code>): starting a timer on another entity, or in a game-wide object or a tween, is a mistake that stops with its line.</p>
+<p><strong>Naming a timer.</strong> There's no list to keep anywhere: <strong>the <code>new</code> that makes a timer names it.</strong> Solis reads your Lust, finds every <code>new</code> of a name that isn't anything else with <code>after</code>, <code>every</code> or <code>atHour</code> in its braces, and writes each as a class into <code>solis/made.lst</code> (<code>new DoorOpens { … }</code>, fetched with <code>fetch &quot;solis/made&quot;:DoorOpens;</code>) and as one of the game's <code>Timer</code> names into <code>solis/project.lst</code> (<code>Timer.DoorOpens</code>, for <code>TimerFinished</code>, <code>stopTimer</code> and the rest, fetched with <code>fetch &quot;solis/project&quot;:Timer;</code>). A timer's name can't be one the game already uses (a component called <code>DoorOpens</code>, say): the Console says so, and you give the timer another. So a name misspelt anywhere else (<code>stopTimer(Timer.DoorOpnes)</code>, <code>is which == Timer.DorOpens?</code>) is a mistake in <a href="#problems">Problems</a> before the game runs. In Lua and Rust a timer is its name as text (<code>&quot;DoorOpens&quot;</code>): a capital letter first, then letters, digits and <code>_</code>.</p>
+<p><strong>A timer is its component's own.</strong> Two components can each have a timer called <code>Wave</code>, even on the same entity, and they never mix: <code>TimerFinished</code> goes only to the component that started the timer, and the other components on the entity don't hear it. That's also why a timer is made <strong>inside the component's own code</strong>, and belongs to the entity whose code makes it: made in a game-wide object's update, where no entity's code runs, it's a mistake that stops with its line.</p>
 <p><strong>Starting a timer that's already running starts it again</strong> from the new time: the old wait is forgotten. So start a timer once, when the thing happens (the switch is pulled), not every tick: started every tick, it never finishes.</p>
 <p><strong>How long:</strong> the seconds are rounded to the nearest tick (a 60th of a second). <span class="keys"><kbd>0</kbd></span> finishes on the next tick, never in the same one. The longest wait is about 115 days of game time.</p>
 <h4 id="timers--repeat-every-few-seconds">Repeat every few seconds<a class="anchor" href="#timers--repeat-every-few-seconds" aria-label="Link to this section">#</a></h4>
-<p><code>startTimerEvery</code> finishes again and again, until you stop it:</p>
+<p><code>every</code> finishes again and again, until you stop it:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- spawner.lst: a wave every five seconds, until the tenth.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Timer</span><span class="tk-p">,</span> <span class="tk-n">Module</span><span class="tk-p">];</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Wave</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Spawner</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
@@ -9489,7 +9490,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-c">-- Start once, on the first tick.</span>
         <span class="tk-f">is not</span> started<span class="tk-f">? then</span> <span class="tk-p">{</span>
-            startTimerEvery<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Wave</span><span class="tk-p">,</span> <span class="tk-v">5.0</span><span class="tk-p">);</span>
+            <span class="tk-k">new</span> <span class="tk-n">Wave</span> <span class="tk-p">{</span> every = <span class="tk-v">5.0</span> <span class="tk-p">};</span>
             started = <span class="tk-v">true</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -9569,13 +9570,14 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 </div>
 <p>A repeating timer keeps its <strong>rhythm</strong>: each turn is counted from the last turn, not from when your code handled it, so it never drifts. At a game speed so fast that several turns pass in one tick, it finishes once that tick and carries on in step. The shortest repeat is one tick.</p>
 <h4 id="timers--each-day-at-a-time-of-day">Each day at a time of day<a class="anchor" href="#timers--each-day-at-a-time-of-day" aria-label="Link to this section">#</a></h4>
-<p>With <a href="#sky-fog-and-exposure">day and night</a> on the Environment, the game has a clock. <code>startTimerAtHour</code> finishes each day as that clock passes an hour (<code>6.5</code> is half past six), until you stop it:</p>
+<p>With <a href="#sky-fog-and-exposure">day and night</a> on the Environment, the game has a clock. <code>atHour</code> finishes each day as that clock passes an hour (<code>6.5</code> is half past six), until you stop it:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- rooster.lst: crows each morning, and a bed that skips to the morning.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Timer</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Dawn</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Rooster</span> <span class="tk-p">{</span>
     <span class="tk-k">has</span> <span class="tk-p">{</span>
@@ -9584,7 +9586,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
         <span class="tk-f">is not</span> started<span class="tk-f">? then</span> <span class="tk-p">{</span>
-            startTimerAtHour<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Dawn</span><span class="tk-p">,</span> <span class="tk-v">6.0</span><span class="tk-p">);</span>
+            <span class="tk-k">new</span> <span class="tk-n">Dawn</span> <span class="tk-p">{</span> atHour = <span class="tk-v">6.0</span> <span class="tk-p">};</span>
             started = <span class="tk-v">true</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
@@ -9652,16 +9654,16 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <div class="table-wrap"><table>
 <thead><tr><th>Call</th><th>What it does</th></tr></thead>
 <tbody>
-<tr><td><code>startTimer(Timer.X, seconds)</code></td><td>Finishes once, that many seconds of game time from now.</td></tr>
-<tr><td><code>startTimerEvery(Timer.X, seconds)</code></td><td>Finishes every that many seconds, until stopped.</td></tr>
-<tr><td><code>startTimerAtHour(Timer.X, hour)</code></td><td>Finishes each day as the day's clock passes that hour, until stopped.</td></tr>
-<tr><td><code>stopTimer(Timer.X)</code></td><td>Stops it, so it doesn't finish. One that isn't running changes nothing.</td></tr>
-<tr><td><code>timerRunning(Timer.X)</code></td><td>Whether it's running: <code>is timerRunning(Timer.DoorOpens)? then { … }</code>.</td></tr>
-<tr><td><code>timeLeft(Timer.X)</code></td><td>The seconds of game time left; 0 when it isn't running.</td></tr>
+<tr><td><code>new DoorOpens { after = seconds };</code></td><td>Finishes once, that many seconds of game time from now.</td></tr>
+<tr><td><code>new DoorOpens { every = seconds };</code></td><td>Finishes every that many seconds, until stopped.</td></tr>
+<tr><td><code>new DoorOpens { atHour = hour };</code></td><td>Finishes each day as the day's clock passes that hour, until stopped.</td></tr>
+<tr><td><code>stopTimer(Timer.DoorOpens)</code></td><td>Stops it, so it doesn't finish. One that isn't running changes nothing.</td></tr>
+<tr><td><code>timerRunning(Timer.DoorOpens)</code></td><td>Whether it's running: <code>is timerRunning(Timer.DoorOpens)? then { … }</code>.</td></tr>
+<tr><td><code>timeLeft(Timer.DoorOpens)</code></td><td>The seconds of game time left; 0 when it isn't running.</td></tr>
 <tr><td><code>on TimerFinished(Timer which)</code></td><td>Heard when one of this component's timers finishes.</td></tr>
 </tbody>
 </table></div>
-<p>Starting and stopping land at the <strong>end of the tick</strong>, as moves do, and <code>timerRunning</code> and <code>timeLeft</code> answer as the tick started: a timer started this tick is running from the next. In Lua they're <code>solis.entity.startTimer(self.me, &quot;DoorOpens&quot;, 2.0)</code> and so on; in Rust, through the component's host: <code>start_timer</code>, <code>stop_timer</code> and <code>timer_left</code> (which gives <code>None</code> when the timer isn't running).</p>
+<p>A <code>new</code> takes exactly one of <code>after</code>, <code>every</code> and <code>atHour</code>: none, or two, stops with its line. Starting and stopping land at the <strong>end of the tick</strong>, as moves do, and <code>timerRunning</code> and <code>timeLeft</code> answer as the tick started: a timer started this tick is running from the next. In Lua they're <code>solis.entity.startTimer(self.me, &quot;DoorOpens&quot;, 2.0)</code> and so on; in Rust, through the component's host: <code>start_timer</code>, <code>stop_timer</code> and <code>timer_left</code> (which gives <code>None</code> when the timer isn't running).</p>
 <h4 id="timers--order">Order<a class="anchor" href="#timers--order" aria-label="Link to this section">#</a></h4>
 <p>Timers that finish in the same tick are heard in the tick's <strong>first round of events</strong>, after the components' <code>update</code>s, in a fixed order: the one due earliest first, then by entity (in the order of their IDs), then by component (by name), then in the order they were started. So the same game comes out the same on one core or sixteen.</p>
 <h4 id="timers--timers-saves-and-new-code">Timers, saves and new code<a class="anchor" href="#timers--timers-saves-and-new-code" aria-label="Link to this section">#</a></h4>
@@ -9679,6 +9681,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Timer</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">NextStep</span><span class="tk-p">;</span>
 
 <span class="tk-s">state Step</span> = <span class="tk-p">[</span>WalkThere<span class="tk-p">,</span> WaitThere<span class="tk-p">,</span> WaitAfterHello<span class="tk-p">,</span> WalkHome<span class="tk-p">,</span> Home<span class="tk-p">];</span>
 
@@ -9694,7 +9697,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-c">-- Walking takes every tick; waiting is the timer's.</span>
         <span class="tk-f">is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WalkThere</span> &amp;&amp; arrived<span class="tk-p">(</span>well<span class="tk-p">,</span> dt<span class="tk-p">)</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitThere</span><span class="tk-p">;</span>
-            startTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">NextStep</span><span class="tk-p">,</span> <span class="tk-v">1.0</span><span class="tk-p">);</span>
+            <span class="tk-k">new</span> <span class="tk-n">NextStep</span> <span class="tk-p">{</span> after = <span class="tk-v">1.0</span> <span class="tk-p">};</span>
         <span class="tk-p">}</span>
         <span class="tk-f">is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WalkHome</span> &amp;&amp; arrived<span class="tk-p">(</span>home<span class="tk-p">,</span> dt<span class="tk-p">)</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">Home</span><span class="tk-p">;</span>
@@ -9706,7 +9709,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-f">is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitThere</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Hello!&quot;</span><span class="tk-p">);</span>
             step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitAfterHello</span><span class="tk-p">;</span>
-            startTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">NextStep</span><span class="tk-p">,</span> <span class="tk-v">2.0</span><span class="tk-p">);</span>
+            <span class="tk-k">new</span> <span class="tk-n">NextStep</span> <span class="tk-p">{</span> after = <span class="tk-v">2.0</span> <span class="tk-p">};</span>
         <span class="tk-p">}</span> <span class="tk-f">or is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitAfterHello</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WalkHome</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
@@ -9856,13 +9859,14 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <section id="timers--tips-and-common-problems">
 <h3>Tips and common problems<a class="anchor" href="#timers--tips-and-common-problems" aria-label="Link to this section">#</a></h3>
 <ul>
-<li><strong>Problem:</strong> a timer never finishes. <strong>Why:</strong> it's started again every tick (<code>startTimer</code> in <code>update</code> with nothing around it), so each start pushes it back. <strong>Fix:</strong> start it once, when the thing happens, or check <code>timerRunning</code> first.</li>
-<li><strong>Problem:</strong> Problems says <code>Timer.DoorOpnes</code> isn't a Timer. <strong>Why:</strong> no <code>startTimer</code> in the game's Lust names it: a typo, or the timer was renamed. <strong>Fix:</strong> use the name the start call gives, or start the timer under that name.</li>
-<li><strong>Problem:</strong> Problems says a timer's name isn't a <code>Timer</code>, though it's set in a variable first (<code>Timer next = Timer.Later;</code>). <strong>Why:</strong> only a start call names a timer. <strong>Fix:</strong> start it by name somewhere (<code>startTimer(Timer.Later, …)</code>), even if other code chooses which to start.</li>
+<li><strong>Problem:</strong> a timer never finishes. <strong>Why:</strong> it's made again every tick (a <code>new</code> in <code>update</code> with nothing around it), so each start pushes it back. <strong>Fix:</strong> start it once, when the thing happens, or check <code>timerRunning</code> first.</li>
+<li><strong>Problem:</strong> Problems says <code>Timer.DoorOpnes</code> isn't a Timer. <strong>Why:</strong> no <code>new</code> in the game's Lust makes it: a typo, or the timer was renamed. <strong>Fix:</strong> use the name its <code>new</code> gives, or make the timer under that name.</li>
+<li><strong>Problem:</strong> Problems says a timer's name isn't a <code>Timer</code>, though it's set in a variable first (<code>Timer next = Timer.Later;</code>). <strong>Why:</strong> only a <code>new</code> names a timer. <strong>Fix:</strong> start it by name somewhere (<code>new Later { after = … }</code>), even if other code chooses which to start.</li>
 <li><strong>Problem:</strong> a timer stopped when the code changed while playing. <strong>Why:</strong> its name, or its component, is gone from the new code; the Console says which. <strong>Fix:</strong> start it again, under its new name.</li>
 <li><strong>Problem:</strong> a timer stopped, and its <code>TimerFinished</code> never came, though nothing stopped it. <strong>Why:</strong> it was started while its component was in a state of its own, and the state changed. <strong>Fix:</strong> start it after setting the new state, or call <code>keepStarted()</code> after starting it (<a href="#states">States that start and stop</a>).</li>
-<li><strong>Problem:</strong> <code>timerRunning</code> says no just after <code>startTimer</code>. <strong>Why:</strong> starts land at the end of the tick, so every core sees the same timers during it. <strong>Fix:</strong> nothing to fix: from the next tick it says yes.</li>
-<li><strong>Problem:</strong> <code>startTimer</code> stops with &quot;a timer belongs to the component that starts it&quot;. <strong>Why:</strong> it was called on another entity, or in a game-wide object or a tween. <strong>Fix:</strong> send that entity an event, and let its own component start its timer.</li>
+<li><strong>Problem:</strong> <code>timerRunning</code> says no just after the timer's <code>new</code>. <strong>Why:</strong> starts land at the end of the tick, so every core sees the same timers during it. <strong>Fix:</strong> nothing to fix: from the next tick it says yes.</li>
+<li><strong>Problem:</strong> a timer's <code>new</code> stops with &quot;a timer belongs to an entity&quot;. <strong>Why:</strong> it was made where no entity's code runs: a game-wide object's update. <strong>Fix:</strong> send an entity an event, and let its own component make the timer.</li>
+<li><strong>Problem:</strong> Problems says a timer &quot;is in solis/made.lst&quot;. <strong>Why:</strong> the file makes it with <code>new</code> without fetching it. <strong>Fix:</strong> add <code>fetch &quot;solis/made&quot;:DoorOpens;</code> at the top, as the message says.</li>
 </ul>
 </section>
 <section id="timers--related">
@@ -9896,8 +9900,9 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- hero.lst: stunned by a hit, recovering a second and a half later.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Timer</span><span class="tk-p">,</span> <span class="tk-n">Sound</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Timer</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:[</span><span class="tk-n">Recover</span><span class="tk-p">,</span> <span class="tk-n">Dizzy</span><span class="tk-p">];</span>
 
 <span class="tk-s">state Mood</span> = <span class="tk-p">[</span>Calm<span class="tk-p">,</span> Stunned<span class="tk-p">];</span>
 <span class="tk-k">event</span> <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">float</span> damage<span class="tk-p">);</span>
@@ -9912,9 +9917,9 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
     <span class="tk-c">-- A hit stuns: everything started here belongs to Stunned.</span>
     <span class="tk-f">on</span> <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">float</span> damage<span class="tk-p">) {</span>
         <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Stunned<span class="tk-p">;</span>
-        startTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Recover</span><span class="tk-p">,</span> <span class="tk-v">1.5</span><span class="tk-p">);</span>
+        <span class="tk-k">new</span> <span class="tk-n">Recover</span> <span class="tk-p">{</span> after = <span class="tk-v">1.5</span> <span class="tk-p">};</span>
         <span class="tk-f">tween</span> flash <span class="tk-f">to</span> <span class="tk-v">1</span> <span class="tk-f">over</span> <span class="tk-v">1.5</span><span class="tk-p">;</span>
-        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Dizzy</span><span class="tk-p">);</span>
+        <span class="tk-k">new</span> <span class="tk-n">Dizzy</span> <span class="tk-p">{};</span>
     <span class="tk-p">}</span>
 
     <span class="tk-c">-- The stun is over: setting the state ends the rest.</span>
@@ -10019,9 +10024,9 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <div class="table-wrap"><table>
 <thead><tr><th>Started in the state</th><th>When the state changes</th></tr></thead>
 <tbody>
-<tr><td>A timer (<code>startTimer</code>, <code>startTimerEvery</code>, <code>startTimerAtHour</code>)</td><td>It stops, and <code>TimerFinished</code> never comes. Even one that was due this very tick isn't heard once the state has changed.</td></tr>
+<tr><td>A timer (<code>new DoorOpens { after = … }</code>, with <code>every</code> or <code>atHour</code> too)</td><td>It stops, and <code>TimerFinished</code> never comes. Even one that was due this very tick isn't heard once the state has changed.</td></tr>
 <tr><td>A <a href="#game-code--tweens">tween</a> (<code>tween flash to 1 over 1.5;</code>)</td><td>It stops where it is: the value keeps what it had reached, and its done block doesn't run.</td></tr>
-<tr><td>A sound set to <strong>Loop</strong> (<a href="#sound-events">Sound events</a>), played with <code>playSound</code> or <code>Audio:play</code></td><td>It fades out. A sound that plays once finishes as usual.</td></tr>
+<tr><td>A sound set to <strong>Loop</strong> (<a href="#sound-events">Sound events</a>), made with <code>new</code> (<code>new Engine {};</code>)</td><td>It fades out. A sound that plays once finishes as usual.</td></tr>
 </tbody>
 </table></div>
 <p>And these <strong>don't</strong>:</p>
@@ -10036,7 +10041,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- fighter.lst: a stance inside combat.</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Timer</span><span class="tk-p">,</span> <span class="tk-n">Sound</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:[</span><span class="tk-n">Battle</span><span class="tk-p">,</span> <span class="tk-n">Swing</span><span class="tk-p">];</span>
 
 <span class="tk-s">state Mood</span> = <span class="tk-p">[</span>Calm<span class="tk-p">,</span> Combat <span class="tk-p">[</span>Melee<span class="tk-p">,</span> Ranged<span class="tk-p">]];</span>
 
@@ -10047,12 +10052,12 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 
     <span class="tk-k">method</span> enterCombat<span class="tk-p">() {</span>
         <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Combat<span class="tk-p">;</span>
-        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Battle</span><span class="tk-p">);</span>
+        <span class="tk-k">new</span> <span class="tk-n">Battle</span> <span class="tk-p">{};</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> closeIn<span class="tk-p">() {</span>
         <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Combat<span class="tk-p">.</span>Melee<span class="tk-p">;</span>
-        startTimerEvery<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Swing</span><span class="tk-p">,</span> <span class="tk-v">0.8</span><span class="tk-p">);</span>
+        <span class="tk-k">new</span> <span class="tk-n">Swing</span> <span class="tk-p">{</span> every = <span class="tk-v">0.8</span> <span class="tk-p">};</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> backOff<span class="tk-p">() {</span>
@@ -10092,8 +10097,9 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-c">-- gate.lst: the gate keeps swinging after it's locked; the alarm doesn't.</span>
-<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:[</span><span class="tk-n">Timer</span><span class="tk-p">,</span> <span class="tk-n">Sound</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Timer</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/timers&quot;</span><span class="tk-p">:</span><span class="tk-n">TimerFinished</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:[</span><span class="tk-n">Alarm</span><span class="tk-p">,</span> <span class="tk-n">Lock</span><span class="tk-p">];</span>
 
 <span class="tk-s">state Gate</span> = <span class="tk-p">[</span>Shut<span class="tk-p">,</span> Opening<span class="tk-p">,</span> Locked<span class="tk-p">];</span>
 
@@ -10109,8 +10115,8 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         keepStarted<span class="tk-p">();</span>
 
         <span class="tk-c">-- Started after keepStarted(): ends with Opening.</span>
-        playSound<span class="tk-p">(</span><span class="tk-o">Sound</span><span class="tk-p">.</span><span class="tk-s">Alarm</span><span class="tk-p">);</span>
-        startTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Lock</span><span class="tk-p">,</span> <span class="tk-v">1.0</span><span class="tk-p">);</span>
+        <span class="tk-k">new</span> <span class="tk-n">Alarm</span> <span class="tk-p">{};</span>
+        <span class="tk-k">new</span> <span class="tk-n">Lock</span> <span class="tk-p">{</span> after = <span class="tk-v">1.0</span> <span class="tk-p">};</span>
     <span class="tk-p">}</span>
 
     <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
@@ -11160,7 +11166,7 @@ event MoodChanged(Mood from, Mood to);</code></pre>
 <h3>Related<a class="anchor" href="#benchmark--related" aria-label="Link to this section">#</a></h3>
 <ul>
 <li><a href="#profiler">The Profiler</a></li>
-<li><a href="#game-code">Game code</a>: <code>World:spawn</code>, <code>World:fire</code> and <code>World:frameTime</code></li>
+<li><a href="#game-code">Game code</a>: <code>World:spawn</code>, <code>new Shot</code> and <code>World:frameTime</code></li>
 <li><a href="#levels-of-detail">Levels of detail</a></li>
 <li>Concepts: <a href="#concepts--playing">frame, frames a second, CPU and GPU</a></li>
 </ul>

@@ -200,7 +200,7 @@ pub(crate) fn keep_tweens(lua: &Lua) -> mlua::Result<()> {
 /// What [`own_states`] changes in Lust's runtime, each found exactly once:
 /// on one line, so no line moves and Lust still says which line of a
 /// game's file failed.
-const PATCHES: [(&str, &str); 5] = [
+const PATCHES: [(&str, &str); 6] = [
     // Every change of an object's own state: its tweens of the options
     // it leaves stop, and Solis hears it.
     (
@@ -222,6 +222,13 @@ const PATCHES: [(&str, &str); 5] = [
     (
         "        tweens[i] = false\n",
         "        L.solis_drop(tw); tweens[i] = false\n",
+    ),
+    // A done block runs as its tween's owner's code: what it makes with
+    // new is that entity's (the uniformity pass, U6), though it belongs
+    // to no option of its state.
+    (
+        "        if tw.done then tw.done() end\n",
+        "        if tw.done then local S = __solis; if S then S.doneBy = tw.owner end; tw.done(); if S then S.doneBy = nil end end\n",
     ),
     // The functions those call, beside the tweens' own list.
     ("local stepping, viewing = false, 0\n", RUNTIME_ADDED),

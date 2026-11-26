@@ -5,6 +5,7 @@
 
 fetch "solis/world":World;
 fetch "solis/project":Module;
+fetch "solis/made":Shot;
 
 -- One ship: flies round its own loop, facing the way it goes, and fires a
 -- laser ahead six times a second (each flies for 1 2/3 seconds, so every
@@ -60,7 +61,7 @@ component Ship {
             is team == 1? then {
                 colour = [0.3, 4, 0.6];
             }
-            World:fire(at + ahead * 3, ahead, 80, 1.66, colour);
+            new Shot { from = at + ahead * 3, direction = ahead, speed = 80, life = 1.66, colour = colour };
         }
     }
 }

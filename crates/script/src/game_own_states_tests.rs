@@ -15,7 +15,7 @@ use reflect::{FieldInfo, FieldKind, Value};
 
 /// The timers the code below starts.
 const TIMERS: &[&str] = &[
-    "Recover", "Pulse", "Outer", "Inner", "Kept", "Lost", "Plain", "Ping", "Ring",
+    "Recover", "Pulse", "Outer", "Inner", "Kept", "Lost", "Quiet", "Ping", "Ring",
 ];
 
 /// Five components, each on its own entity, each running a script by its
@@ -24,6 +24,7 @@ const TIMERS: &[&str] = &[
 /// E changes its state back and forth within a tick.
 const GAME: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":[Timer, Sound, Module];\n\
+    fetch \"solis/made\":[Recover, Pulse, Outer, Inner, Kept, Lost, Quiet, Ping, Engine, Boom];\n\
     fetch \"solis/timers\":TimerFinished;\n\n\
     state Mood = [Calm, Stunned, Combat [Melee, Ranged]];\n\
     event MoodChanged(Mood from, Mood to);\n\n\
@@ -37,12 +38,12 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
                 state = Mood.Stunned;\n\
-                startTimer(Timer.Recover, 0.05);\n\
-                startTimerEvery(Timer.Pulse, 1.0 / 60.0);\n\
+                new Recover { after = 0.05 };\n\
+                new Pulse { every = 1.0 / 60.0 };\n\
                 tween glow to 1 over 0.5 {\n\
                     World:say(\"A glow done\");\n\
                 }\n\
-                playSound(Sound.Engine);\n\
+                new Engine {};\n\
                 entity drone = World:spawn(Module.Drone, position());\n\
             }\n\
             is ticks == 2? then {\n\
@@ -65,9 +66,9 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
                 state = Mood.Combat;\n\
-                startTimer(Timer.Outer, 0.1);\n\
+                new Outer { after = 0.1 };\n\
                 state = Mood.Combat.Melee;\n\
-                startTimer(Timer.Inner, 0.1);\n\
+                new Inner { after = 0.1 };\n\
             }\n\
             is ticks == 2? then {\n\
                 state = Mood.Combat.Ranged;\n\
@@ -77,7 +78,7 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
             }\n\
             is ticks == 9? then {\n\
                 state = Mood.Combat.Melee;\n\
-                startTimer(Timer.Inner, 0.05);\n\
+                new Inner { after = 0.05 };\n\
             }\n\
             is ticks == 10? then {\n\
                 state = Mood.Combat;\n\
@@ -103,14 +104,14 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
                 state = Mood.Stunned;\n\
-                startTimer(Timer.Kept, 0.05);\n\
+                new Kept { after = 0.05 };\n\
                 tween kept to 1 over 0.05 {\n\
                     World:say(\"C kept done\");\n\
-                    playSound(Sound.Boom);\n\
+                    new Boom {};\n\
                 }\n\
-                playSound(Sound.Engine);\n\
+                new Engine {};\n\
                 keepStarted();\n\
-                startTimer(Timer.Lost, 0.05);\n\
+                new Lost { after = 0.05 };\n\
             }\n\
             is ticks == 2? then {\n\
                 state = Mood.Calm;\n\
@@ -130,7 +131,7 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
                 mood = Mood.Stunned;\n\
-                startTimer(Timer.Plain, 0.05);\n\
+                new Quiet { after = 0.05 };\n\
                 tween glow to 1 over 0.05 {\n\
                     World:say(\"D glow done\");\n\
                 }\n\
@@ -153,7 +154,7 @@ const GAME: &str = "fetch \"solis/world\":World;\n\
             is ticks == 1? then {\n\
                 state = Mood.Stunned;\n\
                 state = Mood.Calm;\n\
-                startTimer(Timer.Ping, 0.05);\n\
+                new Ping { after = 0.05 };\n\
                 keepStarted();\n\
             }\n\
             is ticks == 3? then {\n\
@@ -384,7 +385,7 @@ fn what_is_kept_carries_on_and_what_starts_after_belongs_to_the_state() {
 fn a_component_without_a_state_of_its_own_ends_nothing() {
     let (mut game, mut world) = started(1);
     let said = run(&mut game, &mut world, 10);
-    assert_eq!(of(&said, "D"), ["4: D glow done", "4: D Plain"]);
+    assert_eq!(of(&said, "D"), ["4: D glow done", "4: D Quiet"]);
     // Lua's and Rust's timers finish whatever a field called state says.
     assert_eq!(
         of(&said, "F"),
@@ -547,8 +548,8 @@ fn an_event_for_a_state_declared_wrongly_is_a_mistake_saying_how() {
 #[test]
 fn keep_started_belongs_to_a_component_on_its_own_entity() {
     let other = GAME.replace(
-        "keepStarted();\nstartTimer(Timer.Lost",
-        "World:find(\"A\"):keepStarted();\nstartTimer(Timer.Lost",
+        "keepStarted();\nnew Lost",
+        "World:find(\"A\"):keepStarted();\nnew Lost",
     );
     assert_ne!(other, GAME);
     let mut world = TestWorld::with(&["A", "B", "C"]);
@@ -612,6 +613,7 @@ fn changing(own: bool, heard: bool, every: u32) -> String {
     };
     format!(
         "fetch \"solis/project\":Timer;\n\
+         fetch \"solis/made\":Recover;\n\
          state Mood = [Calm, Busy];\n\
          event MoodChanged(Mood from, Mood to);\n\
          component Changer {{\n\
@@ -629,7 +631,7 @@ fn changing(own: bool, heard: bool, every: u32) -> String {
                      }} or {{\n\
                          {set} = Mood.Calm;\n\
                      }}\n\
-                     startTimer(Timer.Recover, 1.0);\n\
+                     new Recover {{ after = 1.0 }};\n\
                      tween glow to 1 over 1.0;\n\
                  }}\n\
              }}\n\

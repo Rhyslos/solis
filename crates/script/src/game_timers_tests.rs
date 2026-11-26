@@ -18,6 +18,8 @@ const NAMES: &[&str] = &["Opens", "Beat", "Never", "Dawn"];
 /// a rooster crowing at six.
 const DOORS: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":Timer;\n\
+    fetch \"solis/made\":[Opens, Beat, Never];\n\
+    fetch \"solis/made\":Dawn;\n\
     fetch \"solis/timers\":TimerFinished;\n\n\
     component Door {\n\
         has {\n\
@@ -26,9 +28,9 @@ const DOORS: &str = "fetch \"solis/world\":World;\n\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
             is ticks == 1? then {\n\
-                startTimer(Timer.Opens, 0.05);\n\
-                startTimerEvery(Timer.Beat, 2.0 / 60.0);\n\
-                startTimer(Timer.Never, 1.0);\n\
+                new Opens { after = 0.05 };\n\
+                new Beat { every = 2.0 / 60.0 };\n\
+                new Never { after = 1.0 };\n\
             }\n\
             is ticks == 2? then {\n\
                 stopTimer(Timer.Never);\n\
@@ -58,7 +60,7 @@ const DOORS: &str = "fetch \"solis/world\":World;\n\
         method update(float dt) {\n\
             is not started? then {\n\
                 started = true;\n\
-                startTimer(Timer.Opens, 0.05);\n\
+                new Opens { after = 0.05 };\n\
             }\n\
         }\n\
         on TimerFinished(Timer which) {\n\
@@ -72,7 +74,7 @@ const DOORS: &str = "fetch \"solis/world\":World;\n\
         method update(float dt) {\n\
             is not started? then {\n\
                 started = true;\n\
-                startTimerAtHour(Timer.Dawn, 6.0);\n\
+                new Dawn { atHour = 6.0 };\n\
             }\n\
         }\n\
         on TimerFinished(Timer which) {\n\
@@ -234,21 +236,21 @@ fn timers_finish_in_order_for_the_component_that_started_them() {
 }
 
 #[test]
-fn a_timer_belongs_to_its_component_on_its_own_entity() {
-    let other = DOORS.replace(
-        "startTimer(Timer.Never, 1.0);",
-        "World:find(\"B\"):startTimer(Timer.Never, 1.0);",
+fn a_timer_made_where_no_entity_s_code_runs_is_a_mistake() {
+    // A timer is its entity's: made in a game-wide object's update, it
+    // has none, and says so on its line.
+    let clock = DOORS.replace(
+        "component Rooster {",
+        "object Clock {\n    method update(float dt) {\n        new Never { after = 1.0 };\n    }\n}\npass Clock;\ncomponent Rooster {",
     );
     let mut world = TestWorld::with(&["A", "B"]);
     let mut game = unhurried(1);
-    game.load(&compile_with(&other, NAMES).unwrap(), &mut world)
+    game.load(&compile_with(&clock, NAMES).unwrap(), &mut world)
         .unwrap();
-    let empty = ComponentData::default();
-    game.sync_many(vec![(id(1), "Door", &empty)], &mut world);
     let ticked = game.tick(1.0 / 60.0, &mut world);
-    let message = ticked.failures[0].at.to_string();
+    let message = format!("{:?}", ticked.failures);
     assert!(
-        message.contains("startTimer") && message.contains("belongs to the component"),
+        message.contains("new Never: a timer belongs to an entity"),
         "{message}"
     );
 }
@@ -286,11 +288,9 @@ fn new_code_keeps_a_timer_while_its_component_and_name_exist() {
     // the door no longer starts Opens, but the gate still does.
     let new = DOORS
         .replace("Never", "Later")
-        .replace(
-            "startTimer(Timer.Opens, 0.05);\nstartTimerEvery",
-            "startTimerEvery",
-        )
-        .replace("startTimerAtHour(Timer.Dawn, 6.0);", "")
+        .replace("new Opens { after = 0.05 };\nnew Beat", "new Beat")
+        .replace("new Dawn { atHour = 6.0 };", "")
+        .replace("fetch \"solis/made\":Dawn;\n", "")
         .replace("component Rooster", "component Hen")
         .replace("pass Door, Gate, Rooster;", "pass Door, Gate, Hen;");
     let code = compile_with(&new, &["Beat", "Later", "Opens"]).unwrap();

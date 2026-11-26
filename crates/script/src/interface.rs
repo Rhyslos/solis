@@ -24,7 +24,7 @@ pub fn snapshot() -> String {
          # this file, and keep any renamed name working (describe::RENAMED).\n",
     );
     out.push_str("\n## Lust (solis/<file>.lst)\n\n");
-    for native in NATIVES.iter().filter(|n| !n.is_field()) {
+    for native in NATIVES.iter().filter(|n| n.in_lust()) {
         match native.owner {
             "" | "entity" => out.push_str(&format!("{}: {}\n", native.file, native.lust)),
             object => out.push_str(&format!(
@@ -37,6 +37,10 @@ pub fn snapshot() -> String {
     for event in ENGINE_EVENTS {
         out.push_str(&format!("{}: {}\n", event.file, event.lust));
     }
+    out.push_str("\n## Made with new (fetch \"solis/made\":<Name>)\n\n");
+    out.push_str("Shot: vec3 from, vec3 direction, float speed, float life, vec3 colour\n");
+    out.push_str("<a sound event>: vec3 at, entity on, bool everywhere\n");
+    out.push_str("<a timer>: float after, float every, float atHour\n");
     out.push_str("\n## Fields of the engine's objects (read, and set with =)\n\n");
     for field in crate::describe::OBJECT_FIELDS {
         out.push_str(&format!(

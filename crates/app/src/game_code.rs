@@ -731,15 +731,16 @@ mod tests {
 
     #[test]
     fn the_timers_the_code_starts_are_its_timer_state_on_the_first_check() {
-        // Stage 1, timers: no list to keep; the call that starts a timer
-        // names it, and the check that first sees it already has it.
+        // Stage 1, timers: no list to keep; the new that makes a timer
+        // names it (U6), and the check that first sees it already has it.
         let (_temp, assets) = folder("timers");
         let main = "fetch \"solis/project\":Timer;\n\
+            fetch \"solis/made\":[DoorOpens, Wave];\n\
             component Door {\n\
                 method update(float dt) {\n\
-                    -- startTimer(Timer.InAComment, 1.0); isn't one.\n\
-                    startTimer(Timer.DoorOpens, 2.0);\n\
-                    this:startTimerEvery(Timer.Wave, 5.0);\n\
+                    -- new InAComment { after = 1.0 }; isn't one.\n\
+                    new DoorOpens { after = 2.0 };\n\
+                    new Wave { every = 5.0 };\n\
                     is timerRunning(Timer.DoorOpens)? then {\n\
                         stopTimer(Timer.Wave);\n\
                     }\n\

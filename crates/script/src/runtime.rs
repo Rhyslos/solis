@@ -456,6 +456,14 @@ impl Runtime {
         self.lust = None;
         self.lua_classes.clear();
         self.queue.borrow_mut().clear();
+        // What the code makes with new: read as it starts, and by the
+        // natives lent from then on.
+        crate::made::keep(&self.luau.lua, &code.made).map_err(|err| Failure {
+            entity: None,
+            component: String::new(),
+            at: crate::ticking::plain(format!("what the code makes couldn't be set up: {err}")),
+            stopped: true,
+        })?;
         let (lust, classes) = self.prepare(code, host)?;
         self.commit(lust, classes);
         self.engine_reads.clone_from(&code.engine_reads);
@@ -477,7 +485,22 @@ impl Runtime {
     /// again from the level's values, with a note saying so. Rust
     /// components carry on.
     pub fn swap(&mut self, code: &Compiled, host: &mut dyn Host) -> Result<Swapped, Failure> {
-        let (lust, classes) = self.prepare(code, host)?;
+        // What the new code makes with new, as it starts; the old code's
+        // again if it can't, since the old code keeps running.
+        let made_before = self
+            .luau
+            .lua
+            .app_data_ref::<std::sync::Arc<crate::made::MadeList>>()
+            .map(|m| std::sync::Arc::clone(&m))
+            .unwrap_or_default();
+        let _ = crate::made::keep(&self.luau.lua, &code.made);
+        let (lust, classes) = match self.prepare(code, host) {
+            Ok(prepared) => prepared,
+            Err(failure) => {
+                let _ = crate::made::keep(&self.luau.lua, &made_before);
+                return Err(failure);
+            }
+        };
         let mut swapped = Swapped::default();
         if let (Some(old), Some(new)) = (&self.lust, &lust) {
             // Only reads both programs: on a failure, nothing changed yet.

@@ -21,6 +21,7 @@ mod interrupt;
 mod lua_components;
 pub mod luau;
 mod lust_program;
+pub mod made;
 mod many_names;
 pub mod map_code;
 mod native_values;

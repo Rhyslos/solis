@@ -189,8 +189,13 @@ fn read_components(lua: &mlua::Lua, api: &Table) -> mlua::Result<Components> {
         let own_state =
             crate::states::has_own_state(kinds.iter().map(|(k, d)| (k.as_str(), d.as_str())));
         let (update, handle) = (method("update")?, method("handle")?);
+        // So does every component of a game that makes things with new,
+        // whose timers and sounds are the running entity's (U6).
+        let makes = lua
+            .app_data_ref::<std::sync::Arc<crate::made::MadeList>>()
+            .is_some();
         let (update, handle) = match lua.app_data_ref::<crate::states::Running>() {
-            Some(running) if own_state => (
+            Some(running) if own_state || makes => (
                 update.map(|f| running.update.call(f)).transpose()?,
                 handle.map(|f| running.handle.call(f)).transpose()?,
             ),
