@@ -199,6 +199,124 @@ pub const ENGINE_CLASSES: &[(&str, &str, &str)] = &[
     ),
 ];
 
+/// A field of one of the engine's objects (the uniformity pass, U5b;
+/// decision 0137): game code reads it (`Screens.textSize`) and sets it
+/// with `=` (`Screens.textSize = 1.2;`). Its value is the getter's, as
+/// the tick started, and setting it calls the setter, which lands at the
+/// end of the tick like any call: so, unlike a game's own objects
+/// (decision 0080), any component may set it, on any core. The getter and
+/// setter stay natives, for Lua and Rust, but leave Lust's files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ObjectField {
+    /// The engine object: `Screens`.
+    pub object: &'static str,
+    /// The field: `textSize`.
+    pub name: &'static str,
+    /// Its Lust type: `float`.
+    pub kind: &'static str,
+    /// Its starting value as written in the object's `has` (never read:
+    /// reading asks the getter); empty for the first option of its state.
+    pub start: &'static str,
+    /// The native that reads it: `textSize`.
+    pub getter: &'static str,
+    /// The native that sets it: `setTextSize`.
+    pub setter: &'static str,
+}
+
+/// Every field of the engine's objects, in the order written.
+pub const OBJECT_FIELDS: &[ObjectField] = &[
+    ObjectField {
+        object: "World",
+        name: "gameSpeed",
+        kind: "float",
+        start: "1",
+        getter: "gameSpeed",
+        setter: "setGameSpeed",
+    },
+    ObjectField {
+        object: "World",
+        name: "timeOfDay",
+        kind: "float",
+        start: "8",
+        getter: "timeOfDay",
+        setter: "setTimeOfDay",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "textSize",
+        kind: "float",
+        start: "1",
+        getter: "textSize",
+        setter: "setTextSize",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "uiSize",
+        kind: "float",
+        start: "1",
+        getter: "uiSize",
+        setter: "setUiSize",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "language",
+        kind: "Language",
+        start: "",
+        getter: "language",
+        setter: "setLanguage",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "subtitles",
+        kind: "bool",
+        start: "false",
+        getter: "subtitles",
+        setter: "setSubtitles",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "captions",
+        kind: "bool",
+        start: "false",
+        getter: "captions",
+        setter: "setCaptions",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "captionSize",
+        kind: "float",
+        start: "1",
+        getter: "captionSize",
+        setter: "setCaptionSize",
+    },
+    ObjectField {
+        object: "Screens",
+        name: "captionBackground",
+        kind: "float",
+        start: "0.6",
+        getter: "captionBackground",
+        setter: "setCaptionBackground",
+    },
+    ObjectField {
+        object: "Window",
+        name: "fullscreen",
+        kind: "bool",
+        start: "false",
+        getter: "fullscreen",
+        setter: "setFullscreen",
+    },
+];
+
+impl Native {
+    /// Whether it's a field's getter or setter, read and set as the field
+    /// in Lust ([`OBJECT_FIELDS`]) and kept for Lua and Rust only.
+    pub fn is_field(&self) -> bool {
+        OBJECT_FIELDS
+            .iter()
+            .any(|f| f.object == self.owner && (f.getter == self.name || f.setter == self.name))
+    }
+}
+
 /// Every call that moved.
 pub const MOVED: &[Moved] = &[
     Moved {
@@ -1241,6 +1359,14 @@ fn descriptions_with(
     names: &crate::project_names::Names,
 ) -> (Vec<(String, String)>, Vec<String>) {
     let (project, notes) = crate::project_names::project_file(made_by, names);
+    // An object field's state starts on its first option (the project's
+    // main language), or the one a state has when it has none.
+    let first_language = names
+        .languages
+        .iter()
+        .find(|l| crate::project_names::option_name_of(l).as_deref() == Some(l.as_str()))
+        .cloned()
+        .unwrap_or_else(|| crate::project_names::NO_OPTION.to_string());
     // Each file once, in the order they first come.
     let mut names: Vec<&str> = Vec::new();
     for file in NATIVES.iter().map(|n| n.file) {
@@ -1251,7 +1377,10 @@ fn descriptions_with(
     let files = names
         .into_iter()
         .map(|file| {
-            let mine: Vec<&Native> = NATIVES.iter().filter(|n| n.file == file).collect();
+            let mine: Vec<&Native> = NATIVES
+                .iter()
+                .filter(|n| n.file == file && !n.is_field())
+                .collect();
             let mut text = format!(
                 "-- Made by {made_by}{ENGINE_FILE} It's written again\n\
                  -- whenever the project opens, so changes made here don't last.\n\n"
@@ -1267,6 +1396,9 @@ fn descriptions_with(
                             || lust.contains(&format!(", {state} "))
                     };
                     mine.iter().any(|n| takes(n.lust))
+                        || OBJECT_FIELDS.iter().any(|f| {
+                            f.kind == *state && NATIVES.iter().any(|n| n.file == file && n.owner == f.object)
+                        })
                         || ENGINE_EVENTS
                             .iter()
                             .any(|e| e.file == file && takes(e.lust))
@@ -1328,6 +1460,24 @@ fn descriptions_with(
             }
             for object in objects {
                 text.push_str(&format!("object {object} {{\n"));
+                let fields: Vec<&ObjectField> =
+                    OBJECT_FIELDS.iter().filter(|f| f.object == object).collect();
+                if !fields.is_empty() {
+                    text.push_str(&format!(
+                        "    -- Read as the tick started, and set with = at the end of it:\n    \
+                         -- {object}.{} = …; from any of the game's code.\n    has {{\n",
+                        fields[0].name
+                    ));
+                    for field in fields {
+                        let start = if field.start.is_empty() {
+                            format!("{}.{first_language}", field.kind)
+                        } else {
+                            field.start.to_string()
+                        };
+                        text.push_str(&format!("        {} {} = {start};\n", field.kind, field.name));
+                    }
+                    text.push_str("    }\n\n");
+                }
                 for native in mine.iter().filter(|n| n.owner == object) {
                     text.push_str(&format!("    -- {}\n    {}\n\n", native.about, native.lust));
                 }

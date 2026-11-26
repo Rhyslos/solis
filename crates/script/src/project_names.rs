@@ -284,7 +284,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          -- The game's text, by key (locale/<language>/*.ftl): World:text(Text.ShopWelcome) for\n\
          -- Shop.Welcome.\n\
          {text_state}\n\n\
-         -- The project's languages (Project settings > Languages): Screens:setLanguage(Language.Nb).\n\
+         -- The project's languages (Project settings > Languages): Screens.language = Language.Nb;\n\
          {language}\n\n\
          -- The clips files' looks, each its file's name and the look's: a component's\n\
          -- Look look = Look.KnightMana; dresses its sprite.\n\

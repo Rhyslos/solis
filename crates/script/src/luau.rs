@@ -372,6 +372,8 @@ pub(crate) struct Luau {
     pub(crate) discard: Function,
     /// Puts the guard on a game-wide object ([`crate::objects::WRAP`]).
     pub(crate) wrap_object: Function,
+    /// [`crate::objects::WRAP_ENGINE`], made before any game code runs.
+    pub(crate) wrap_engine_object: Function,
     /// Makes a data table's natives ([`crate::tables::MAKE`]).
     make_table: Function,
     /// Tells `solis` the data tables' names.
@@ -439,6 +441,10 @@ impl Luau {
             .set_name("=solis")
             .call(crate::describe::owners())?;
         let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
+        let wrap_engine_object = lua
+            .load(crate::objects::WRAP_ENGINE)
+            .set_name("=engine objects")
+            .eval()?;
         let make_table = lua.load(crate::tables::MAKE).set_name("=tables").eval()?;
         let make_text = lua.load(crate::texts::MAKE).set_name("=texts").eval()?;
         crate::states::Running::make(&lua)?;
@@ -460,6 +466,7 @@ impl Luau {
             ways,
             discard,
             wrap_object,
+            wrap_engine_object,
             make_table,
             name_tables,
             tables: std::cell::RefCell::default(),

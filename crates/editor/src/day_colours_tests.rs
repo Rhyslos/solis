@@ -73,7 +73,7 @@ fn with_a_day(hour: f64) -> crate::workbench::Workbench {
     use level::EntityData;
     use level::builtin::{Environment, Light, Transform};
     let main = format!(
-        "fetch \"solis/world\":World;\ncomponent Sleeper {{\n    has {{ bool slept = false; }}\n    method update(float dt) {{\n        is not slept? then {{\n            World:setTimeOfDay({hour:.1});\n            slept = true;\n        }} or {{\n            World:say(\"hour \" + World:timeOfDay().text());\n        }}\n    }}\n}}\npass Sleeper;\nend\n"
+        "fetch \"solis/world\":World;\ncomponent Sleeper {{\n    has {{ bool slept = false; }}\n    method update(float dt) {{\n        is not slept? then {{\n            World.timeOfDay = {hour:.1};\n            slept = true;\n        }} or {{\n            World:say(\"hour \" + World.timeOfDay.text());\n        }}\n    }}\n}}\npass Sleeper;\nend\n"
     );
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",

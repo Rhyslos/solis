@@ -337,6 +337,16 @@ impl Runtime {
                 ("Window", "useNextResolution"),
                 ("Window", "quit"),
             ] {
+                // A field's setter is reached through the engine object's
+                // wrapper, whose caller is the screen's line (a level nearer
+                // than a method's), and is set, not called.
+                let field = crate::describe::OBJECT_FIELDS
+                    .iter()
+                    .find(|f| f.object == owner && f.setter == name);
+                let (how, level) = match field {
+                    Some(f) => (format!("sets {owner}.{}", f.name), 3),
+                    None => (format!("calls {owner}:{name}"), 4),
+                };
                 natives.raw_set(
                     format!("{owner}_{name}"),
                     scope.create_function(move |_, _: mlua::MultiValue| -> mlua::Result<()> {
@@ -347,9 +357,9 @@ impl Runtime {
                         error.call::<()>((
                             format!(
                                 "a screen can't change the player's settings: send an event to \
-                                 the entity, and its code calls {owner}:{name}"
+                                 the entity, and its code {how}"
                             ),
-                            4,
+                            level,
                         ))?;
                         Err(mlua::Error::runtime("stopped"))
                     })?,
@@ -1195,6 +1205,10 @@ mod seams_tests;
 #[cfg(test)]
 #[path = "runtime_reach_tests.rs"]
 mod reach_tests;
+
+#[cfg(test)]
+#[path = "runtime_object_fields_tests.rs"]
+mod object_fields_tests;
 
 #[cfg(test)]
 #[path = "runtime_speed_tests.rs"]

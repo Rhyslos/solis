@@ -33,3 +33,7 @@ Option 2, which the project lead chose as the easier and safer start, to improve
 - A component can't yet tell an object something (sell a crop, add money). A later milestone adds a way, such as events sent to the game that objects handle at the start of the next tick.
 - Lists and maps in objects aren't saved or shared yet; that needs Lust's schemas to describe them.
 - Objects are Lust only: Lua and Rust components can't read them yet.
+
+## Amended (2026-11-26): the engine's own objects
+
+The project lead's answer for the uniformity pass's U5b: the engine's own objects (`World`, `Screens`, `Window`) have fields game code reads and sets with `=` from anywhere (`Screens.textSize = 1.2;`). They're the exception to this rule because they hold nothing themselves: reading one asks the engine for its value as the tick started, and setting one asks the engine to change it as the tick ends, exactly as the calls they replace did. So every core still sees the same value, and a game's own objects keep the rule. ([The plan](../plans/uniformity-pass.md).)

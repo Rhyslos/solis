@@ -44,13 +44,13 @@ object Director {
         t = t + dt;
         wave = Maths:sin(t * 3.1) * Maths:exp(0 - t * 0.2) + Maths:atan2(t, 2) * 0.1;
         is stage == 0 && t > 2? then {
-            World:setGameSpeed(0.5);
+            World.gameSpeed = 0.5;
             stage = 1;
         } or is stage == 1 && t > 3? then {
-            World:setGameSpeed(1.5);
+            World.gameSpeed = 1.5;
             stage = 2;
         } or is stage == 2 && t > 5? then {
-            World:setGameSpeed(1);
+            World.gameSpeed = 1;
             stage = 3;
         }
     }

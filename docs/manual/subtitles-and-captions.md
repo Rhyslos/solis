@@ -25,10 +25,10 @@ Solis draws them itself, over every screen your game shows, so you don't make a 
 
 | Choice | Game code |
 |---|---|
-| Subtitles on or off | `Screens:setSubtitles(true)`, `Screens:subtitles()` |
-| Captions for sounds on or off | `Screens:setCaptions(true)`, `Screens:captions()` |
-| Size (1 as designed; 0.75 small, 1.5 large) | `Screens:setCaptionSize(1.5)`, `Screens:captionSize()` |
-| How dark the box behind them is (0 none, 1 solid) | `Screens:setCaptionBackground(0.6)`, `Screens:captionBackground()` |
+| Subtitles on or off | `Screens.subtitles = true;` (read as `Screens.subtitles`) |
+| Captions for sounds on or off | `Screens.captions = true;` (read as `Screens.captions`) |
+| Size (1 as designed; 0.75 small, 1.5 large) | `Screens.captionSize = 1.5;` (read as `Screens.captionSize`) |
+| How dark the box behind them is (0 none, 1 solid) | `Screens.captionBackground = 0.6;` (read as `Screens.captionBackground`) |
 
 They're the player's [settings](concepts.md#player-setting), kept for the next time the game starts, never in save games. Here's an options menu's code for them:
 
@@ -39,16 +39,16 @@ fetch "solis/screens":Screens;
 component Options {
     -- Turn captions for sounds on or off.
     method switchCaptions() {
-        Screens:setCaptions(not Screens:captions());
+        Screens.captions = not Screens.captions;
     }
 
     -- Step the size through small, medium and large.
     method nextCaptionSize() {
-        float size = Screens:captionSize() + 0.25;
+        float size = Screens.captionSize + 0.25;
         is size > 1.5? then {
             size = 0.75;
         }
-        Screens:setCaptionSize(size);
+        Screens.captionSize = size;
     }
 }
 pass Options;

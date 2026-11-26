@@ -161,7 +161,7 @@ impl Workbench {
             use script::settings::Setting;
             match asked {
                 Setting::Fullscreen(on) => said.push(format!(
-                    "Window:setFullscreen({on}): the exported game would {}. While playing in the \
+                    "Window.fullscreen = {on}: the exported game would {}. While playing in the \
                      editor, the game stays in the Game panel.",
                     if on {
                         "fill the screen"

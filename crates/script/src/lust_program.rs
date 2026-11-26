@@ -118,7 +118,7 @@ pub(crate) fn prepare(
             Ok((
                 read_components(&luau.lua, &api)?,
                 read_events(&api)?,
-                crate::objects::Objects::read(luau, &api)?,
+                crate::objects::Objects::read(luau, &api, &env)?,
             ))
         })
         .map_err(failed)?;

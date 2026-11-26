@@ -24,7 +24,7 @@ pub fn snapshot() -> String {
          # this file, and keep any renamed name working (describe::RENAMED).\n",
     );
     out.push_str("\n## Lust (solis/<file>.lst)\n\n");
-    for native in NATIVES {
+    for native in NATIVES.iter().filter(|n| !n.is_field()) {
         match native.owner {
             "" | "entity" => out.push_str(&format!("{}: {}\n", native.file, native.lust)),
             object => out.push_str(&format!(
@@ -36,6 +36,13 @@ pub fn snapshot() -> String {
     out.push_str("\n## Events the engine sends (fetch \"solis/<file>\":<Name>)\n\n");
     for event in ENGINE_EVENTS {
         out.push_str(&format!("{}: {}\n", event.file, event.lust));
+    }
+    out.push_str("\n## Fields of the engine's objects (read, and set with =)\n\n");
+    for field in crate::describe::OBJECT_FIELDS {
+        out.push_str(&format!(
+            "{}.{}: {}\n",
+            field.object, field.name, field.kind
+        ));
     }
     out.push_str("\n## Fields the engine reads from a Lust component (set with =)\n\n");
     for read in crate::engine_fields::Read::ALL {
