@@ -20,68 +20,77 @@ const DOORS: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":Timer;\n\
     fetch \"solis/made\":[Opens, Beat, Never];\n\
     fetch \"solis/made\":Dawn;\n\
-    fetch \"solis/timers\":TimerFinished;\n\n\
+    fetch \"solis/timers\":TimerFinished;\n\
+    \n\
     component Door {\n\
-        has {\n\
-            int ticks = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                new Opens { after = 0.05 };\n\
-                new Beat { every = 2.0 / 60.0 };\n\
-                new Never { after = 1.0 };\n\
-            }\n\
-            is ticks == 2? then {\n\
-                stopTimer(Timer.Never);\n\
-                int left = (timeLeft(Timer.Opens) * 60 + 0.5).int();\n\
-                World:say(name() + \" Opens has \" + left.text() + \" ticks left\");\n\
-            }\n\
-            is ticks == 3 && not timerRunning(Timer.Never)? then {\n\
-                World:say(name() + \" stopped Never\");\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            is which == Timer.Opens? then {\n\
-                World:say(name() + \" Door opens on \" + ticks.text());\n\
-            }\n\
-            is which == Timer.Beat? then {\n\
-                World:say(name() + \" Door beats on \" + ticks.text());\n\
-            }\n\
-            is which == Timer.Never? then {\n\
-                World:say(\"never\");\n\
-            }\n\
-        }\n\
+    has {\n\
+    int ticks = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    new Opens { after = 0.05 };\n\
+    new Beat { every = 2.0 / 60.0 };\n\
+    new Never { after = 1.0 };\n\
+    }\n\
+    is ticks == 2? then {\n\
+    stopTimer(Timer.Never);\n\
+    int left = (timeLeft(Timer.Opens) * 60 + 0.5).int();\n\
+    World:say(name() + \" Opens has \" + left.text() + \" ticks left\");\n\
+    }\n\
+    is ticks == 3 && not timerRunning(Timer.Never)? then {\n\
+    World:say(name() + \" stopped Never\");\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   is which == Timer.Opens? then {\n\
+    \x20   World:say(name() + \" Door opens on \" + ticks.text());\n\
+    \x20   }\n\
+    \x20   is which == Timer.Beat? then {\n\
+    \x20   World:say(name() + \" Door beats on \" + ticks.text());\n\
+    \x20   }\n\
+    \x20   is which == Timer.Never? then {\n\
+    \x20   World:say(\"never\");\n\
+    \x20   }\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Gate {\n\
-        has {\n\
-            bool started = false;\n\
-        }\n\
-        method update(float dt) {\n\
-            is not started? then {\n\
-                started = true;\n\
-                new Opens { after = 0.05 };\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(name() + \" Gate hears its own timer\");\n\
-        }\n\
+    has {\n\
+    bool started = false;\n\
+    }\n\
+    method update(float dt) {\n\
+    is not started? then {\n\
+    started = true;\n\
+    new Opens { after = 0.05 };\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(name() + \" Gate hears its own timer\");\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Rooster {\n\
-        has {\n\
-            bool started = false;\n\
-        }\n\
-        method update(float dt) {\n\
-            is not started? then {\n\
-                started = true;\n\
-                new Dawn { atHour = 6.0 };\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(name() + \" crows at dawn\");\n\
-        }\n\
+    has {\n\
+    bool started = false;\n\
     }\n\
-    pass Door, Gate, Rooster;\nend\n";
+    method update(float dt) {\n\
+    is not started? then {\n\
+    started = true;\n\
+    new Dawn { atHour = 6.0 };\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(name() + \" crows at dawn\");\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Door, Gate, Rooster;\n\
+    end\n\
+    ";
 
 /// A bell in Lua, ringing a tick after it starts.
 const BELL: &str = "local Bell = component(\"Bell\", { { \"started\", \"bool\", false } })\n\

@@ -251,35 +251,40 @@ pub(super) fn compiled(main: &str) -> Arc<Compiled> {
 
 /// Walkers step along x; each tells the next one it moved; a Watcher says
 /// where the first walker is.
-const BUSY: &str = "fetch \"solis/world\":World;\n\n\
+const BUSY: &str = "fetch \"solis/world\":World;\n\
+    \n\
     \n\
     event Stepped(entity by, float x);\n\
     component Walker {\n\
-        has {\n\
-            float speed = 1;\n\
-            entity next = nothing;\n\
-            int heard = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            vec3 at = position() + [speed, 0, 0];\n\
-            moveTo(at);\n\
-            send Stepped(me, at.x) to next;\n\
-        }\n\
-        on Stepped(entity by, float x) {\n\
-            heard = heard + 1;\n\
-            World:say(name() + \" heard \" + by:name());\n\
-        }\n\
+    has {\n\
+    float speed = 1;\n\
+    entity next = nothing;\n\
+    int heard = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    vec3 at = position() + [speed, 0, 0];\n\
+    moveTo(at);\n\
+    send Stepped(me, at.x) to next;\n\
+    }\n\
+    on {\n\
+    \x20   Stepped(entity by, float x) {\n\
+    \x20   heard = heard + 1;\n\
+    \x20   World:say(name() + \" heard \" + by:name());\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Watcher {\n\
-        has {\n\
-            int looked = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            looked = looked + 1;\n\
-            World:say(\"walker 1 at \" + World:find(\"W1\"):position().x.text());\n\
-        }\n\
+    has {\n\
+    int looked = 0;\n\
     }\n\
-    pass Walker, Watcher;\nend\n";
+    method update(float dt) {\n\
+    looked = looked + 1;\n\
+    World:say(\"walker 1 at \" + World:find(\"W1\"):position().x.text());\n\
+    }\n\
+    }\n\
+    pass Walker, Watcher;\n\
+    end\n\
+    ";
 
 /// A game of `count` walkers and a watcher on `shards` shards, run for
 /// `ticks`; its world, what was said, and the failures.
@@ -599,26 +604,33 @@ fn a_runaway_loop_can_t_keep_unbounded_changes() {
 fn spawns_in_different_rounds_of_events_make_different_entities() {
     // Each round's only event (number 0 in its round) reaches the same
     // component, which spawns and sends the next.
-    const ECHO: &str = "fetch \"solis/made\":Drone;\nfetch \"solis/world\":World;\nfetch \"solis/project\":Module;\n\n\
+    const ECHO: &str = "fetch \"solis/made\":Drone;\n\
+        fetch \"solis/world\":World;\n\
+        fetch \"solis/project\":Module;\n\
+        \n\
         event Ping(int left);\n\
         component Echo {\n\
-            has {\n\
-                int started = 0;\n\
-            }\n\
-            method update(float dt) {\n\
-                is started == 0? then {\n\
-                    started = 1;\n\
-                    send Ping(3) to me;\n\
-                }\n\
-            }\n\
-            on Ping(int left) {\n\
-                entity made = new Drone { position = [0, 0, 0] };\n\
-                is left > 0? then {\n\
-                    send Ping(left - 1) to me;\n\
-                }\n\
-            }\n\
+        has {\n\
+        int started = 0;\n\
         }\n\
-        pass Echo;\nend\n";
+        method update(float dt) {\n\
+        is started == 0? then {\n\
+        started = 1;\n\
+        send Ping(3) to me;\n\
+        }\n\
+        }\n\
+        on {\n\
+        \x20   Ping(int left) {\n\
+        \x20   entity made = new Drone { position = [0, 0, 0] };\n\
+        \x20   is left > 0? then {\n\
+        \x20   send Ping(left - 1) to me;\n\
+        \x20   }\n\
+        \x20   }\n\
+        }\n\
+        }\n\
+        pass Echo;\n\
+        end\n\
+        ";
     let mut world = SpawnWorld(TestWorld::with(&["E"]), Vec::new());
     let mut game = unhurried(1);
     game.load(&compiled(ECHO), &mut world).unwrap();
@@ -960,30 +972,35 @@ fn fields_set_by_hand_reach_their_component_on_any_number_of_shards() {
 /// of shards.
 #[test]
 fn what_a_starting_component_sends_goes_nowhere_on_any_number_of_shards() {
-    const RINGERS: &str = "fetch \"solis/world\":World;\n\n\
+    const RINGERS: &str = "fetch \"solis/world\":World;\n\
+        \n\
         event Rang(float number);\n\
         method float ring() {\n\
-            float number = World:random();\n\
-            send Rang(number) to World:find(\"Bell\");\n\
-            return number;\n\
+        float number = World:random();\n\
+        send Rang(number) to World:find(\"Bell\");\n\
+        return number;\n\
         }\n\
         component Ringer {\n\
-            has {\n\
-                float rang = ring();\n\
-            }\n\
+        has {\n\
+        float rang = ring();\n\
+        }\n\
         }\n\
         component Bell {\n\
-            has {\n\
-                int heard = 0;\n\
-                float mix = 0;\n\
-            }\n\
-            on Rang(float number) {\n\
-                heard = heard + 1;\n\
-                mix = mix / 2 + number + World:random();\n\
-                World:say(\"rang \" + number.text());\n\
-            }\n\
+        has {\n\
+        int heard = 0;\n\
+        float mix = 0;\n\
         }\n\
-        pass Ringer, Bell;\nend\n";
+        on {\n\
+        \x20   Rang(float number) {\n\
+        \x20   heard = heard + 1;\n\
+        \x20   mix = mix / 2 + number + World:random();\n\
+        \x20   World:say(\"rang \" + number.text());\n\
+        \x20   }\n\
+        }\n\
+        }\n\
+        pass Ringer, Bell;\n\
+        end\n\
+        ";
     const RINGERS_PLAYING: u64 = 12;
     let run = |shards: usize| {
         let mut names: Vec<String> = (1..=RINGERS_PLAYING).map(|n| format!("R{n}")).collect();
@@ -1076,24 +1093,33 @@ fn set_sound_playing_lands_for_entities_only() {
 /// A zone that names who walks in and counts who is inside; a visitor
 /// that names the zone it walked into.
 const ZONES: &str = "fetch \"solis/world\":World;\n\
-    fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\n\
+    fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\
+    \n\
     component Door {\n\
-        on Entered(entity who) {\n\
-            World:say(who:name() + \" in, \" + (#inside()).text() + \" inside\");\n\
-        }\n\
-        on Exited(entity who) {\n\
-            World:say(who:name() + \" out\");\n\
-        }\n\
+    on {\n\
+    \x20   Entered(entity who) {\n\
+    \x20   World:say(who:name() + \" in, \" + (#inside()).text() + \" inside\");\n\
+    \x20   }\n\
+    \n\
+    \x20   Exited(entity who) {\n\
+    \x20   World:say(who:name() + \" out\");\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Visitor {\n\
-        on EnteredZone(entity zone) {\n\
-            World:say(name() + \" entered \" + zone:name());\n\
-        }\n\
-        on LeftZone(entity zone) {\n\
-            World:say(name() + \" left \" + zone:name());\n\
-        }\n\
+    on {\n\
+    \x20   EnteredZone(entity zone) {\n\
+    \x20   World:say(name() + \" entered \" + zone:name());\n\
+    \x20   }\n\
+    \n\
+    \x20   LeftZone(entity zone) {\n\
+    \x20   World:say(name() + \" left \" + zone:name());\n\
+    \x20   }\n\
     }\n\
-    pass Door, Visitor;\nend\n";
+    }\n\
+    pass Door, Visitor;\n\
+    end\n\
+    ";
 
 /// What the zone game says over one tick of crossings, on `shards`.
 fn zone_game(shards: usize) -> Vec<String> {

@@ -15,30 +15,39 @@ use script::{Context, Event, RustComponent, RustKind};
 use std::sync::Arc;
 
 const MAIN: &str = "fetch \"solis/world\":World;\n\
-    fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\n\
+    fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\
+    \n\
     component DoorLust {\n\
-        on Entered(entity who) {\n\
-            World:say(\"Lust: \" + who:name() + \" in, \" + (#inside()).text() + \" inside\");\n\
-        }\n\
-        on Exited(entity who) {\n\
-            World:say(\"Lust: \" + who:name() + \" out\");\n\
-        }\n\
+    on {\n\
+    \x20   Entered(entity who) {\n\
+    \x20   World:say(\"Lust: \" + who:name() + \" in, \" + (#inside()).text() + \" inside\");\n\
+    \x20   }\n\
+    \n\
+    \x20   Exited(entity who) {\n\
+    \x20   World:say(\"Lust: \" + who:name() + \" out\");\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Visitor {\n\
-        has {\n\
-            float speed = 3;\n\
-        }\n\
-        method update(float dt) {\n\
-            walk([speed * dt, 0, 0]);\n\
-        }\n\
-        on EnteredZone(entity zone) {\n\
-            World:say(name() + \" entered \" + zone:name());\n\
-        }\n\
-        on LeftZone(entity zone) {\n\
-            World:say(name() + \" left \" + zone:name());\n\
-        }\n\
+    has {\n\
+    float speed = 3;\n\
     }\n\
-    pass DoorLust, Visitor;\nend\n";
+    method update(float dt) {\n\
+    walk([speed * dt, 0, 0]);\n\
+    }\n\
+    on {\n\
+    \x20   EnteredZone(entity zone) {\n\
+    \x20   World:say(name() + \" entered \" + zone:name());\n\
+    \x20   }\n\
+    \n\
+    \x20   LeftZone(entity zone) {\n\
+    \x20   World:say(name() + \" left \" + zone:name());\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass DoorLust, Visitor;\n\
+    end\n\
+    ";
 
 const LUA: &str = "local D = component(\"DoorLua\", {})\n\
     function D:on_Entered(who) solis.World:say(\"Lua: \" .. solis.entity.name(who) .. \" in\") end\n\

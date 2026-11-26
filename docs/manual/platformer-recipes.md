@@ -101,9 +101,11 @@ component HitStop {
         int left = 0; -- [hidden]
     }
 
-    on Freeze(int frames) {
-        left = frames;
-        World.gameSpeed = 0;
+    on {
+        Freeze(int frames) {
+            left = frames;
+            World.gameSpeed = 0;
+        }
     }
 
     method update(float dt) {
@@ -137,8 +139,10 @@ component Blink {
         int frames = 0; -- [hidden]
     }
 
-    on Hurt(float amount, vec3 from) {
-        frames = Maths:round(seconds * 60);
+    on {
+        Hurt(float amount, vec3 from) {
+            frames = Maths:round(seconds * 60);
+        }
     }
 
     method update(float dt) {

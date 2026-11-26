@@ -164,9 +164,16 @@ component Gardener {
         bool talking = false;
     }
 
-    -- Mira's trigger zone (Only tags: Player) tells us when the player is close.
-    on Entered(entity who) { playerNear = true; }
-    on Exited(entity who) { playerNear = false; }
+    on {
+        -- Mira's trigger zone (Only tags: Player) tells us when the player is close.
+        Entered(entity who) { playerNear = true; }
+
+        Exited(entity who) { playerNear = false; }
+
+        ConversationEnded(Conversation which) {
+            talking = false;
+        }
+    }
 
     method update(float dt) {
         -- Interact beside her starts the conversation; Solis does the rest.
@@ -174,10 +181,6 @@ component Gardener {
             startConversation(Conversation.Village.Gardener);
             talking = true;
         }
-    }
-
-    on ConversationEnded(Conversation which) {
-        talking = false;
     }
 }
 pass Gardener;

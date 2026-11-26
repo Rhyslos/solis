@@ -159,22 +159,26 @@ fn the_screens_names_are_offered_for_a_screen_component() {
 const PAUSER: &str = "fetch \"solis/project\":Screen;\n\
     event Resumed();\n\
     component Pauser {\n\
-        has {\n\
-            Screen screen = Screen.Menu;\n\
-            int ticks = 0;\n\
-            int resumed = 0;\n\
-            bool sawMenu = false;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            sawMenu = screenShown(Screen.Menu);\n\
-        }\n\
-        on Resumed() {\n\
-            resumed = resumed + 1;\n\
-            screen = Screen.Hud;\n\
-        }\n\
+    has {\n\
+    Screen screen = Screen.Menu;\n\
+    int ticks = 0;\n\
+    int resumed = 0;\n\
+    bool sawMenu = false;\n\
     }\n\
-    pass Pauser, Resumed;\nend\n";
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    sawMenu = screenShown(Screen.Menu);\n\
+    }\n\
+    on {\n\
+    \x20   Resumed() {\n\
+    \x20   resumed = resumed + 1;\n\
+    \x20   screen = Screen.Hud;\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Pauser, Resumed;\n\
+    end\n\
+    ";
 
 /// A menu that's one big button.
 const RESUME: &str = "fetch \"solis/screen\":Ui;\nfetch \"main\":Resumed;\n\
@@ -402,20 +406,25 @@ const COUNTER: &str = "fetch \"solis/project\":[Screen, Action];\n\
     event Resumed();\n\
     event Quit();\n\
     component Pauser {\n\
-        has {\n\
-            int resumed = 0;\n\
-            int quit = 0;\n\
-            int jumps = 0;\n\
-            int choices = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            is Input:pressed(Action.Jump)? then { jumps = jumps + 1; }\n\
-            is Input:pressed(Action.MenuChoose)? then { choices = choices + 1; }\n\
-        }\n\
-        on Resumed() { resumed = resumed + 1; }\n\
-        on Quit() { quit = quit + 1; }\n\
+    has {\n\
+    int resumed = 0;\n\
+    int quit = 0;\n\
+    int jumps = 0;\n\
+    int choices = 0;\n\
     }\n\
-    pass Pauser, Resumed, Quit;\nend\n";
+    method update(float dt) {\n\
+    is Input:pressed(Action.Jump)? then { jumps = jumps + 1; }\n\
+    is Input:pressed(Action.MenuChoose)? then { choices = choices + 1; }\n\
+    }\n\
+    on {\n\
+    \x20   Resumed() { resumed = resumed + 1; }\n\
+    \n\
+    \x20   Quit() { quit = quit + 1; }\n\
+    }\n\
+    }\n\
+    pass Pauser, Resumed, Quit;\n\
+    end\n\
+    ";
 
 /// A menu of two buttons, one above the other.
 const TWO: &str = "fetch \"solis/screen\":Ui;\nfetch \"main\":[Resumed, Quit];\n\

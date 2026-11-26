@@ -289,22 +289,25 @@ pub(crate) fn zone_code(name: &str, path: &str, zone: &str) -> String {
     let fetch = path.strip_suffix(".lst").unwrap_or(path);
     format!(
         "-- {path}: what the trigger zone \"{zone}\" does when something walks in or out.\n\
-         -- It's fetched from main.lst:  fetch \"{fetch}\":{name};\n\
-         \n\
-         fetch \"solis/zones\":[Entered, Exited];\n\
-         \n\
-         component {name} {{\n\
-         \x20   -- Something walked into the zone: who it was.\n\
-         \x20   on Entered(entity who) {{\n\
-         \x20   }}\n\
-         \n\
-         \x20   -- Something walked out of it.\n\
-         \x20   on Exited(entity who) {{\n\
-         \x20   }}\n\
-         }}\n\
-         \n\
-         pass {name};\n\
-         end\n"
+            -- It's fetched from main.lst:  fetch \"{fetch}\":{name};\n\
+            \n\
+            fetch \"solis/zones\":[Entered, Exited];\n\
+            \n\
+            component {name} {{\n\
+            \x20   on {{\n\
+            \x20       -- Something walked into the zone: who it was.\n\
+            \x20       Entered(entity who) {{\n\
+            \x20       }}\n\
+            \n\
+            \x20       -- Something walked out of it.\n\
+            \x20       Exited(entity who) {{\n\
+            \x20       }}\n\
+            \x20   }}\n\
+            }}\n\
+            \n\
+            pass {name};\n\
+            end\n\
+            "
     )
 }
 

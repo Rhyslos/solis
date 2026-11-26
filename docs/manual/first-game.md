@@ -112,10 +112,12 @@ component Armour {
         int plates = 3;
     }
 
-    on Hit(entity by, float damage) {
-        is plates > 0? then {
-            plates = plates - 1;
-            send Dented(plates) to this;
+    on {
+        Hit(entity by, float damage) {
+            is plates > 0? then {
+                plates = plates - 1;
+                send Dented(plates) to this;
+            }
         }
     }
 }
@@ -172,9 +174,11 @@ component Sparks {
         int shown = 0;
     }
 
-    on Dented(int platesLeft) {
-        shown = shown + 1;
-        World:say("Sparks fly from " + name() + ": " + platesLeft.text() + " armour plates left.");
+    on {
+        Dented(int platesLeft) {
+            shown = shown + 1;
+            World:say("Sparks fly from " + name() + ": " + platesLeft.text() + " armour plates left.");
+        }
     }
 }
 

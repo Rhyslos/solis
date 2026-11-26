@@ -2188,6 +2188,10 @@ mod states_tests;
 mod lust_80_tests;
 
 #[cfg(test)]
+#[path = "game_lust_89_tests.rs"]
+mod lust_89_tests;
+
+#[cfg(test)]
 #[path = "game_made_tests.rs"]
 mod made_tests;
 

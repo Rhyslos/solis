@@ -44,7 +44,7 @@ Solis writes the Lust for you: it reads the component once at the top of the vie
 **Preview values** (top of the canvas) lets you try other numbers for what the screen reads, with a slider each: drag health down to see the bar empty. They're never saved; **Back to the starting values** forgets them.
 
 ### What a button does
-A button's **When clicked** in Properties has a **Sends** list: the [events](game-code.md) your game's code declares (`event Pause();`). Pick one and the button sends it to the screen's entity (Solis fetches it at the top of the screen's file for you), whose code reacts with `on Pause() { … }`. This is the safe way for a screen to change the game: screens never change it themselves ([why](screens.md)). A button whose `{ }` does more than send one event shows its code instead.
+A button's **When clicked** in Properties has a **Sends** list: the [events](game-code.md) your game's code declares (`event Pause();`). Pick one and the button sends it to the screen's entity (Solis fetches it at the top of the screen's file for you), whose code reacts in its on block: `on { Pause() { … } }`. This is the safe way for a screen to change the game: screens never change it themselves ([why](screens.md)). A button whose `{ }` does more than send one event shows its code instead.
 
 ## Settings
 | Setting | What it does |

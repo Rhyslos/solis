@@ -74,9 +74,11 @@ component Bomb {
         entity camera = nothing; -- [tip "The camera with FollowCamera2D."]
     }
 
-    on Entered(entity who) {
-        send ShakeCamera(0.5, 0.4) to camera;
-        despawn();
+    on {
+        Entered(entity who) {
+            send ShakeCamera(0.5, 0.4) to camera;
+            despawn();
+        }
     }
 }
 

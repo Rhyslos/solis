@@ -253,6 +253,10 @@ impl Ticking<'_> {
                     break;
                 }
                 component.stopped = true;
+                // Its waiting work stops with it.
+                if let Some(program) = self.lust {
+                    program.removed(self.luau, &component.instance);
+                }
                 phase.failures.push((
                     at,
                     Failure {
@@ -331,10 +335,14 @@ impl Ticking<'_> {
                 entity: 0,
             };
             lent.borrow_mut().at(&at);
+            // What its update sent that only Lust hears arrives while it's
+            // still open: an object's own events may change it.
+            let settle = self.lust.and_then(|p| p.settle.as_ref());
             let result = objects.open(|| {
-                self.luau
-                    .clock
-                    .limited(|| update.call::<()>((&object.table, dt)))
+                self.luau.clock.limited(|| {
+                    update.call::<()>((&object.table, dt))?;
+                    settle.map_or(Ok(()), |s| s.call::<()>(()))
+                })
             });
             self.collect_sent(&at, &mut phase);
             if let Err(err) = result {

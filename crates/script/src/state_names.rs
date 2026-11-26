@@ -10,7 +10,8 @@
 //! code doesn't say which state a component's own is (only its options),
 //! so the name is read from where the component sets its starting option
 //! (`state = Mood.Calm;` in its `has`), comments and text skipped. Only a
-//! component that handles the event (`on MoodChanged(…)`) is followed:
+//! component that handles the event (`MoodChanged(…)` in its `on { }`)
+//! is followed:
 //! the others' changes cost nothing to notice.
 
 use crate::code::{Code, CodeProblem};
@@ -31,13 +32,14 @@ const MAX_COMPONENTS: usize = 4_096;
 pub struct OwnState {
     /// The state's name (`Mood`).
     pub state: String,
-    /// Whether the component handles its change (`on MoodChanged(…)`).
+    /// Whether the component handles its change (`MoodChanged(…)` in its
+    /// `on { }`).
     pub handled: bool,
 }
 
 /// Each Lust component with a state of its own, that state's name, and
 /// whether it handles the change: `Hero` → `Mood` for
-/// `component Hero { has { state = Mood.Calm; } on MoodChanged(…) { … } }`.
+/// `component Hero { has { state = Mood.Calm; } on { MoodChanged(…) { … } } }`.
 pub fn state_types(code: &Code) -> BTreeMap<String, OwnState> {
     let mut found = BTreeMap::new();
     for (_, text) in &code.files {
@@ -101,21 +103,31 @@ fn own_state(body: &[String]) -> Option<String> {
     None
 }
 
-/// Whether `body` has a handler for `event` at its top level
-/// (`on MoodChanged(`).
+/// Whether `body` has a handler for `event` in its on block
+/// (`on { MoodChanged(…) { … } }`, Lust alpha 81).
 fn handles(body: &[String], event: &str) -> bool {
     let mut depth = 0_usize;
+    // The depth inside the component's own on block, while in it.
+    let mut in_on = None;
     for (i, word) in body.iter().enumerate() {
         match word.as_str() {
-            "{" => depth += 1,
-            "}" => depth = depth.saturating_sub(1),
-            "on" if depth == 0 => {
-                if let [name, open, ..] = &body[i + 1..]
-                    && name == event
-                    && open == "("
-                {
-                    return true;
+            "{" => {
+                if depth == 0 && i > 0 && body[i - 1] == "on" {
+                    in_on = Some(1);
                 }
+                depth += 1;
+            }
+            "}" => {
+                depth = depth.saturating_sub(1);
+                if depth == 0 {
+                    in_on = None;
+                }
+            }
+            name if in_on == Some(depth)
+                && name == event
+                && body.get(i + 1).is_some_and(|w| w == "(") =>
+            {
+                return true;
             }
             _ => {}
         }

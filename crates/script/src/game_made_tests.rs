@@ -14,30 +14,34 @@ use crate::host::SoundAt;
 const BELL: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/timers\":TimerFinished;\n\
     fetch \"solis/project\":Timer;\n\
-    fetch \"solis/made\":[Horn, Footstep, Chime, DoorOpens, Shot];\n\n\
+    fetch \"solis/made\":[Horn, Footstep, Chime, DoorOpens, Shot];\n\
+    \n\
     component Bell {\n\
-        has {\n\
-            int ticks = 0;\n\
-            entity gong = nothing;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks += 1;\n\
-            is ticks == 1? then {\n\
-                new Horn { at = [1, 2, 3] };\n\
-                new Footstep {};\n\
-                new Chime { on = gong };\n\
-                new DoorOpens { after = 2.0 / 60.0 };\n\
-                new Shot { from = [0, 1, 0], direction = [0, 0, 1], speed = 30 };\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            is which == Timer.DoorOpens? then {\n\
-                World:say(\"opens on \" + ticks.text());\n\
-            }\n\
-        }\n\
+    has {\n\
+    int ticks = 0;\n\
+    entity gong = nothing;\n\
+    }\n\
+    method update(float dt) {\n\
+    ticks += 1;\n\
+    is ticks == 1? then {\n\
+    new Horn { at = [1, 2, 3] };\n\
+    new Footstep {};\n\
+    new Chime { on = gong };\n\
+    new DoorOpens { after = 2.0 / 60.0 };\n\
+    new Shot { from = [0, 1, 0], direction = [0, 0, 1], speed = 30 };\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   is which == Timer.DoorOpens? then {\n\
+    \x20   World:say(\"opens on \" + ticks.text());\n\
+    \x20   }\n\
+    \x20   }\n\
+    }\n\
     }\n\
     pass Bell;\n\
-    end\n";
+    end\n\
+    ";
 
 fn compile(main: &str) -> Arc<Compiled> {
     let names = crate::project_names::Names::default()
@@ -281,5 +285,28 @@ fn a_module_s_shared_field_is_only_known_with_its_component_in_front() {
     assert!(
         problems.iter().any(|p| p.message.contains("hp")),
         "{problems:#?}"
+    );
+}
+
+#[test]
+fn a_sound_named_like_one_of_lust_s_own_states_is_made_under_another_name() {
+    let names = crate::project_names::Names::default().and_sounds(&["sfx/run", "sfx/day"]);
+    let (mut files, _) = crate::describe::descriptions_for("Test 1.0", "solis", &names);
+    files.push((
+        "main.lst".into(),
+        "fetch \"solis/made\":[RunSound, DaySound];\n\
+         component Feet {\n    method update(float dt) {\n        new RunSound {};\n        \
+         new DaySound {};\n    }\n}\npass Feet;\nend\n"
+            .into(),
+    ));
+    let code = Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    assert!(
+        crate::code::check(&code).is_empty(),
+        "{:?}",
+        crate::code::check(&code)
     );
 }

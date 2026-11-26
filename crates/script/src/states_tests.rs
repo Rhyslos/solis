@@ -133,18 +133,23 @@ fn only_a_component_that_handles_its_change_is_followed() {
         files: vec![(
             "main.lst".to_string(),
             "component Hero {\n\
-                 has { state = Mood.Calm; }\n\
-                 method update(float dt) { -- on MoodChanged( in a comment\n\
-                 }\n\
-             }\n\
-             component Guard {\n\
-                 has { state = Mood.Calm; }\n\
-                 on MoodChanged(Mood from, Mood to) { }\n\
-             }\n\
-             component Other {\n\
-                 has { state = Gate.Shut; }\n\
-                 on MoodChanged(Mood from, Mood to) { }\n\
-             }\n"
+                has { state = Mood.Calm; }\n\
+                method update(float dt) { -- on MoodChanged( in a comment\n\
+                }\n\
+                }\n\
+                component Guard {\n\
+                has { state = Mood.Calm; }\n\
+                on {\n\
+                \x20   MoodChanged(Mood from, Mood to) { }\n\
+                }\n\
+                }\n\
+                component Other {\n\
+                has { state = Gate.Shut; }\n\
+                on {\n\
+                \x20   MoodChanged(Mood from, Mood to) { }\n\
+                }\n\
+                }\n\
+                "
             .to_string(),
         )],
         lua: Vec::new(),
@@ -156,4 +161,18 @@ fn only_a_component_that_handles_its_change_is_followed() {
     assert!(handled("Guard"));
     // Another state's event isn't its own.
     assert!(!handled("Other"));
+}
+
+#[test]
+fn solis_s_own_new_fits_the_pinned_lust_without_moving_a_line() {
+    let before = chunk(HERO);
+    assert!(crate::readings::lust_new_found(&before.code));
+    let after = crate::readings::values_new(before.clone());
+    assert_ne!(before.code, after.code);
+    assert_eq!(before.code.lines().count(), after.code.lines().count());
+}
+
+#[test]
+fn lust_s_removed_is_there_for_components_that_stop_for_good() {
+    assert!(chunk(HERO).code.contains("api.removed = L.removed"));
 }

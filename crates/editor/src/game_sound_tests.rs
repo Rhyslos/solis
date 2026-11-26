@@ -260,19 +260,24 @@ const WALKER: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":[Clip, Cue];\n\
     fetch \"solis/animation\":[CueReached, ClipFinished];\n\
     component Walker {\n\
-        has { Clip animation = Clip.WalkerWalk; }\n\
-        on CueReached(Cue cue) {\n\
-            is cue == Cue.Footstep? then {\n\
-                World:say(\"cue footstep\");\n\
-            }\n\
-        }\n\
-        on ClipFinished(Clip clip) {\n\
-            is clip == Clip.WalkerWalk? then {\n\
-                World:say(\"done walk\");\n\
-            }\n\
-        }\n\
+    has { Clip animation = Clip.WalkerWalk; }\n\
+    on {\n\
+    \x20   CueReached(Cue cue) {\n\
+    \x20   is cue == Cue.Footstep? then {\n\
+    \x20   World:say(\"cue footstep\");\n\
+    \x20   }\n\
+    \x20   }\n\
+    \n\
+    \x20   ClipFinished(Clip clip) {\n\
+    \x20   is clip == Clip.WalkerWalk? then {\n\
+    \x20   World:say(\"done walk\");\n\
+    \x20   }\n\
+    \x20   }\n\
     }\n\
-    pass Walker;\nend\n";
+    }\n\
+    pass Walker;\n\
+    end\n\
+    ";
 
 #[test]
 fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {

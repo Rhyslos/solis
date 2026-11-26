@@ -193,20 +193,25 @@ fn a_lua_component_has_its_fields_in_order_and_runs_with_the_natives() {
 
 #[test]
 fn lua_and_lust_components_talk_through_the_same_events() {
-    let lust = "fetch \"solis/world\":World;\n\n\
+    let lust = "fetch \"solis/world\":World;\n\
+        \n\
         event Hit(entity by, float damage);\n\
         event Healed(int amount);\n\
         component Health {\n\
-            has {\n\
-                float hp = 10;\n\
-            }\n\
-            on Hit(entity by, float damage) {\n\
-                hp = hp - damage;\n\
-                World:say(\"lust hp \" + hp.text());\n\
-                send Healed(1) to me;\n\
-            }\n\
+        has {\n\
+        float hp = 10;\n\
         }\n\
-        pass Health;\nend\n";
+        on {\n\
+        \x20   Hit(entity by, float damage) {\n\
+        \x20   hp = hp - damage;\n\
+        \x20   World:say(\"lust hp \" + hp.text());\n\
+        \x20   send Healed(1) to me;\n\
+        \x20   }\n\
+        }\n\
+        }\n\
+        pass Health;\n\
+        end\n\
+        ";
     let lua = r#"
 local Gun = component("Gun", {
     { "shots", "int", 0 },

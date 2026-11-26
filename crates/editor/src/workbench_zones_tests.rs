@@ -285,8 +285,8 @@ fn new_code_for_this_zone_makes_a_file_adds_its_component_and_opens_it() {
         .collect();
     assert_eq!(made[0].0, "doorZone.lst");
     assert!(made[0].1.contains("component DoorZone {"), "{}", made[0].1);
-    assert!(made[0].1.contains("on Entered(entity who) {"));
-    assert!(made[0].1.contains("on Exited(entity who) {"));
+    assert!(made[0].1.contains("on {\n        -- Something walked into the zone: who it was.\n        Entered(entity who) {"));
+    assert!(made[0].1.contains("Exited(entity who) {"));
     assert_eq!(made[1].0, "main.lst", "a project without one gets one");
     assert!(made[1].1.contains("fetch \"doorZone\":DoorZone;"));
     let zone = w.open.document.level().get(id).unwrap();

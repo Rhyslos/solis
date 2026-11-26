@@ -95,17 +95,19 @@ component Farmer {
         int steps = 0;
     }
 
-    -- Count the footsteps as they land.
-    on CueReached(Cue cue) {
-        is cue == Cue.Footstep? then {
-            steps = steps + 1;
+    on {
+        -- Count the footsteps as they land.
+        CueReached(Cue cue) {
+            is cue == Cue.Footstep? then {
+                steps = steps + 1;
+            }
         }
-    }
 
-    -- Back to standing once the hoe swing is done.
-    on ClipFinished(Clip clip) {
-        is clip == Clip.FarmerHoe? then {
-            animation = Clip.FarmerIdle;
+        -- Back to standing once the hoe swing is done.
+        ClipFinished(Clip clip) {
+            is clip == Clip.FarmerHoe? then {
+                animation = Clip.FarmerIdle;
+            }
         }
     }
 }

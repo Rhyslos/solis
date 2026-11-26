@@ -567,7 +567,7 @@ footer p { color: var(--muted); }
 <li><a href="#lights"><span class="num">34</span>Lights and shadows: the sun, point lights and spotlights</a><ol><li><a href="#lights--when-to-use-it">When to use it</a></li><li><a href="#lights--how-to-use-it">How to use it</a></li><li><a href="#lights--settings">Settings</a></li><li><a href="#lights--tips-and-common-problems">Tips and common problems</a></li><li><a href="#lights--related">Related</a></li></ol></li>
 <li><a href="#sky-fog-and-exposure"><span class="num">35</span>Sky, fog and exposure</a><ol><li><a href="#sky-fog-and-exposure--when-to-use-it">When to use it</a></li><li><a href="#sky-fog-and-exposure--how-to-use-it">How to use it</a></li><li><a href="#sky-fog-and-exposure--settings">Settings</a></li><li><a href="#sky-fog-and-exposure--tips-and-common-problems">Tips and common problems</a></li><li><a href="#sky-fog-and-exposure--related">Related</a></li></ol></li>
 <li class="group">Game code</li>
-<li><a href="#game-code"><span class="num">36</span>Game code</a><ol><li><a href="#game-code--when-to-use-it">When to use it</a></li><li><a href="#game-code--how-to-use-it">How to use it</a></li><li><a href="#game-code--components">Components</a></li><li><a href="#game-code--field-hints-and-the-projects-names">Field hints and the project's names</a></li><li><a href="#game-code--changing-code-while-the-game-runs">Changing code while the game runs</a></li><li><a href="#game-code--events">Events</a></li><li><a href="#game-code--projectiles">Projectiles</a></li><li><a href="#game-code--making-and-removing-entities">Making and removing entities</a></li><li><a href="#game-code--reading-other-entities">Reading other entities</a></li><li><a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a></li><li><a href="#game-code--random-numbers">Random numbers</a></li><li><a href="#game-code--tweens">Tweens</a></li><li><a href="#game-code--game-wide-objects">Game-wide objects</a></li><li><a href="#game-code--saving-and-loading">Saving and loading</a></li><li><a href="#game-code--sounds">Sounds</a></li><li><a href="#game-code--input">Input</a></li><li><a href="#game-code--physics">Physics</a></li><li><a href="#game-code--what-the-engine-offers">What the engine offers</a></li><li><a href="#game-code--safe-to-open">Safe to open</a></li><li><a href="#game-code--tips-and-common-problems">Tips and common problems</a></li><li><a href="#game-code--related">Related</a></li></ol></li>
+<li><a href="#game-code"><span class="num">36</span>Game code</a><ol><li><a href="#game-code--when-to-use-it">When to use it</a></li><li><a href="#game-code--how-to-use-it">How to use it</a></li><li><a href="#game-code--components">Components</a></li><li><a href="#game-code--field-hints-and-the-projects-names">Field hints and the project's names</a></li><li><a href="#game-code--changing-code-while-the-game-runs">Changing code while the game runs</a></li><li><a href="#game-code--events">Events</a></li><li><a href="#game-code--projectiles">Projectiles</a></li><li><a href="#game-code--making-and-removing-entities">Making and removing entities</a></li><li><a href="#game-code--reading-other-entities">Reading other entities</a></li><li><a href="#game-code--hiding-entities-and-turning-colliders-off">Hiding entities and turning colliders off</a></li><li><a href="#game-code--random-numbers">Random numbers</a></li><li><a href="#game-code--waiting">Waiting</a></li><li><a href="#game-code--tweens">Tweens</a></li><li><a href="#game-code--game-wide-objects">Game-wide objects</a></li><li><a href="#game-code--saving-and-loading">Saving and loading</a></li><li><a href="#game-code--sounds">Sounds</a></li><li><a href="#game-code--input">Input</a></li><li><a href="#game-code--physics">Physics</a></li><li><a href="#game-code--what-the-engine-offers">What the engine offers</a></li><li><a href="#game-code--safe-to-open">Safe to open</a></li><li><a href="#game-code--tips-and-common-problems">Tips and common problems</a></li><li><a href="#game-code--related">Related</a></li></ol></li>
 <li><a href="#which-language"><span class="num">37</span>Which language when</a><ol><li><a href="#which-language--when-to-use-it">When to use it</a></li><li><a href="#which-language--the-short-answer">The short answer</a></li><li><a href="#which-language--the-numbers">The numbers</a></li><li><a href="#which-language--tips-and-common-problems">Tips and common problems</a></li><li><a href="#which-language--related">Related</a></li></ol></li>
 <li><a href="#physics"><span class="num">38</span>Physics</a><ol><li><a href="#physics--when-to-use-it">When to use it</a></li><li><a href="#physics--how-to-use-it">How to use it</a></li><li><a href="#physics--settings">Settings</a></li><li><a href="#physics--shortcuts">Shortcuts</a></li><li><a href="#physics--tips-and-common-problems">Tips and common problems</a></li><li><a href="#physics--related">Related</a></li></ol></li>
 <li><a href="#input"><span class="num">39</span>Input</a><ol><li><a href="#input--when-to-use-it">When to use it</a></li><li><a href="#input--how-to-use-it">How to use it</a></li><li><a href="#input--names-of-keys-and-buttons">Names of keys and buttons</a></li><li><a href="#input--settings">Settings</a></li><li><a href="#input--shortcuts">Shortcuts</a></li><li><a href="#input--tips-and-common-problems">Tips and common problems</a></li><li><a href="#input--related">Related</a></li></ol></li>
@@ -1321,9 +1321,11 @@ footer p { color: var(--muted); }
         <span class="tk-t">int</span> left = <span class="tk-v">0</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Freeze</span><span class="tk-p">(</span><span class="tk-t">int</span> frames<span class="tk-p">) {</span>
-        left = frames<span class="tk-p">;</span>
-        <span class="tk-o">World</span><span class="tk-p">.</span>gameSpeed = <span class="tk-v">0</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Freeze</span><span class="tk-p">(</span><span class="tk-t">int</span> frames<span class="tk-p">) {</span>
+            left = frames<span class="tk-p">;</span>
+            <span class="tk-o">World</span><span class="tk-p">.</span>gameSpeed = <span class="tk-v">0</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
@@ -1352,8 +1354,10 @@ footer p { color: var(--muted); }
         <span class="tk-t">int</span> frames = <span class="tk-v">0</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Hurt</span><span class="tk-p">(</span><span class="tk-t">float</span> amount<span class="tk-p">,</span> <span class="tk-t">vec3</span> from<span class="tk-p">) {</span>
-        frames = <span class="tk-o">Maths</span><span class="tk-p">:</span>round<span class="tk-p">(</span>seconds * <span class="tk-v">60</span><span class="tk-p">);</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Hurt</span><span class="tk-p">(</span><span class="tk-t">float</span> amount<span class="tk-p">,</span> <span class="tk-t">vec3</span> from<span class="tk-p">) {</span>
+            frames = <span class="tk-o">Maths</span><span class="tk-p">:</span>round<span class="tk-p">(</span>seconds * <span class="tk-v">60</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
@@ -1461,24 +1465,26 @@ footer p { color: var(--muted); }
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">CueReached</span><span class="tk-p">(</span><span class="tk-n">Cue</span> cue<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> cue == <span class="tk-o">Cue</span><span class="tk-p">.</span><span class="tk-s">HoeHits</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-c">-- The middle of the blade's reach, on the side the hero faces.</span>
-            <span class="tk-t">float</span> side = <span class="tk-v">1</span><span class="tk-p">;</span>
-            <span class="tk-f">is</span> flip == <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">Across</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-                side = -<span class="tk-v">1</span><span class="tk-p">;</span>
-            <span class="tk-p">}</span>
-            <span class="tk-t">vec3</span> blade = position<span class="tk-p">()</span> + <span class="tk-p">[</span>side * reach * <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
-            <span class="tk-f">loop</span> <span class="tk-p">(</span><span class="tk-t">entity</span> enemy <span class="tk-f">in</span> <span class="tk-o">World</span><span class="tk-p">:</span>within<span class="tk-p">(</span><span class="tk-o">Tag</span><span class="tk-p">.</span><span class="tk-s">Enemy</span><span class="tk-p">,</span> blade<span class="tk-p">,</span> reach * <span class="tk-v">0.6</span><span class="tk-p">)) {</span>
-                <span class="tk-f">send</span> <span class="tk-n">Hurt</span><span class="tk-p">(</span>damage<span class="tk-p">,</span> position<span class="tk-p">())</span> <span class="tk-f">to</span> enemy<span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">CueReached</span><span class="tk-p">(</span><span class="tk-n">Cue</span> cue<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> cue == <span class="tk-o">Cue</span><span class="tk-p">.</span><span class="tk-s">HoeHits</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                <span class="tk-c">-- The middle of the blade's reach, on the side the hero faces.</span>
+                <span class="tk-t">float</span> side = <span class="tk-v">1</span><span class="tk-p">;</span>
+                <span class="tk-f">is</span> flip == <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">Across</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                    side = -<span class="tk-v">1</span><span class="tk-p">;</span>
+                <span class="tk-p">}</span>
+                <span class="tk-t">vec3</span> blade = position<span class="tk-p">()</span> + <span class="tk-p">[</span>side * reach * <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
+                <span class="tk-f">loop</span> <span class="tk-p">(</span><span class="tk-t">entity</span> enemy <span class="tk-f">in</span> <span class="tk-o">World</span><span class="tk-p">:</span>within<span class="tk-p">(</span><span class="tk-o">Tag</span><span class="tk-p">.</span><span class="tk-s">Enemy</span><span class="tk-p">,</span> blade<span class="tk-p">,</span> reach * <span class="tk-v">0.6</span><span class="tk-p">)) {</span>
+                    <span class="tk-f">send</span> <span class="tk-n">Hurt</span><span class="tk-p">(</span>damage<span class="tk-p">,</span> position<span class="tk-p">())</span> <span class="tk-f">to</span> enemy<span class="tk-p">;</span>
+                <span class="tk-p">}</span>
             <span class="tk-p">}</span>
         <span class="tk-p">}</span>
-    <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            swinging = <span class="tk-v">false</span><span class="tk-p">;</span>
-            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroIdle</span><span class="tk-p">;</span>
+        <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                swinging = <span class="tk-v">false</span><span class="tk-p">;</span>
+                animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">HeroIdle</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -1499,16 +1505,18 @@ footer p { color: var(--muted); }
         <span class="tk-t">float</span> fall = <span class="tk-v">0</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Hurt</span><span class="tk-p">(</span><span class="tk-t">float</span> amount<span class="tk-p">,</span> <span class="tk-t">vec3</span> from<span class="tk-p">) {</span>
-        health = health - amount<span class="tk-p">;</span>
-        <span class="tk-f">is</span> health &lt;= <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            despawn<span class="tk-p">();</span>
-            <span class="tk-f">return</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Hurt</span><span class="tk-p">(</span><span class="tk-t">float</span> amount<span class="tk-p">,</span> <span class="tk-t">vec3</span> from<span class="tk-p">) {</span>
+            health = health - amount<span class="tk-p">;</span>
+            <span class="tk-f">is</span> health &lt;= <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                despawn<span class="tk-p">();</span>
+                <span class="tk-f">return</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
+            <span class="tk-c">-- Away from the hit, and a little up.</span>
+            <span class="tk-t">float</span> side = <span class="tk-o">Maths</span><span class="tk-p">:</span>sign<span class="tk-p">(</span>position<span class="tk-p">().</span>x - from<span class="tk-p">.</span>x<span class="tk-p">);</span>
+            knock = <span class="tk-p">[</span>side * knockback<span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
+            fall = knockback * <span class="tk-v">0.5</span><span class="tk-p">;</span>
         <span class="tk-p">}</span>
-        <span class="tk-c">-- Away from the hit, and a little up.</span>
-        <span class="tk-t">float</span> side = <span class="tk-o">Maths</span><span class="tk-p">:</span>sign<span class="tk-p">(</span>position<span class="tk-p">().</span>x - from<span class="tk-p">.</span>x<span class="tk-p">);</span>
-        knock = <span class="tk-p">[</span>side * knockback<span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
-        fall = knockback * <span class="tk-v">0.5</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
@@ -1542,8 +1550,10 @@ footer p { color: var(--muted); }
         <span class="tk-t">vec3</span> way = <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span> <span class="tk-c">-- [hidden]</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Launch</span><span class="tk-p">(</span><span class="tk-t">vec3</span> <span class="tk-f">to</span><span class="tk-p">) {</span>
-        way = <span class="tk-f">to</span><span class="tk-p">:</span>normalized<span class="tk-p">();</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Launch</span><span class="tk-p">(</span><span class="tk-t">vec3</span> <span class="tk-f">to</span><span class="tk-p">) {</span>
+            way = <span class="tk-f">to</span><span class="tk-p">:</span>normalized<span class="tk-p">();</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
@@ -1623,12 +1633,14 @@ footer p { color: var(--muted); }
         <span class="tk-t">vec3 colour</span> = <span class="tk-p">[</span><span class="tk-v">4</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">];</span> <span class="tk-c">-- [tip &quot;Red, green and blue; above 1 glows.&quot;]</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Hurt</span><span class="tk-p">(</span><span class="tk-t">float</span> amount<span class="tk-p">,</span> <span class="tk-t">vec3</span> from<span class="tk-p">) {</span>
-        <span class="tk-t">vec3</span> at = position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
-        <span class="tk-f">loop</span> count <span class="tk-p">{</span>
-            <span class="tk-t">float</span> angle = <span class="tk-o">World</span><span class="tk-p">:</span>randomRange<span class="tk-p">(</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">6.2832</span><span class="tk-p">);</span>
-            <span class="tk-t">vec3</span> way = <span class="tk-p">[</span><span class="tk-o">Maths</span><span class="tk-p">:</span>cos<span class="tk-p">(</span>angle<span class="tk-p">),</span> <span class="tk-o">Maths</span><span class="tk-p">:</span>sin<span class="tk-p">(</span>angle<span class="tk-p">),</span> <span class="tk-v">0</span><span class="tk-p">];</span>
-            <span class="tk-k">new</span> <span class="tk-n">Shot</span> <span class="tk-p">{</span> from = at<span class="tk-p">,</span> direction = way<span class="tk-p">,</span> speed = speed * <span class="tk-o">World</span><span class="tk-p">:</span>randomRange<span class="tk-p">(</span><span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">1</span><span class="tk-p">),</span> life = <span class="tk-o">World</span><span class="tk-p">:</span>randomRange<span class="tk-p">(</span><span class="tk-v">0.08</span><span class="tk-p">,</span> <span class="tk-v">0.2</span><span class="tk-p">),</span> <span class="tk-t">colour</span> = <span class="tk-t">colour</span> <span class="tk-p">};</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Hurt</span><span class="tk-p">(</span><span class="tk-t">float</span> amount<span class="tk-p">,</span> <span class="tk-t">vec3</span> from<span class="tk-p">) {</span>
+            <span class="tk-t">vec3</span> at = position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
+            <span class="tk-f">loop</span> count <span class="tk-p">{</span>
+                <span class="tk-t">float</span> angle = <span class="tk-o">World</span><span class="tk-p">:</span>randomRange<span class="tk-p">(</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">6.2832</span><span class="tk-p">);</span>
+                <span class="tk-t">vec3</span> way = <span class="tk-p">[</span><span class="tk-o">Maths</span><span class="tk-p">:</span>cos<span class="tk-p">(</span>angle<span class="tk-p">),</span> <span class="tk-o">Maths</span><span class="tk-p">:</span>sin<span class="tk-p">(</span>angle<span class="tk-p">),</span> <span class="tk-v">0</span><span class="tk-p">];</span>
+                <span class="tk-k">new</span> <span class="tk-n">Shot</span> <span class="tk-p">{</span> from = at<span class="tk-p">,</span> direction = way<span class="tk-p">,</span> speed = speed * <span class="tk-o">World</span><span class="tk-p">:</span>randomRange<span class="tk-p">(</span><span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">1</span><span class="tk-p">),</span> life = <span class="tk-o">World</span><span class="tk-p">:</span>randomRange<span class="tk-p">(</span><span class="tk-v">0.08</span><span class="tk-p">,</span> <span class="tk-v">0.2</span><span class="tk-p">),</span> <span class="tk-t">colour</span> = <span class="tk-t">colour</span> <span class="tk-p">};</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -2003,7 +2015,8 @@ footer p { color: var(--muted); }
 <li><a id="concepts--tick"></a><strong>Tick:</strong> one step of the running game. Solis runs 60 a second, whatever the frame rate, and game code's <code>update</code> runs once each tick, so the game behaves the same on a fast or slow computer. During a tick, game code sees the world as it was when the tick started (plus its own changes), so it can run on every core at once and still come out the same.</li>
 <li><strong>Random number:</strong> a number game code gets by chance, such as a die roll (<code>World:randomInt(1, 6)</code>). Solis makes them from a <strong>seed</strong>: the same seed gives the same numbers in the same order, so a play can be repeated exactly. Each Play has a new seed unless you choose one (<code>seed</code> in the <a href="#console">Console</a>).</li>
 <li><strong>Tween:</strong> a value gliding to a new one over a set time (a door swinging open over half a second), written in Lust as <code>tween open to 1 over 0.5;</code>. Solis moves every tween a step each tick, before the components' <code>update</code>s. The way it speeds up and slows down is its <strong>ease</strong> (<code>[ease OutCubic]</code>). See <a href="#game-code--tweens">Game code</a>.</li>
-<li><strong>Event:</strong> a message one component sends to an entity, such as &quot;you were hit, for 2.5&quot;. Each of that entity's components that cares reacts to it. Events let components work together without knowing about each other, even when they're written in different languages.</li>
+<li><strong>Event:</strong> a message one component sends to an entity, such as &quot;you were hit, for 2.5&quot;. Each of that entity's components that cares reacts to it, with a <strong>handler</strong> in its <code>on { }</code> block. Events let components work together without knowing about each other, even when they're written in different languages.</li>
+<li><strong>Waiting:</strong> game code pausing part way through what it's doing (<code>wait 2;</code>) and carrying on later, while the rest of the game plays on. Only a handler, a tween's done block or a method started with <code>start</code> can wait; <code>update</code> can't. See <a href="#game-code--waiting">Game code</a>.</li>
 <li><strong>Data table:</strong> a file of rows and typed columns, such as every item with its price, edited in the Table tab like a spreadsheet. Game code reads a row by its ID (<code>Items:row(Item.IronSword).price</code>) with every row and column checked before the game runs; while the game plays, tables don't change. See <a href="#data-tables">Data tables</a>.</li>
 <li><strong>Tag:</strong> a label you give entities, such as Enemy or Collectible, so game code can find every entity of a kind: &quot;all enemies within 3 m&quot;, &quot;the nearest collectible&quot;. The project keeps its own list of tags (Project settings › Tags), and game code names each as <code>Tag.Enemy</code>, so a misspelt tag is a mistake before the game runs. See <a href="#tags">Tags</a>.</li>
 <li><strong>Timer:</strong> a named wait a component starts in game code (&quot;open in 2 seconds&quot;, &quot;every 5 seconds&quot;, &quot;each day at six&quot;), after which it hears <code>TimerFinished</code>. Timers count <strong>game time</strong>, in whole ticks, so they follow the game's speed and stand still while it's paused, and they're kept in save games. Each is named where code starts it (<code>new DoorOpens { after = 2.0 }</code>), so a misspelt name elsewhere is a mistake before the game runs. One started while its component is in a state of its own ends with that state (<a href="#states">States that start and stop</a>). See <a href="#timers">Timers</a>.</li>
@@ -5199,7 +5212,7 @@ After 121 ticks:
 <h3>Changing code while the game runs<a class="anchor" href="#game-code--changing-code-while-the-game-runs" aria-label="Link to this section">#</a></h3>
 <p>Keep the game playing, change your Lust, and save. In about a third of a second the running game has the new code, and nothing starts over:</p>
 <ul>
-<li><strong>Every running component keeps its values,</strong> field by field, by name: a turret keeps the ammo it has left, a mover stays where it got to. Only <code>update</code> and the <code>on</code> reactions are new.</li>
+<li><strong>Every running component keeps its values,</strong> field by field, by name: a turret keeps the ammo it has left, a mover stays where it got to. Only <code>update</code> and the handlers in <code>on { }</code> are new.</li>
 <li><strong>A field whose kind changed</strong> (an <code>int</code> that's now a <code>float</code>), <strong>or a new field,</strong> takes its starting value. The Console says which: &quot;Gun's ammo is float now, not int, so it starts at 10.&quot;</li>
 <li><strong>A removed field</strong> is dropped; <strong>a removed component</strong> stops.</li>
 <li><strong>A component new in the code</strong> starts on every entity that has it.</li>
@@ -5210,7 +5223,7 @@ After 121 ticks:
 </section>
 <section id="game-code--events">
 <h3>Events<a class="anchor" href="#game-code--events" aria-label="Link to this section">#</a></h3>
-<p>Components tell each other things with <a href="#concepts--game-code">events</a>: a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it with <code>on</code>, and anything sends it to an entity with <code>send</code>:</p>
+<p>Components tell each other things with <a href="#concepts--game-code">events</a>: a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it in its <strong><code>on { }</code> block</strong>, which holds one handler for each event it hears (like <code>has { }</code> holds its fields), and anything sends it to an entity with <code>send</code>:</p>
 <div class="example">
 <div class="langs" role="tablist" aria-label="Language"><button type="button" role="tab" data-lang="lust" aria-selected="true">Lust</button><button type="button" role="tab" data-lang="rust" aria-selected="false">Rust</button><button type="button" role="tab" data-lang="lua" aria-selected="false">Lua</button></div>
 <pre data-lang="lust" data-name="Lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
@@ -5223,17 +5236,19 @@ After 121 ticks:
         <span class="tk-t">float</span> hp = <span class="tk-v">10</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">entity</span> by<span class="tk-p">,</span> <span class="tk-t">float</span> damage<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> hp &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            hp = hp - damage<span class="tk-p">;</span>
-            <span class="tk-f">is</span> hp &lt;= <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-                <span class="tk-f">send</span> <span class="tk-n">Died</span><span class="tk-p">()</span> <span class="tk-f">to</span> <span class="tk-v">this</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">entity</span> by<span class="tk-p">,</span> <span class="tk-t">float</span> damage<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> hp &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                hp = hp - damage<span class="tk-p">;</span>
+                <span class="tk-f">is</span> hp &lt;= <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                    <span class="tk-f">send</span> <span class="tk-n">Died</span><span class="tk-p">()</span> <span class="tk-f">to</span> <span class="tk-v">this</span><span class="tk-p">;</span>
+                <span class="tk-p">}</span>
             <span class="tk-p">}</span>
         <span class="tk-p">}</span>
-    <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Died</span><span class="tk-p">() {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;down!&quot;</span><span class="tk-p">);</span>
+        <span class="tk-n">Died</span><span class="tk-p">() {</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;down!&quot;</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -5324,14 +5339,15 @@ After 121 ticks:
 <span class="tk-k">end</span></code></pre>
 </div>
 <ul>
-<li><strong>When they arrive:</strong> after every component's <code>update</code> in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an <code>on</code> for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.</li>
+<li><strong>When they arrive:</strong> after every component's <code>update</code> in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with a handler for it in its <code>on { }</code> reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.</li>
 <li><strong>From the engine:</strong> some events are Solis's own, such as a <a href="#trigger-zones">trigger zone</a>'s <code>Entered</code> or a <a href="#timers">timer</a>'s <code>TimerFinished</code> (a screen's <a href="#text-effects"><code>TypingFinished</code></a> comes with the tick's input instead, as a button's event does). They arrive first, in the tick's first round. <code>TimerFinished</code> is the one event that reaches a single component: the one that started the timer.</li>
 <li><strong>To something you just spawned:</strong> an event sent to an entity spawned in the same tick (<code>entity shot = new Bolt { … }; send Launch(dir) to shot;</code>) arrives at the start of the next tick's events, once its components exist. Its first <code>update</code> runs just before, so set it moving in the <code>on</code>, not in <code>update</code>'s first run.</li>
 <li><strong>An event to <code>nothing</code></strong> goes nowhere, so a gun with no target is harmless.</li>
-<li><strong>An event sent while starting</strong> goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (<code>int id = register();</code>, where <code>register</code> has a <code>send</code> in it): nothing is running yet to take the event. Send from <code>update</code> or an <code>on</code>.</li>
+<li><strong>An event sent while starting</strong> goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (<code>int id = register();</code>, where <code>register</code> has a <code>send</code> in it): nothing is running yet to take the event. Send from <code>update</code> or a handler.</li>
+<li><strong>Events only Lust hears:</strong> <code>send Saved();</code> with no <code>to</code>, or sent to one of your own classes' things or a <a href="#game-code--game-wide-objects">game-wide object</a>, stays inside Lust: it reaches the <code>on { }</code> blocks of classes and objects, never a component, and arrives as the call that sent it ends (after the <code>update</code> or handler). An object's own events, sent from its <code>update</code>, can change it; one sent from a component can't, as only an object's update changes it.</li>
 <li><strong>Lust checks</strong> that every <code>send</code> carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.</li>
 <li><strong>Components that keep sending to each other</strong> forever are stopped after 10,000 events in one tick, with a message in the Console (once, until the code changes), so the game can't freeze. At most 10,000 events can wait at once, holding at most 16 MB of text: past that, the <code>send</code> itself fails, so the Console points at the component sending too much.</li>
-<li><strong>A component whose reaction keeps failing</strong> (an <code>on</code> that divides by zero, every time) is said once in the Console; it keeps running, and its later failures with events aren't said again until the code changes.</li>
+<li><strong>A component whose reaction keeps failing</strong> (a handler that divides by zero, every time) is said once in the Console; it keeps running, and its later failures with events aren't said again until the code changes.</li>
 </ul>
 <p><strong>In Lua</strong>, <code>solis.send(to, &quot;Hit&quot;, by, 2.5)</code> sends an event, and a function called <code>on_</code> and the event's name reacts to it. When the Lust declares the event, what Lua sends is checked against what it carries: a wrong value means the event isn't sent, and the Console names the Lua component that sent it. Lua can also send events no Lust declares; their numbers arrive as floats (Lua has one kind of number, so <span class="keys"><kbd>2</kbd></span> and <code>2.5</code> arrive alike).</p>
 <p>A Lua component's fields can't be called <code>me</code> (the entity it's on), <code>update</code>, or anything starting with <code>on_</code> or <code>__</code>: those are its methods, and Lua's own.</p>
@@ -5580,8 +5596,10 @@ After 121 ticks:
         <span class="tk-t">bool</span> solid = <span class="tk-v">true</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Died</span><span class="tk-p">() {</span>
-        solid = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Died</span><span class="tk-p">() {</span>
+            solid = <span class="tk-v">false</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -5644,6 +5662,51 @@ After 121 ticks:
 </div>
 <p>Solis makes them from the game's <strong>seed</strong> (<a href="#concepts--game-code">random numbers</a>), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type <code>seed</code> in the <a href="#console">Console</a> to see it, and <code>seed 42</code> to start every Play from 42, so you can watch the same game again. <code>setSeed(n)</code> starts the numbers again from <code>n</code> at the end of the tick. Lua's own <code>math.random</code> and <code>math.randomseed</code> follow the same seed. Lust's own <code>Random</code> (<code>Random[1, 6]</code>, <code>Random:chance</code>, an array's <code>pick</code> and <code>shuffle</code>) doesn't yet: its first roll starts it from the computer's clock, and with it the game's seed, so the same game can't be played again. Use <code>World:random</code> and the rest above. The numbers carry on while the game is paused with <code>World.gameSpeed = 0</code>: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.</p>
 </section>
+<section id="game-code--waiting">
+<h3>Waiting<a class="anchor" href="#game-code--waiting" aria-label="Link to this section">#</a></h3>
+<p>A door that opens, waits two seconds, then closes; an enemy that winds up for half a second before it strikes: game code can <strong>wait</strong> in the middle of what it's doing, and carry on later, while the rest of the game plays on.</p>
+<pre data-lang="lust"><code><span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/input&quot;</span><span class="tk-p">:</span><span class="tk-n">Input</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Action</span><span class="tk-p">;</span>
+
+<span class="tk-k">event</span> <span class="tk-n">Opened</span><span class="tk-p">();</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Door</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">bool</span> open = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-f">is</span> <span class="tk-o">Input</span><span class="tk-p">:</span>pressed<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Fire</span><span class="tk-p">)</span> &amp;&amp; <span class="tk-f">not</span> open<span class="tk-f">? then</span> <span class="tk-p">{</span>
+            start swing<span class="tk-p">();</span>
+        <span class="tk-p">}</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> swing<span class="tk-p">() {</span>
+        open = <span class="tk-v">true</span><span class="tk-p">;</span>
+        <span class="tk-o">wait</span> <span class="tk-v">2</span><span class="tk-p">;</span>
+        open = <span class="tk-v">false</span><span class="tk-p">;</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Opened</span><span class="tk-p">() {</span>
+            <span class="tk-o">wait</span> <span class="tk-v">0.5</span><span class="tk-p">;</span>
+            open = <span class="tk-v">true</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Door</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<ul>
+<li><strong><code>wait seconds;</code></strong> pauses only the piece of work it's in: a handler in <code>on { }</code>, a tween's done block, or a method started with <strong><code>start</code></strong> (<code>start swing();</code>). The game, and every other component, keeps going; the work carries on at the first tick once that much time has passed.</li>
+<li><strong><code>update</code> can't wait,</strong> since Solis calls it every tick: a <code>wait</code> in it would hold up the whole game. Put the waiting in a method of its own and <code>start</code> it, as <code>Door</code> does. A <code>wait</code> written in <code>update</code> is a mistake in Problems; one reached through a method <code>update</code> calls stops that call with a message saying to start it instead.</li>
+<li><strong>Game time, not the clock on the wall:</strong> waits count the game's own time, so a paused game (<code>World.gameSpeed = 0</code>) moves no waits, and a slowed one moves them slower. <code>wait { is open? }</code> waits until a question is true, looking once a tick.</li>
+<li><strong>Named work:</strong> <code>start closing = swing();</code> gives the work a name; <code>cancel closing;</code> stops it, and <code>closing.state</code> says how it's going (<code>Run.Waiting</code>, <code>Run.Going</code>, <code>Run.Done</code> or <code>Run.Cancelled</code>).</li>
+<li><strong>When a component goes,</strong> taken off its entity, its entity removed, or stopped after a failure, everything it started that's still waiting is cancelled and never runs again.</li>
+<li><strong>What doesn't last:</strong> work still waiting isn't kept in a <a href="#save-games">save game</a>, and stops when the code changes while the game runs. Keep what matters in fields (a <code>float closeAt</code> checked in <code>update</code>, or a <a href="#timers">timer</a>) when it must survive those.</li>
+<li><strong>A failure after a wait</strong> is said in the Console with the line it happened on, and stops only that piece of work.</li>
+</ul>
+</section>
 <section id="game-code--tweens">
 <h3>Tweens<a class="anchor" href="#game-code--tweens" aria-label="Link to this section">#</a></h3>
 <p>A door that swings open over half a second, a health bar that slides down, a light that fades: a <strong><a href="#concepts--game-code">tween</a></strong> glides a field to a new value over time, so you don't write the in-between steps yourself.</p>
@@ -5656,9 +5719,11 @@ After 121 ticks:
         <span class="tk-t">float</span> open = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Opened</span><span class="tk-p">() {</span>
-        <span class="tk-f">tween</span> open <span class="tk-f">to</span> <span class="tk-v">1</span> <span class="tk-f">over</span> <span class="tk-v">0.5</span> <span class="tk-p">[</span>ease <span class="tk-n">OutCubic</span><span class="tk-p">] {</span>
-            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;the door is open&quot;</span><span class="tk-p">);</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Opened</span><span class="tk-p">() {</span>
+            <span class="tk-f">tween</span> open <span class="tk-f">to</span> <span class="tk-v">1</span> <span class="tk-f">over</span> <span class="tk-v">0.5</span> <span class="tk-p">[</span>ease <span class="tk-n">OutCubic</span><span class="tk-p">] {</span>
+                <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;the door is open&quot;</span><span class="tk-p">);</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -6669,8 +6734,10 @@ After 121 ticks:
         <span class="tk-n">Screen</span> screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">PauseMenu</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
-        screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
+            screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -6746,9 +6813,11 @@ After 121 ticks:
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
-        screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
-        <span class="tk-o">World</span><span class="tk-p">.</span>gameSpeed = <span class="tk-v">1</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Resumed</span><span class="tk-p">() {</span>
+            screen = <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+            <span class="tk-o">World</span><span class="tk-p">.</span>gameSpeed = <span class="tk-v">1</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -6804,18 +6873,22 @@ After 121 ticks:
 <span class="tk-k">event</span> <span class="tk-n">NextResolution</span><span class="tk-p">();</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Pauser</span> <span class="tk-p">{</span>
-    <span class="tk-f">on</span> <span class="tk-n">BiggerText</span><span class="tk-p">() {</span>
-        <span class="tk-t">float</span> size = <span class="tk-o">Screens</span><span class="tk-p">.</span>textSize + <span class="tk-v">0.25</span><span class="tk-p">;</span>
-        <span class="tk-f">is</span> size &gt; <span class="tk-v">2</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            size = <span class="tk-v">1</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">BiggerText</span><span class="tk-p">() {</span>
+            <span class="tk-t">float</span> size = <span class="tk-o">Screens</span><span class="tk-p">.</span>textSize + <span class="tk-v">0.25</span><span class="tk-p">;</span>
+            <span class="tk-f">is</span> size &gt; <span class="tk-v">2</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                size = <span class="tk-v">1</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
+            <span class="tk-o">Screens</span><span class="tk-p">.</span>textSize = size<span class="tk-p">;</span>
         <span class="tk-p">}</span>
-        <span class="tk-o">Screens</span><span class="tk-p">.</span>textSize = size<span class="tk-p">;</span>
-    <span class="tk-p">}</span>
-    <span class="tk-f">on</span> <span class="tk-n">Fullscreen</span><span class="tk-p">() {</span>
-        <span class="tk-o">Window</span><span class="tk-p">.</span>fullscreen = <span class="tk-f">not</span> <span class="tk-o">Window</span><span class="tk-p">.</span>fullscreen<span class="tk-p">;</span>
-    <span class="tk-p">}</span>
-    <span class="tk-f">on</span> <span class="tk-n">NextResolution</span><span class="tk-p">() {</span>
-        <span class="tk-o">Window</span><span class="tk-p">:</span>useNextResolution<span class="tk-p">();</span>
+
+        <span class="tk-n">Fullscreen</span><span class="tk-p">() {</span>
+            <span class="tk-o">Window</span><span class="tk-p">.</span>fullscreen = <span class="tk-f">not</span> <span class="tk-o">Window</span><span class="tk-p">.</span>fullscreen<span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+
+        <span class="tk-n">NextResolution</span><span class="tk-p">() {</span>
+            <span class="tk-o">Window</span><span class="tk-p">:</span>useNextResolution<span class="tk-p">();</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -7212,9 +7285,11 @@ After 121 ticks:
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">TypingFinished</span><span class="tk-p">(</span><span class="tk-n">Screen</span> which<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> which == <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">Talk</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            typed = <span class="tk-v">true</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">TypingFinished</span><span class="tk-p">(</span><span class="tk-n">Screen</span> which<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> which == <span class="tk-o">Screen</span><span class="tk-p">.</span><span class="tk-s">Talk</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                typed = <span class="tk-v">true</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -7376,10 +7451,12 @@ Shop-Apples = { $count -&gt;
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/zones&quot;</span><span class="tk-p">:</span><span class="tk-n">Entered</span><span class="tk-p">;</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Shopkeeper</span> <span class="tk-p">{</span>
-    <span class="tk-c">-- Someone walked in: welcome them, and say how many apples are left.</span>
-    <span class="tk-f">on</span> <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">World</span><span class="tk-p">:</span>text<span class="tk-p">(</span><span class="tk-o">Text</span><span class="tk-p">.</span><span class="tk-s">ShopWelcome</span><span class="tk-p">));</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">ShopText</span><span class="tk-p">:</span>apples<span class="tk-p">(</span><span class="tk-v">3</span><span class="tk-p">,</span> <span class="tk-v">&quot;Mira&quot;</span><span class="tk-p">));</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- Someone walked in: welcome them, and say how many apples are left.</span>
+        <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">World</span><span class="tk-p">:</span>text<span class="tk-p">(</span><span class="tk-o">Text</span><span class="tk-p">.</span><span class="tk-s">ShopWelcome</span><span class="tk-p">));</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-o">ShopText</span><span class="tk-p">:</span>apples<span class="tk-p">(</span><span class="tk-v">3</span><span class="tk-p">,</span> <span class="tk-v">&quot;Mira&quot;</span><span class="tk-p">));</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 <span class="tk-k">pass</span> <span class="tk-n">Shopkeeper</span><span class="tk-p">;</span>
@@ -7642,7 +7719,7 @@ Shop-Apples = { $count -&gt;
 <p>Solis writes the Lust for you: it reads the component once at the top of the view (<code>Health health = Ui:entity():health();</code>) and fetches it from its file, then uses it. It's ordinary Lust, so you can change it as code later.</p>
 <p><strong>Preview values</strong> (top of the canvas) lets you try other numbers for what the screen reads, with a slider each: drag health down to see the bar empty. They're never saved; <strong>Back to the starting values</strong> forgets them.</p>
 <h4 id="ui-editor--what-a-button-does">What a button does<a class="anchor" href="#ui-editor--what-a-button-does" aria-label="Link to this section">#</a></h4>
-<p>A button's <strong>When clicked</strong> in Properties has a <strong>Sends</strong> list: the <a href="#game-code">events</a> your game's code declares (<code>event Pause();</code>). Pick one and the button sends it to the screen's entity (Solis fetches it at the top of the screen's file for you), whose code reacts with <code>on Pause() { … }</code>. This is the safe way for a screen to change the game: screens never change it themselves (<a href="#screens">why</a>). A button whose <code>{ }</code> does more than send one event shows its code instead.</p>
+<p>A button's <strong>When clicked</strong> in Properties has a <strong>Sends</strong> list: the <a href="#game-code">events</a> your game's code declares (<code>event Pause();</code>). Pick one and the button sends it to the screen's entity (Solis fetches it at the top of the screen's file for you), whose code reacts in its on block: <code>on { Pause() { … } }</code>. This is the safe way for a screen to change the game: screens never change it themselves (<a href="#screens">why</a>). A button whose <code>{ }</code> does more than send one event shows its code instead.</p>
 </section>
 <section id="ui-editor--settings">
 <h3>Settings<a class="anchor" href="#ui-editor--settings" aria-label="Link to this section">#</a></h3>
@@ -8045,17 +8122,19 @@ Shop-Apples = { $count -&gt;
         <span class="tk-t">int</span> steps = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Count the footsteps as they land.</span>
-    <span class="tk-f">on</span> <span class="tk-n">CueReached</span><span class="tk-p">(</span><span class="tk-n">Cue</span> cue<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> cue == <span class="tk-o">Cue</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            steps = steps + <span class="tk-v">1</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- Count the footsteps as they land.</span>
+        <span class="tk-n">CueReached</span><span class="tk-p">(</span><span class="tk-n">Cue</span> cue<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> cue == <span class="tk-o">Cue</span><span class="tk-p">.</span><span class="tk-s">Footstep</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                steps = steps + <span class="tk-v">1</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
-    <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Back to standing once the hoe swing is done.</span>
-    <span class="tk-f">on</span> <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">;</span>
+        <span class="tk-c">-- Back to standing once the hoe swing is done.</span>
+        <span class="tk-n">ClipFinished</span><span class="tk-p">(</span><span class="tk-n">Clip</span> clip<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> clip == <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerHoe</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                animation = <span class="tk-o">Clip</span><span class="tk-p">.</span><span class="tk-s">FarmerIdle</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -9502,15 +9581,17 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/zones&quot;</span><span class="tk-p">:[</span><span class="tk-n">Entered</span><span class="tk-p">,</span> <span class="tk-n">Exited</span><span class="tk-p">];</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Door</span> <span class="tk-p">{</span>
-    <span class="tk-c">-- Someone walked in: say who, and how many are inside now.</span>
-    <span class="tk-f">on</span> <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
-        <span class="tk-t">int</span> count = #inside<span class="tk-p">();</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span>who<span class="tk-p">:</span>name<span class="tk-p">()</span> + <span class="tk-v">&quot; came in; &quot;</span> + count<span class="tk-p">.</span>text<span class="tk-p">()</span> + <span class="tk-v">&quot; inside&quot;</span><span class="tk-p">);</span>
-    <span class="tk-p">}</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- Someone walked in: say who, and how many are inside now.</span>
+        <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
+            <span class="tk-t">int</span> count = #inside<span class="tk-p">();</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span>who<span class="tk-p">:</span>name<span class="tk-p">()</span> + <span class="tk-v">&quot; came in; &quot;</span> + count<span class="tk-p">.</span>text<span class="tk-p">()</span> + <span class="tk-v">&quot; inside&quot;</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Someone walked out.</span>
-    <span class="tk-f">on</span> <span class="tk-n">Exited</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span>who<span class="tk-p">:</span>name<span class="tk-p">()</span> + <span class="tk-v">&quot; left&quot;</span><span class="tk-p">);</span>
+        <span class="tk-c">-- Someone walked out.</span>
+        <span class="tk-n">Exited</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span>who<span class="tk-p">:</span>name<span class="tk-p">()</span> + <span class="tk-v">&quot; left&quot;</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 <span class="tk-k">pass</span> <span class="tk-n">Door</span><span class="tk-p">;</span>
@@ -9564,14 +9645,16 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/zones&quot;</span><span class="tk-p">:[</span><span class="tk-n">EnteredZone</span><span class="tk-p">,</span> <span class="tk-n">LeftZone</span><span class="tk-p">];</span>
 
 <span class="tk-k">component</span> <span class="tk-n">Player</span> <span class="tk-p">{</span>
-    <span class="tk-c">-- Walked into a zone: which one.</span>
-    <span class="tk-f">on</span> <span class="tk-n">EnteredZone</span><span class="tk-p">(</span><span class="tk-t">entity</span> zone<span class="tk-p">) {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Now in &quot;</span> + zone<span class="tk-p">:</span>name<span class="tk-p">());</span>
-    <span class="tk-p">}</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- Walked into a zone: which one.</span>
+        <span class="tk-n">EnteredZone</span><span class="tk-p">(</span><span class="tk-t">entity</span> zone<span class="tk-p">) {</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Now in &quot;</span> + zone<span class="tk-p">:</span>name<span class="tk-p">());</span>
+        <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Walked out of it again.</span>
-    <span class="tk-f">on</span> <span class="tk-n">LeftZone</span><span class="tk-p">(</span><span class="tk-t">entity</span> zone<span class="tk-p">) {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Left &quot;</span> + zone<span class="tk-p">:</span>name<span class="tk-p">());</span>
+        <span class="tk-c">-- Walked out of it again.</span>
+        <span class="tk-n">LeftZone</span><span class="tk-p">(</span><span class="tk-t">entity</span> zone<span class="tk-p">) {</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Left &quot;</span> + zone<span class="tk-p">:</span>name<span class="tk-p">());</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 <span class="tk-k">pass</span> <span class="tk-n">Player</span><span class="tk-p">;</span>
@@ -10094,17 +10177,19 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-t">bool</span> open = <span class="tk-v">false</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-c">-- The switch sends this; the door waits two seconds.</span>
-    <span class="tk-f">on</span> <span class="tk-n">SwitchPulled</span><span class="tk-p">() {</span>
-        <span class="tk-k">new</span> <span class="tk-n">DoorOpens</span> <span class="tk-p">{</span> after = <span class="tk-v">2.0</span> <span class="tk-p">};</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;The door rumbles...&quot;</span><span class="tk-p">);</span>
-    <span class="tk-p">}</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- The switch sends this; the door waits two seconds.</span>
+        <span class="tk-n">SwitchPulled</span><span class="tk-p">() {</span>
+            <span class="tk-k">new</span> <span class="tk-n">DoorOpens</span> <span class="tk-p">{</span> after = <span class="tk-v">2.0</span> <span class="tk-p">};</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;The door rumbles...&quot;</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Two seconds of game time later.</span>
-    <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> which == <span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">DoorOpens</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            open = <span class="tk-v">true</span><span class="tk-p">;</span>
-            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;The door opens.&quot;</span><span class="tk-p">);</span>
+        <span class="tk-c">-- Two seconds of game time later.</span>
+        <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> which == <span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">DoorOpens</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                open = <span class="tk-v">true</span><span class="tk-p">;</span>
+                <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;The door opens.&quot;</span><span class="tk-p">);</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -10193,13 +10278,15 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
-        waves = waves + <span class="tk-v">1</span><span class="tk-p">;</span>
-        <span class="tk-t">entity</span> drone = <span class="tk-k">new</span> <span class="tk-n">Drone</span> <span class="tk-p">{</span> position = position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">] };</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
+            waves = waves + <span class="tk-v">1</span><span class="tk-p">;</span>
+            <span class="tk-t">entity</span> drone = <span class="tk-k">new</span> <span class="tk-n">Drone</span> <span class="tk-p">{</span> position = position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">2</span><span class="tk-p">] };</span>
 
-        <span class="tk-c">-- Ten waves, then no more.</span>
-        <span class="tk-f">is</span> waves &gt;= <span class="tk-v">10</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            stopTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Wave</span><span class="tk-p">);</span>
+            <span class="tk-c">-- Ten waves, then no more.</span>
+            <span class="tk-f">is</span> waves &gt;= <span class="tk-v">10</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                stopTimer<span class="tk-p">(</span><span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Wave</span><span class="tk-p">);</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -10289,8 +10376,10 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Cock-a-doodle-doo!&quot;</span><span class="tk-p">);</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Cock-a-doodle-doo!&quot;</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -10358,7 +10447,7 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <tr><td><code>stopTimer(Timer.DoorOpens)</code></td><td>Stops it, so it doesn't finish. One that isn't running changes nothing.</td></tr>
 <tr><td><code>timerRunning(Timer.DoorOpens)</code></td><td>Whether it's running: <code>is timerRunning(Timer.DoorOpens)? then { … }</code>.</td></tr>
 <tr><td><code>timeLeft(Timer.DoorOpens)</code></td><td>The seconds of game time left; 0 when it isn't running.</td></tr>
-<tr><td><code>on TimerFinished(Timer which)</code></td><td>Heard when one of this component's timers finishes.</td></tr>
+<tr><td><code>TimerFinished(Timer which)</code>, in the component's <code>on { }</code></td><td>Heard when one of this component's timers finishes.</td></tr>
 </tbody>
 </table></div>
 <p>A <code>new</code> takes exactly one of <code>after</code>, <code>every</code> and <code>atHour</code>: none, or two, stops with its line. Starting and stopping land at the <strong>end of the tick</strong>, as moves do, and <code>timerRunning</code> and <code>timeLeft</code> answer as the tick started: a timer started this tick is running from the next. In Lua they're <code>solis.entity.startTimer(self.me, &quot;DoorOpens&quot;, 2.0)</code> and so on; in Rust, through the component's host: <code>start_timer</code>, <code>stop_timer</code> and <code>timer_left</code> (which gives <code>None</code> when the timer isn't running).</p>
@@ -10402,14 +10491,16 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Each wait ends here, and the next step begins.</span>
-    <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitThere</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Hello!&quot;</span><span class="tk-p">);</span>
-            step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitAfterHello</span><span class="tk-p">;</span>
-            <span class="tk-k">new</span> <span class="tk-n">NextStep</span> <span class="tk-p">{</span> after = <span class="tk-v">2.0</span> <span class="tk-p">};</span>
-        <span class="tk-p">}</span> <span class="tk-f">or is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitAfterHello</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WalkHome</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- Each wait ends here, and the next step begins.</span>
+        <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitThere</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Hello!&quot;</span><span class="tk-p">);</span>
+                step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitAfterHello</span><span class="tk-p">;</span>
+                <span class="tk-k">new</span> <span class="tk-n">NextStep</span> <span class="tk-p">{</span> after = <span class="tk-v">2.0</span> <span class="tk-p">};</span>
+            <span class="tk-p">}</span> <span class="tk-f">or is</span> step == <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WaitAfterHello</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                step = <span class="tk-o">Step</span><span class="tk-p">.</span><span class="tk-s">WalkHome</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 
@@ -10612,26 +10703,28 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-t">float</span> flash = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-c">-- A hit stuns: everything started here belongs to Stunned.</span>
-    <span class="tk-f">on</span> <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">float</span> damage<span class="tk-p">) {</span>
-        <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Stunned<span class="tk-p">;</span>
-        <span class="tk-k">new</span> <span class="tk-n">Recover</span> <span class="tk-p">{</span> after = <span class="tk-v">1.5</span> <span class="tk-p">};</span>
-        <span class="tk-f">tween</span> flash <span class="tk-f">to</span> <span class="tk-v">1</span> <span class="tk-f">over</span> <span class="tk-v">1.5</span><span class="tk-p">;</span>
-        <span class="tk-k">new</span> <span class="tk-n">Dizzy</span> <span class="tk-p">{};</span>
-    <span class="tk-p">}</span>
-
-    <span class="tk-c">-- The stun is over: setting the state ends the rest.</span>
-    <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> which == <span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Recover</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Calm<span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-c">-- A hit stuns: everything started here belongs to Stunned.</span>
+        <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">float</span> damage<span class="tk-p">) {</span>
+            <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Stunned<span class="tk-p">;</span>
+            <span class="tk-k">new</span> <span class="tk-n">Recover</span> <span class="tk-p">{</span> after = <span class="tk-v">1.5</span> <span class="tk-p">};</span>
+            <span class="tk-f">tween</span> flash <span class="tk-f">to</span> <span class="tk-v">1</span> <span class="tk-f">over</span> <span class="tk-v">1.5</span><span class="tk-p">;</span>
+            <span class="tk-k">new</span> <span class="tk-n">Dizzy</span> <span class="tk-p">{};</span>
         <span class="tk-p">}</span>
-    <span class="tk-p">}</span>
 
-    <span class="tk-c">-- Leaving work in one place, whoever changed the state.</span>
-    <span class="tk-f">on</span> <span class="tk-n">MoodChanged</span><span class="tk-p">(</span><span class="tk-n">Mood</span> from<span class="tk-p">,</span> <span class="tk-n">Mood</span> <span class="tk-f">to</span><span class="tk-p">) {</span>
-        <span class="tk-f">is</span> from == <span class="tk-o">Mood</span><span class="tk-p">.</span><span class="tk-s">Stunned</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            flash = <span class="tk-v">0</span><span class="tk-p">;</span>
-            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Back on my feet.&quot;</span><span class="tk-p">);</span>
+        <span class="tk-c">-- The stun is over: setting the state ends the rest.</span>
+        <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> which == <span class="tk-o">Timer</span><span class="tk-p">.</span><span class="tk-s">Recover</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                <span class="tk-s">state</span> = Mood<span class="tk-p">.</span>Calm<span class="tk-p">;</span>
+            <span class="tk-p">}</span>
+        <span class="tk-p">}</span>
+
+        <span class="tk-c">-- Leaving work in one place, whoever changed the state.</span>
+        <span class="tk-n">MoodChanged</span><span class="tk-p">(</span><span class="tk-n">Mood</span> from<span class="tk-p">,</span> <span class="tk-n">Mood</span> <span class="tk-f">to</span><span class="tk-p">) {</span>
+            <span class="tk-f">is</span> from == <span class="tk-o">Mood</span><span class="tk-p">.</span><span class="tk-s">Stunned</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                flash = <span class="tk-v">0</span><span class="tk-p">;</span>
+                <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Back on my feet.&quot;</span><span class="tk-p">);</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -10817,8 +10910,10 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
         <span class="tk-k">new</span> <span class="tk-n">Lock</span> <span class="tk-p">{</span> after = <span class="tk-v">1.0</span> <span class="tk-p">};</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
-        <span class="tk-s">state</span> = Gate<span class="tk-p">.</span>Locked<span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">TimerFinished</span><span class="tk-p">(</span><span class="tk-n">Timer</span> which<span class="tk-p">) {</span>
+            <span class="tk-s">state</span> = Gate<span class="tk-p">.</span>Locked<span class="tk-p">;</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 <span class="tk-k">pass</span> <span class="tk-n">Guard</span><span class="tk-p">;</span>
@@ -10977,9 +11072,11 @@ event MoodChanged(Mood from, Mood to);</code></pre>
         <span class="tk-t">entity</span> camera = <span class="tk-v">nothing</span><span class="tk-p">;</span> <span class="tk-c">-- [tip &quot;The camera with FollowCamera2D.&quot;]</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
-        <span class="tk-f">send</span> <span class="tk-n">ShakeCamera</span><span class="tk-p">(</span><span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0.4</span><span class="tk-p">)</span> <span class="tk-f">to</span> camera<span class="tk-p">;</span>
-        despawn<span class="tk-p">();</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Entered</span><span class="tk-p">(</span><span class="tk-t">entity</span> who<span class="tk-p">) {</span>
+            <span class="tk-f">send</span> <span class="tk-n">ShakeCamera</span><span class="tk-p">(</span><span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0.4</span><span class="tk-p">)</span> <span class="tk-f">to</span> camera<span class="tk-p">;</span>
+            despawn<span class="tk-p">();</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 
@@ -11475,10 +11572,12 @@ event MoodChanged(Mood from, Mood to);</code></pre>
         <span class="tk-t">int</span> plates = <span class="tk-v">3</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">entity</span> by<span class="tk-p">,</span> <span class="tk-t">float</span> damage<span class="tk-p">) {</span>
-        <span class="tk-f">is</span> plates &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
-            plates = plates - <span class="tk-v">1</span><span class="tk-p">;</span>
-            <span class="tk-f">send</span> <span class="tk-n">Dented</span><span class="tk-p">(</span>plates<span class="tk-p">)</span> <span class="tk-f">to</span> <span class="tk-v">this</span><span class="tk-p">;</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Hit</span><span class="tk-p">(</span><span class="tk-t">entity</span> by<span class="tk-p">,</span> <span class="tk-t">float</span> damage<span class="tk-p">) {</span>
+            <span class="tk-f">is</span> plates &gt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+                plates = plates - <span class="tk-v">1</span><span class="tk-p">;</span>
+                <span class="tk-f">send</span> <span class="tk-n">Dented</span><span class="tk-p">(</span>plates<span class="tk-p">)</span> <span class="tk-f">to</span> <span class="tk-v">this</span><span class="tk-p">;</span>
+            <span class="tk-p">}</span>
         <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
@@ -11528,9 +11627,11 @@ event MoodChanged(Mood from, Mood to);</code></pre>
         <span class="tk-t">int</span> shown = <span class="tk-v">0</span><span class="tk-p">;</span>
     <span class="tk-p">}</span>
 
-    <span class="tk-f">on</span> <span class="tk-n">Dented</span><span class="tk-p">(</span><span class="tk-t">int</span> platesLeft<span class="tk-p">) {</span>
-        shown = shown + <span class="tk-v">1</span><span class="tk-p">;</span>
-        <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Sparks fly from &quot;</span> + name<span class="tk-p">()</span> + <span class="tk-v">&quot;: &quot;</span> + platesLeft<span class="tk-p">.</span>text<span class="tk-p">()</span> + <span class="tk-v">&quot; armour plates left.&quot;</span><span class="tk-p">);</span>
+    <span class="tk-f">on</span> <span class="tk-p">{</span>
+        <span class="tk-n">Dented</span><span class="tk-p">(</span><span class="tk-t">int</span> platesLeft<span class="tk-p">) {</span>
+            shown = shown + <span class="tk-v">1</span><span class="tk-p">;</span>
+            <span class="tk-o">World</span><span class="tk-p">:</span>say<span class="tk-p">(</span><span class="tk-v">&quot;Sparks fly from &quot;</span> + name<span class="tk-p">()</span> + <span class="tk-v">&quot;: &quot;</span> + platesLeft<span class="tk-p">.</span>text<span class="tk-p">()</span> + <span class="tk-v">&quot; armour plates left.&quot;</span><span class="tk-p">);</span>
+        <span class="tk-p">}</span>
     <span class="tk-p">}</span>
 <span class="tk-p">}</span>
 

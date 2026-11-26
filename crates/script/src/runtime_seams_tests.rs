@@ -104,19 +104,39 @@ fn what_a_start_sends_goes_nowhere_however_the_component_started() {
     }
     // The bell counts what it hears; a ringer rings once as it starts,
     // and (from the second tick) once every update.
-    let v1 = "fetch \"solis/world\":World;\n\n\
+    let v1 = "fetch \"solis/world\":World;\n\
+        \n\
         event Rang(int times);\n\
         method int ring(int times) {\n\
-            send Rang(times) to World:find(\"Bell\");\n\
-            return times;\n\
+        send Rang(times) to World:find(\"Bell\");\n\
+        return times;\n\
         }\n\
         send Rang(1000) to World:find(\"Bell\");\n\
-        component Ringer {\n    has {\n        int rang = ring(100);\n        int ticks = 0;\n    }\n\
-        \x20   method update(float dt) {\n        ticks = ticks + 1;\n\
-        \x20       is ticks > 1? then {\n            send Rang(1) to World:find(\"Bell\");\n        }\n    }\n}\n\
-        component Bell {\n    has {\n        int heard = 0;\n    }\n\
-        \x20   on Rang(int times) {\n        heard = heard + times;\n    }\n}\n\
-        pass Ringer, Bell;\nend\n";
+        component Ringer {\n\
+        \x20   has {\n\
+        \x20       int rang = ring(100);\n\
+        \x20       int ticks = 0;\n\
+        \x20   }\n\
+        \x20   method update(float dt) {\n\
+        \x20       ticks = ticks + 1;\n\
+        \x20       is ticks > 1? then {\n\
+        \x20           send Rang(1) to World:find(\"Bell\");\n\
+        \x20       }\n\
+        \x20   }\n\
+        }\n\
+        component Bell {\n\
+        \x20   has {\n\
+        \x20       int heard = 0;\n\
+        \x20   }\n\
+        \x20   on {\n\
+        \x20       Rang(int times) {\n\
+        \x20           heard = heard + times;\n\
+        \x20       }\n\
+        \x20   }\n\
+        }\n\
+        pass Ringer, Bell;\n\
+        end\n\
+        ";
     let v2 = v1.replace(
         "int ticks = 0;",
         "int ticks = 0;\n        int again = ring(10);",
@@ -155,9 +175,19 @@ fn what_a_start_sends_goes_nowhere_however_the_component_started() {
 #[test]
 fn an_event_sent_with_the_wrong_values_is_the_sender_s_mistake() {
     let main = "event Hit(entity by, float damage);\n\
-        component Health {\n    has {\n        float hp = 10;\n    }\n\
-        \x20   on Hit(entity by, float damage) {\n        hp = hp - damage;\n    }\n}\n\
-        pass Health;\nend\n";
+        component Health {\n\
+        \x20   has {\n\
+        \x20       float hp = 10;\n\
+        \x20   }\n\
+        \x20   on {\n\
+        \x20       Hit(entity by, float damage) {\n\
+        \x20           hp = hp - damage;\n\
+        \x20       }\n\
+        \x20   }\n\
+        }\n\
+        pass Health;\n\
+        end\n\
+        ";
     let lua = "local G = component('Gun', {})\n\
                function G:update(dt) solis.send(self.me, 'Hit', self.me, 'lots') end\n\
                local Q = component('Quiet', {})";

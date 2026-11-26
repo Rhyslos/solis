@@ -36,14 +36,14 @@ use std::sync::Arc;
 const VALUES_OF: &str = "__solisKind";
 
 /// Lust's own way of making a thing, in its runtime.
-const LUST_NEW: &str = "function L.new(c, ...)\n  local o = setmetatable({}, c)\n  c.__fields(o)\n";
+const LUST_NEW: &str = "function L.new(c, ...)\n  local o = setmetatable({}, c)\n  if c.__listens then L.listen(o) end\n  c.__fields(o)\n";
 
 /// Solis's: a values class (one `like SpawnValues`), and a class the
 /// engine makes (`like Made`, [`crate::made`]), keeps only the fields
 /// written, in the braces of its `new` or set after, on the object itself;
 /// reading one not written gives its starting value, kept once on a
 /// table of the class's own. Any other class is made as Lust makes it.
-const SOLIS_NEW: &str = "function L.new(c, ...)\n  local o; local p = rawget(c, \"__parent\"); if p and (rawget(p, \"__name\") == \"SpawnValues\" or rawget(p, \"__name\") == \"Made\") then local m = rawget(c, \"__solisMeta\"); if not m then local d = {}; c.__fields(d); local name = rawget(c, \"__name\"); m = { __parent = c, __solisKind = string.sub(name, 1, #name - 6), __index = function(_, k) local v = d[k]; if v ~= nil then return v end; return c[k] end }; rawset(c, \"__solisMeta\", m) end; o = setmetatable({}, m)\n  else o = setmetatable({}, c); c.__fields(o) end\n";
+const SOLIS_NEW: &str = "function L.new(c, ...)\n  local o; local solis = false; local p = rawget(c, \"__parent\"); if p and (rawget(p, \"__name\") == \"SpawnValues\" or rawget(p, \"__name\") == \"Made\") then solis = true; local m = rawget(c, \"__solisMeta\"); if not m then local d = {}; c.__fields(d); local name = rawget(c, \"__name\"); m = { __parent = c, __solisKind = string.sub(name, 1, #name - 6), __index = function(_, k) local v = d[k]; if v ~= nil then return v end; return c[k] end }; rawset(c, \"__solisMeta\", m) end; o = setmetatable({}, m) else o = setmetatable({}, c) end\n  if c.__listens then L.listen(o) end\n  if not solis then c.__fields(o) end\n";
 
 /// Lust's chunk with [`SOLIS_NEW`] in place of Lust's `L.new` start: only
 /// the runtime changes, on as many lines as Lust's own, so no line moves
@@ -53,6 +53,13 @@ pub(crate) fn values_new(mut chunk: lust::LuaChunk) -> lust::LuaChunk {
         chunk.code.replace_range(at..at + LUST_NEW.len(), SOLIS_NEW);
     }
     chunk
+}
+
+/// Whether Lust's runtime still makes things the way [`values_new`]
+/// expects (a test checks it for the pinned Lust).
+#[cfg(test)]
+pub(crate) fn lust_new_found(code: &str) -> bool {
+    code.matches(LUST_NEW).count() == 1 && SOLIS_NEW.lines().count() == LUST_NEW.lines().count()
 }
 
 /// The components game code can read and spawn with, by name: each one's

@@ -38,24 +38,26 @@ component Sword {
         }
     }
 
-    on CueReached(Cue cue) {
-        is cue == Cue.HoeHits? then {
-            -- The middle of the blade's reach, on the side the hero faces.
-            float side = 1;
-            is flip == Flip.Across? then {
-                side = -1;
-            }
-            vec3 blade = position() + [side * reach * 0.5, 0.5, 0];
-            loop (entity enemy in World:within(Tag.Enemy, blade, reach * 0.6)) {
-                send Hurt(damage, position()) to enemy;
+    on {
+        CueReached(Cue cue) {
+            is cue == Cue.HoeHits? then {
+                -- The middle of the blade's reach, on the side the hero faces.
+                float side = 1;
+                is flip == Flip.Across? then {
+                    side = -1;
+                }
+                vec3 blade = position() + [side * reach * 0.5, 0.5, 0];
+                loop (entity enemy in World:within(Tag.Enemy, blade, reach * 0.6)) {
+                    send Hurt(damage, position()) to enemy;
+                }
             }
         }
-    }
 
-    on ClipFinished(Clip clip) {
-        is clip == Clip.FarmerHoe? then {
-            swinging = false;
-            animation = Clip.HeroIdle;
+        ClipFinished(Clip clip) {
+            is clip == Clip.FarmerHoe? then {
+                swinging = false;
+                animation = Clip.HeroIdle;
+            }
         }
     }
 }
@@ -81,16 +83,18 @@ component Enemy {
         float fall = 0; -- [hidden]
     }
 
-    on Hurt(float amount, vec3 from) {
-        health = health - amount;
-        is health <= 0? then {
-            despawn();
-            return;
+    on {
+        Hurt(float amount, vec3 from) {
+            health = health - amount;
+            is health <= 0? then {
+                despawn();
+                return;
+            }
+            -- Away from the hit, and a little up.
+            float side = Maths:sign(position().x - from.x);
+            knock = [side * knockback, 0, 0];
+            fall = knockback * 0.5;
         }
-        -- Away from the hit, and a little up.
-        float side = Maths:sign(position().x - from.x);
-        knock = [side * knockback, 0, 0];
-        fall = knockback * 0.5;
     }
 
     method update(float dt) {
@@ -129,8 +133,10 @@ component Bullet {
         vec3 way = [0, 0, 0]; -- [hidden]
     }
 
-    on Launch(vec3 to) {
-        way = to:normalized();
+    on {
+        Launch(vec3 to) {
+            way = to:normalized();
+        }
     }
 
     method update(float dt) {
@@ -219,12 +225,14 @@ component Sparks {
         vec3 colour = [4, 2, 0.5]; -- [tip "Red, green and blue; above 1 glows."]
     }
 
-    on Hurt(float amount, vec3 from) {
-        vec3 at = position() + [0, 0.5, 0];
-        loop count {
-            float angle = World:randomRange(0, 6.2832);
-            vec3 way = [Maths:cos(angle), Maths:sin(angle), 0];
-            new Shot { from = at, direction = way, speed = speed * World:randomRange(0.5, 1), life = World:randomRange(0.08, 0.2), colour = colour };
+    on {
+        Hurt(float amount, vec3 from) {
+            vec3 at = position() + [0, 0.5, 0];
+            loop count {
+                float angle = World:randomRange(0, 6.2832);
+                vec3 way = [Maths:cos(angle), Maths:sin(angle), 0];
+                new Shot { from = at, direction = way, speed = speed * World:randomRange(0.5, 1), life = World:randomRange(0.08, 0.2), colour = colour };
+            }
         }
     }
 }

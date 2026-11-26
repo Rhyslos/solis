@@ -106,9 +106,11 @@ component Talker {
         }
     }
 
-    on TypingFinished(Screen which) {
-        is which == Screen.Talk? then {
-            typed = true;
+    on {
+        TypingFinished(Screen which) {
+            is which == Screen.Talk? then {
+                typed = true;
+            }
         }
     }
 }
