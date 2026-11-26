@@ -1109,7 +1109,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/input` | `vec3 Input:pointer()` | The place in the world under the pointer, over a 2D game's picture ([Input](input.md)). |
 | `solis/input` | `bool Input.pointerShown` | Whether the pointer is shown and free while the game has the mouse; `Input.pointerShown = true;` shows it from the end of the tick. |
 | `solis/project` | `state Action` | The project's input actions (`Action.Jump`), from File › Project settings › Input. |
-| `solis/physics` | `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | What a line meets first: `found`, `distance`, `entity` and `normal` ([Physics](physics.md)). |
+| `solis/physics` | `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | What a line meets first, in 3D or 2D physics: `found`, `distance`, `entity` and `normal` ([Physics](physics.md)). |
 | any entity | `vec3 position()` | Where the entity is in the world, in metres. |
 | any entity | `moveTo(vec3 place)` | Puts the entity at a place in the world. |
 | any entity | `rotation rotation()` | Which way the entity faces. |

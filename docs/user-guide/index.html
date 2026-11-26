@@ -1103,7 +1103,7 @@ footer p { color: var(--muted); }
 <li><strong>Recipe:</strong> a few lines of game code do it, ready to copy from the recipe pages. A recipe is not a stopgap: what game code does well stays game code, so it's yours to change.</li>
 <li><strong>Not yet:</strong> it isn't there. It says when it comes, and what to do until then where there's a way.</li>
 </ul>
-<p>The games come in order of cost: the platformer first (everything it needs is here now), then the action game, then the farming game. This page changes with every update, so it always says what you can do in the version you have.</p>
+<p>The games come in order of cost: the platformer first, then the action game (everything both need is here now), then the farming game. This page changes with every update, so it always says what you can do in the version you have.</p>
 <div class="note">
 <p>Checked against Solis itself on 2026-11-26, not guessed. If something here is wrong, it's a mistake in the manual: please report it.</p>
 </div>
@@ -1161,8 +1161,8 @@ footer p { color: var(--muted); }
 <tr><td>Sparks and muzzle flashes</td><td>Recipe</td><td>Bursts of short projectiles (<a href="#combat-recipes--sparks">Sparks</a>, <a href="#combat-recipes--bullets-that-hit">the gun</a>)</td></tr>
 <tr><td>Trails</td><td>Recipe</td><td>Short projectiles along the path, as sparks are</td></tr>
 <tr><td>Smoke and dust (particles that fall and fade)</td><td>Not yet</td><td>With rain and snow, in the farming game's pieces</td></tr>
-<tr><td>&quot;Is there ground ahead?&quot; and &quot;is there a wall?&quot; for enemies</td><td>Not yet</td><td>The action game's second update: rays in 2D. <code>Physics:castRay</code> looks only at 3D physics today</td></tr>
-<tr><td>Enemies that patrol and turn at edges</td><td>Recipe, once rays come</td><td>Until then, <a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">paths</a></td></tr>
+<tr><td>&quot;Is there ground ahead?&quot; and &quot;is there a wall?&quot; for enemies</td><td>Works</td><td><code>Physics:castRay</code> in 2D (<a href="#walls-and-walking--rays-in-2d">Rays in 2D</a>)</td></tr>
+<tr><td>Enemies that patrol and turn at edges</td><td>Recipe</td><td><a href="#combat-recipes--enemies-that-patrol-and-turn-at-edges">Enemies that patrol</a>, or <a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">paths</a></td></tr>
 <tr><td>Bots that find their way round a level, jumping and dropping</td><td>Not yet</td><td>Later, when a game asks</td></tr>
 <tr><td>Music that changes when a fight starts</td><td>Recipe</td><td><a href="#combat-recipes--music-that-follows-the-fight">Music that follows the fight</a></td></tr>
 </tbody>
@@ -1198,7 +1198,6 @@ footer p { color: var(--muted); }
 <h4 id="can-i-make-this--what-comes-when">What comes when<a class="anchor" href="#can-i-make-this--what-comes-when" aria-label="Link to this section">#</a></h4>
 <p>In order, each a small update:</p>
 <ol class="steps">
-<li><strong>The action game:</strong> rays in 2D (aiming with the mouse is in).</li>
 <li><strong>Rust and Lua stop being game languages:</strong> Lust is the language games are written in.</li>
 <li><strong>Dialogue,</strong> in full: conversations, the dialogue box and the conversation editor.</li>
 <li><strong>The farming game's pieces:</strong> separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.</li>
@@ -1637,6 +1636,45 @@ footer p { color: var(--muted); }
 <span class="tk-k">pass</span> <span class="tk-n">Sparks</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
 <p>Sparks made this way fly straight and vanish; they don't fall or fade. Smoke, dust, rain and snow need a particle emitter, which comes later (<a href="#can-i-make-this">Can I make this?</a>).</p>
+<h4 id="combat-recipes--enemies-that-patrol-and-turn-at-edges">Enemies that patrol and turn at edges<a class="anchor" href="#combat-recipes--enemies-that-patrol-and-turn-at-edges" aria-label="Link to this section">#</a></h4>
+<p>An enemy walks one way until there's a wall in front of it or no ground ahead, then turns round. Two short rays answer both: one along the way it walks, one down from just in front of its feet. Give it a <code>Collider2D</code> ticked <strong>Character</strong>, about the size of its sprite.</p>
+<pre data-lang="lust"><code><span class="tk-c">-- walker.lst: walks back and forth, turning at walls and ledges.</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/physics&quot;</span><span class="tk-p">:[</span><span class="tk-n">Physics</span><span class="tk-p">,</span> <span class="tk-n">RayHit</span><span class="tk-p">];</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/animation&quot;</span><span class="tk-p">:</span><span class="tk-n">Flip</span><span class="tk-p">;</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Walker</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-t">float</span> speed = <span class="tk-v">2</span><span class="tk-p">;</span> <span class="tk-c">-- [unit &quot;m/s&quot;]</span>
+        <span class="tk-t">float</span> side = <span class="tk-v">1</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
+        <span class="tk-t">float</span> fall = <span class="tk-v">0</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
+        <span class="tk-n">Flip</span> flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-f">is</span> grounded<span class="tk-p">()</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            fall = -<span class="tk-v">1</span><span class="tk-p">;</span>
+            <span class="tk-t">vec3</span> middle = position<span class="tk-p">()</span> + <span class="tk-p">[</span><span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
+            <span class="tk-t">vec3</span> way = <span class="tk-p">[</span>side<span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
+            <span class="tk-c">-- A wall within half a metre, or no ground just ahead: turn.</span>
+            <span class="tk-n">RayHit</span> wall = <span class="tk-o">Physics</span><span class="tk-p">:</span>castRay<span class="tk-p">(</span>middle<span class="tk-p">,</span> way<span class="tk-p">,</span> <span class="tk-v">0.5</span><span class="tk-p">);</span>
+            <span class="tk-n">RayHit</span> ground = <span class="tk-o">Physics</span><span class="tk-p">:</span>castRay<span class="tk-p">(</span>middle + way * <span class="tk-v">0.5</span><span class="tk-p">, [</span><span class="tk-v">0</span><span class="tk-p">,</span> -<span class="tk-v">1</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">],</span> <span class="tk-v">1</span><span class="tk-p">);</span>
+            <span class="tk-f">is</span> wall<span class="tk-p">.</span>found || <span class="tk-f">not</span> ground<span class="tk-p">.</span>found<span class="tk-f">? then</span> <span class="tk-p">{</span>
+                side = -side<span class="tk-p">;</span>
+            <span class="tk-p">}</span>
+        <span class="tk-p">}</span>
+        fall = fall - <span class="tk-v">35</span> * dt<span class="tk-p">;</span>
+        <span class="tk-f">is</span> side &lt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">Across</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
+            flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+        walk<span class="tk-p">([</span>side * speed * dt<span class="tk-p">,</span> fall * dt<span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">]);</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Walker</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<p>The rays start half a metre up, from the enemy's middle, so they pass out of its own collider and don't meet the floor it stands on. For a bigger enemy, look further ahead and further down.</p>
 <h4 id="combat-recipes--music-that-follows-the-fight">Music that follows the fight<a class="anchor" href="#combat-recipes--music-that-follows-the-fight" aria-label="Link to this section">#</a></h4>
 <p>Play the calm music on an entity, and when an enemy comes near the player, swap it for the battle music. <code>stopSounds()</code> stops the old with a short fade. Tick <strong>Loop</strong> on both sound events.</p>
 <pre data-lang="lust"><code><span class="tk-c">-- music.lst: calm music, and battle music while an enemy is near the player.</span>
@@ -1681,7 +1719,7 @@ footer p { color: var(--muted); }
 <h3>Tips and common problems<a class="anchor" href="#combat-recipes--tips-and-common-problems" aria-label="Link to this section">#</a></h3>
 <ul>
 <li><strong>Problem:</strong> the sword never hits. <strong>Why:</strong> no frame event on the attack clip, or the enemy lacks the Enemy tag. <strong>Fix:</strong> add the frame event in the Frames tab, and the tag under the enemy's name.</li>
-<li><strong>Problem:</strong> bullets fly through walls. <strong>Why:</strong> the bullet only looks for enemies. <strong>Fix:</strong> until 2D rays come (<a href="#can-i-make-this">Can I make this?</a>), keep its <code>life</code> short enough that it can't reach past a wall.</li>
+<li><strong>Problem:</strong> bullets fly through walls. <strong>Why:</strong> the bullet only looks for enemies. <strong>Fix:</strong> look ahead with a ray each tick and stop at what it meets: <code>RayHit hit = Physics:castRay(position(), way, speed * dt);</code> then <code>is hit.found? then { despawn(); }</code> (<a href="#walls-and-walking--rays-in-2d">Rays in 2D</a>).</li>
 <li><strong>Problem:</strong> the music restarts again and again. <strong>Why:</strong> an enemy is right on the edge of <code>near</code>. <strong>Fix:</strong> make the calm music wait until no enemy is within a little more than <code>near</code>.</li>
 </ul>
 </section>
@@ -5915,7 +5953,7 @@ After 121 ticks:
 <tr><td><code>solis/input</code></td><td><code>vec3 Input:pointer()</code></td><td>The place in the world under the pointer, over a 2D game's picture (<a href="#input">Input</a>).</td></tr>
 <tr><td><code>solis/input</code></td><td><code>bool Input.pointerShown</code></td><td>Whether the pointer is shown and free while the game has the mouse; <code>Input.pointerShown = true;</code> shows it from the end of the tick.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Action</code></td><td>The project's input actions (<code>Action.Jump</code>), from File › Project settings › Input.</td></tr>
-<tr><td><code>solis/physics</code></td><td><code>RayHit Physics:castRay(vec3 from, vec3 direction, float reach)</code></td><td>What a line meets first: <code>found</code>, <code>distance</code>, <code>entity</code> and <code>normal</code> (<a href="#physics">Physics</a>).</td></tr>
+<tr><td><code>solis/physics</code></td><td><code>RayHit Physics:castRay(vec3 from, vec3 direction, float reach)</code></td><td>What a line meets first, in 3D or 2D physics: <code>found</code>, <code>distance</code>, <code>entity</code> and <code>normal</code> (<a href="#physics">Physics</a>).</td></tr>
 <tr><td>any entity</td><td><code>vec3 position()</code></td><td>Where the entity is in the world, in metres.</td></tr>
 <tr><td>any entity</td><td><code>moveTo(vec3 place)</code></td><td>Puts the entity at a place in the world.</td></tr>
 <tr><td>any entity</td><td><code>rotation rotation()</code></td><td>Which way the entity faces.</td></tr>
@@ -6165,7 +6203,7 @@ After 121 ticks:
 <tr><td><code>push(vec3 impulse)</code></td><td>A push, like a kick: a heavy body moves less than a light one. <code>[5, 0, 0]</code> gives a 1 kg crate 5 m/s along X.</td></tr>
 <tr><td><code>vec3 velocity()</code></td><td>How fast and which way it's moving, metres a second.</td></tr>
 <tr><td><code>setVelocity(vec3 velocity)</code></td><td>Makes it move this fast, this way, whatever its weight.</td></tr>
-<tr><td><code>RayHit Physics:castRay(vec3 from, vec3 direction, float reach)</code></td><td>Looks along a line and gives back what it met, all at once: <code>hit.found</code> (whether anything was within reach), <code>hit.distance</code> (how far, or -1), <code>hit.entity</code> (whose collider, or nothing) and <code>hit.normal</code> (which way its surface faces: <code>[0, 0, 1]</code> for a floor).</td></tr>
+<tr><td><code>RayHit Physics:castRay(vec3 from, vec3 direction, float reach)</code></td><td>Looks along a line and gives back what it met, all at once: <code>hit.found</code> (whether anything was within reach), <code>hit.distance</code> (how far, or -1), <code>hit.entity</code> (whose collider, or nothing) and <code>hit.normal</code> (which way its surface faces: <code>[0, 0, 1]</code> for a floor). A ray along the ground (its direction's third number 0) looks in 2D physics too (<a href="#walls-and-walking--rays-in-2d">Walls and walking</a>), and gives back the nearer.</td></tr>
 </tbody>
 </table></div>
 <p>Why one call for a ray? Each question a ray answers is worked out at once, so asking for the distance, the entity and the surface separately looked three times; <code>RayHit</code> keeps them together.</p>
@@ -9260,6 +9298,8 @@ Add a TopDownController, untick <strong>Uses input</strong>, set <strong>Directi
 <li>Play: jump up into it from below and you pass through; come down onto it and you land on top and stand there, <code>grounded()</code> true.</li>
 </ol>
 <p>It stops a character only when the character is coming down and its bottom was at or above the platform's top as the move began. So a character that jumps up into it but not past its top falls back out of the bottom, and one walking into its side passes through. Tile maps' terrains aren't one way yet: use an entity per platform.</p>
+<h4 id="walls-and-walking--rays-in-2d">Rays in 2D<a class="anchor" href="#walls-and-walking--rays-in-2d" aria-label="Link to this section">#</a></h4>
+<p><code>Physics:castRay(from, direction, reach)</code> looks along a line on the ground and says what it meets first: a Collider2D, or a tile map's solid cells (then <code>hit.entity</code> is the map's entity). It's how an enemy asks &quot;is there ground ahead?&quot; (a short ray down from just in front of its feet) or &quot;is there a wall?&quot; (a ray along the way it walks). Give the direction no height (its third number 0), as a 2D game's always are: a ray with height is 3D physics' alone, so a 3D camera looking down past a 2D map never meets its walls. A ray starting inside something passes out of it, so a character can look from its own middle, and a one-way platform is met only by a ray coming down onto it from above. See <a href="#combat-recipes--enemies-that-patrol-and-turn-at-edges">Combat recipes</a> for an enemy that turns at walls and ledges.</p>
 <h4 id="walls-and-walking--moving-platforms">Moving platforms<a class="anchor" href="#walls-and-walking--moving-platforms" aria-label="Link to this section">#</a></h4>
 <p>A solid Collider2D that game code moves with <code>moveTo</code> (a lift, a ferry, a platform following a path from the <a href="#platformer-recipes--following-a-path-moving-platforms-patrolling-enemies">platformer recipes</a>) <strong>carries the characters standing on it</strong>: as it moves, so do they, whether or not their own code walks them that tick. A platform going up lifts them; one going down takes them down with it. One-way platforms carry too.</p>
 <p>A character is carried while it stood on the platform at its last move. Once it jumps or walks off, it's carried no more. What's carried is the platform's whole move that tick, added to the character's own, so <code>velocity()</code> includes the ride.</p>

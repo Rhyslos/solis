@@ -1100,7 +1100,7 @@ pub const NATIVES: &[Native] = &[
         name: "castRay",
         owner: "Physics",
         lust: "method RayHit castRay(vec3 from, vec3 direction, float reach) native;",
-        about: "Looks along a line from a place, a way, up to reach metres, and gives back the first collider it meets: hit.found, hit.distance, hit.entity and hit.normal (which way its surface faces). Nothing found: found is false and distance -1.",
+        about: "Looks along a line from a place, a way, up to reach metres, and gives back the first collider it meets: hit.found, hit.distance, hit.entity and hit.normal (which way its surface faces). A ray along the ground (its direction's height 0) looks in 2D physics too (a map's solid cells are its entity), the nearer winning. Nothing found: found is false and distance -1.",
     },
     Native {
         file: "physics",

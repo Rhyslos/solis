@@ -43,6 +43,8 @@ pub(super) struct TestWorld {
     /// A1), and whether game code asked for it shown.
     pub(super) pointer: Option<glam::Vec2>,
     pub(super) pointer_shown: bool,
+    /// 2D physics as the tick starts (the action game, A2).
+    pub(super) flat: FlatOnce,
 }
 
 impl TestWorld {
@@ -82,6 +84,16 @@ impl TestWorld {
     }
 }
 
+/// The test world's 2D physics; never part of what it equals.
+#[derive(Debug, Clone, Default)]
+pub(super) struct FlatOnce(pub(super) Arc<physics::flat::FlatState>);
+
+impl PartialEq for FlatOnce {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
 /// The test world's index, made once; never part of what it equals.
 #[derive(Debug, Clone, Default)]
 pub(super) struct IndexOnce(Option<Arc<ViewIndex>>);
@@ -116,7 +128,7 @@ impl GameWorld for TestWorld {
             frame_time: 1.0 / 60.0,
             seed: self.seed,
             physics: Arc::default(),
-            flat: Arc::default(),
+            flat: Arc::clone(&self.flat.0),
             input: Arc::new(input::Frame {
                 pointer: self.pointer,
                 ..input::Frame::default()
@@ -1201,5 +1213,50 @@ fn a_pointer_place_that_isn_t_one_is_the_middle() {
     assert_eq!(
         pointer_in_world(Some(glam::Vec2::new(16.0, -16.0)), centre, huge),
         centre
+    );
+}
+
+#[test]
+fn game_code_s_rays_meet_2d_walls_too() {
+    let code = compiled(
+        "fetch \"solis/physics\":[Physics, RayHit];\n\n\
+         component Looker {\n\
+             has {\n\
+                 float ahead = -1;\n\
+                 entity what = nothing;\n\
+                 bool tilted = true;\n\
+             }\n\
+             method update(float dt) {\n\
+                 RayHit hit = Physics:castRay([0, 0, 0], [1, 0, 0], 20);\n\
+                 ahead = hit.distance;\n\
+                 what = hit.entity;\n\
+                 tilted = Physics:castRay([0, 0, 0], [1, 0, 0.1], 20).found;\n\
+             }\n\
+         }\n\
+         pass Looker;\nend\n",
+    );
+    let mut world = TestWorld::with(&["Bot", "Map"]);
+    let mut flat = physics::flat::Flat::new();
+    flat.set_walls(
+        id(2),
+        [0, 0],
+        &[(glam::Vec2::new(5.0, -1.0), glam::Vec2::new(6.0, 1.0))],
+    );
+    flat.move_characters(&[], 1.0 / 60.0);
+    world.flat = FlatOnce(Arc::clone(flat.state()));
+    let mut game = unhurried(1);
+    game.load(&code, &mut world).unwrap();
+    assert!(
+        game.sync_many([(id(1), "Looker", &ComponentData::default())], &mut world)
+            .is_empty()
+    );
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    let values = game.values(id(1), "Looker").unwrap();
+    assert_eq!(values.get("ahead"), Some(&Value::Float(5.0)));
+    assert_eq!(values.get("what"), Some(&Value::Entity(Some(id(2)))));
+    assert_eq!(
+        values.get("tilted"),
+        Some(&Value::Bool(false)),
+        "a ray with height is 3D's alone"
     );
 }

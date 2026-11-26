@@ -10,7 +10,7 @@ Each need is marked:
 - **Recipe:** a few lines of game code do it, ready to copy from the recipe pages. A recipe is not a stopgap: what game code does well stays game code, so it's yours to change.
 - **Not yet:** it isn't there. It says when it comes, and what to do until then where there's a way.
 
-The games come in order of cost: the platformer first (everything it needs is here now), then the action game, then the farming game. This page changes with every update, so it always says what you can do in the version you have.
+The games come in order of cost: the platformer first, then the action game (everything both need is here now), then the farming game. This page changes with every update, so it always says what you can do in the version you have.
 
 > **Good to know:** checked against Solis itself on 2026-11-26, not guessed. If something here is wrong, it's a mistake in the manual: please report it.
 
@@ -66,8 +66,8 @@ Everything the platformer needs, and the [combat recipes](combat-recipes.md).
 | Sparks and muzzle flashes | Recipe | Bursts of short projectiles ([Sparks](combat-recipes.md#sparks), [the gun](combat-recipes.md#bullets-that-hit)) |
 | Trails | Recipe | Short projectiles along the path, as sparks are |
 | Smoke and dust (particles that fall and fade) | Not yet | With rain and snow, in the farming game's pieces |
-| "Is there ground ahead?" and "is there a wall?" for enemies | Not yet | The action game's second update: rays in 2D. `Physics:castRay` looks only at 3D physics today |
-| Enemies that patrol and turn at edges | Recipe, once rays come | Until then, [paths](platformer-recipes.md#following-a-path-moving-platforms-patrolling-enemies) |
+| "Is there ground ahead?" and "is there a wall?" for enemies | Works | `Physics:castRay` in 2D ([Rays in 2D](walls-and-walking.md#rays-in-2d)) |
+| Enemies that patrol and turn at edges | Recipe | [Enemies that patrol](combat-recipes.md#enemies-that-patrol-and-turn-at-edges), or [paths](platformer-recipes.md#following-a-path-moving-platforms-patrolling-enemies) |
 | Bots that find their way round a level, jumping and dropping | Not yet | Later, when a game asks |
 | Music that changes when a fight starts | Recipe | [Music that follows the fight](combat-recipes.md#music-that-follows-the-fight) |
 
@@ -100,10 +100,9 @@ The engine's part is listed here; crops and seasons, shops, crafting, fishing, f
 
 ### What comes when
 In order, each a small update:
-1. **The action game:** rays in 2D (aiming with the mouse is in).
-2. **Rust and Lua stop being game languages:** Lust is the language games are written in.
-3. **Dialogue,** in full: conversations, the dialogue box and the conversation editor.
-4. **The farming game's pieces:** separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.
+1. **Rust and Lua stop being game languages:** Lust is the language games are written in.
+2. **Dialogue,** in full: conversations, the dialogue box and the conversation editor.
+3. **The farming game's pieces:** separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.
 
 What isn't on the list waits until a game asks for it: puzzle and turn-based tools, 3D games, multiplayer.
 
