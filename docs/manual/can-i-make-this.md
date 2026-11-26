@@ -59,7 +59,7 @@ Everything the platformer needs, and the [combat recipes](combat-recipes.md).
 | Health, getting hurt and knockback | Recipe | [Getting hurt](combat-recipes.md#getting-hurt-health-and-knockback) |
 | Hit-stop | Recipe | [Hit-stop](platformer-recipes.md#hit-stop-the-game-stops-for-a-blink-on-a-big-hit) |
 | Aiming with a stick | Works | `Input:axis` ([Bullets that hit](combat-recipes.md#bullets-that-hit)) |
-| Aiming with the mouse, in the world | Not yet | The action game's first update |
+| Aiming with the mouse, in the world | Works | `Input:pointer()` and `Input.pointerShown` ([Input](input.md)) |
 | Bullets that hit, as game state | Recipe | A small module made with `new` ([Bullets that hit](combat-recipes.md#bullets-that-hit)) |
 | Hundreds of bullets at once (pools) | Not yet | Only if a game finds `new` too slow; dozens at once are no work |
 | Lasers and tracers by the thousand, drawn only | Works | [Projectiles](game-code.md#projectiles) |
@@ -100,7 +100,7 @@ The engine's part is listed here; crops and seasons, shops, crafting, fishing, f
 
 ### What comes when
 In order, each a small update:
-1. **The action game:** aiming with the mouse, rays in 2D.
+1. **The action game:** rays in 2D (aiming with the mouse is in).
 2. **Rust and Lua stop being game languages:** Lust is the language games are written in.
 3. **Dialogue,** in full: conversations, the dialogue box and the conversation editor.
 4. **The farming game's pieces:** separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.

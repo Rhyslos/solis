@@ -126,8 +126,49 @@ end
 | `vec3 Input:axis(Action action)` | An axis's two numbers as x and y (z is 0). |
 | `string Input:binding(Action action)` | The key that sets it off, such as `F`, for showing "Press F" to the player. |
 | `Input:rebind(Action action, string input)` | Binds a new input (`"E"`, `"Mouse Right"`, `"Pad Y"`) in place of its others of the same kind, from the next tick: what a controls menu does. Lasts while the game plays. |
+| `vec3 Input:pointer()` | The place in the world under the pointer, over a 2D game's picture (see Aiming with the mouse, below). |
+| `bool Input.pointerShown` | Whether the pointer is shown and free while the game has the mouse; set it with `=`. |
 
 Input is read **once per [tick](concepts.md#game-code)**, so every component, on every core, sees the same input for that tick.
+
+**Aiming with the mouse** (2D games). A shooter aims where the player points. `Input:pointer()` is the place in the world under the pointer, over the game's picture: aim from the player towards it. While the game has the mouse, the pointer is hidden and held in the window (so moving the mouse turns a 3D camera); set `Input.pointerShown = true` to show it and leave it free, and `false` to hide and hold it again. It starts hidden, and a change lands at the end of the tick.
+
+```lust
+-- aim.lst: points the player's sprite at the mouse, and fires there.
+fetch "solis/input":Input;
+fetch "solis/project":Action;
+fetch "solis/made":Shot;
+fetch "solis/animation":Flip;
+
+component Aim {
+    has {
+        Flip flip = Flip.None; -- [hidden]
+        bool started = false; -- [hidden]
+    }
+
+    method update(float dt) {
+        is not started? then {
+            Input.pointerShown = true;
+            started = true;
+        }
+        vec3 way = Input:pointer() - position();
+        -- Face the side the pointer is on.
+        is way.x < 0? then {
+            flip = Flip.Across;
+        } or {
+            flip = Flip.None;
+        }
+        is Input:pressed(Action.Fire) && way:length() > 0.01? then {
+            new Shot { from = position(), direction = way, speed = 30 };
+        }
+    }
+}
+
+pass Aim;
+end
+```
+
+The place is worked out from the camera looked through and the project's 2D settings, at the camera's height (so it's a 2D game's place; in a 3D game it isn't where the pointer points). Before the pointer has been over the game it's the middle of the view, and when it leaves the game's picture it stays where it last was. Where it is goes into [recordings](#how-to-use-it), so a replay aims the same. A crosshair is a sprite your code moves to `Input:pointer()` each tick.
 
 **Recording and playing back** (the **Play** menu)
 1. With a [project](projects-and-the-library.md) open, choose **Debug › Play and record inputs**. Play as usual.
@@ -169,6 +210,8 @@ The binding window writes these for you when you press a key. You need them only
 While the game has them, every key is the game's: the editor's shortcuts are off.
 
 ## Tips and common problems
+- **Problem:** `Input:pointer()` is a little off from where the pointer is. **Why:** it's where the pointer was over the game's picture as the tick started, at most a sixtieth of a second ago. **Fix:** nothing needed for aiming; a crosshair drawn from it lags the pointer by that much.
+- **Problem:** the pointer vanishes when the game has the mouse. **Why:** that's how a game that turns a camera with the mouse wants it. **Fix:** set `Input.pointerShown = true` in your game's code.
 - **Problem:** my character doesn't move when I press W. **Why:** the editor has the keys. **Fix:** click the Game panel first; its corner says when the game has the mouse and keys.
 - **Problem:** pressing W while playing picked the move tool. **Why:** the same: the game didn't have the keys. **Fix:** click the Game panel.
 - **Problem:** `Input:pressed(Action.Jump)` is never true. **Why:** the action has no inputs. **Fix:** check File › Project settings › Input.

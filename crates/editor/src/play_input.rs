@@ -65,8 +65,9 @@ impl Workbench {
             return;
         }
         self.game_input = true;
-        // A screen with buttons keeps the pointer free (free_pointer).
-        self.open.game_screens.freed = self.open.game_screens.wants_pointer();
+        // A screen with buttons, or game code asking, keeps the pointer
+        // free.
+        self.open.game_screens.freed = self.pointer_wanted();
         if !self.open.game_screens.freed {
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(egui::CursorGrab::Locked));
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(false));
@@ -92,11 +93,25 @@ impl Workbench {
             self.open.game_screens.hover = None;
             return;
         }
-        let wants = self.open.game_screens.wants_pointer();
+        let buttons = self.open.game_screens.wants_pointer();
+        let wants = self.pointer_wanted();
+        // Where it is over the game's picture, for `Input:pointer()`, while
+        // it can be seen there.
+        if let Some(at) = out
+            .pointer
+            .filter(|_| !self.game_input || self.open.game_screens.freed)
+        {
+            let [x, y] = at;
+            let (origin, size) = (out.area.origin, out.area.size.map(|v| v.max(1)));
+            self.devices.pointer_at(glam::Vec2::new(
+                (x - origin[0] as f32) / size[0] as f32,
+                (y - origin[1] as f32) / size[1] as f32,
+            ));
+        }
         // The pointer is only over buttons while it can be seen.
         let pointer = out
             .pointer
-            .filter(|_| wants && (!self.game_input || self.open.game_screens.freed));
+            .filter(|_| buttons && (!self.game_input || self.open.game_screens.freed));
         self.open.game_screens.point_at(pointer, out.area);
         if out.clicked {
             if self.open.game_screens.hover.is_some() {
@@ -115,6 +130,18 @@ impl Workbench {
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(grab));
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(visible));
         }
+    }
+
+    /// Whether the pointer should be shown and free over the game while
+    /// it has the mouse: a screen with buttons is shown, or game code
+    /// asked (`Input.pointerShown`).
+    pub(crate) fn pointer_wanted(&self) -> bool {
+        self.open.game_screens.wants_pointer()
+            || self
+                .open
+                .playing
+                .as_ref()
+                .is_some_and(|p| p.view.pointer_shown)
     }
 
     /// Takes the mouse and keys back from the game: everything it held is

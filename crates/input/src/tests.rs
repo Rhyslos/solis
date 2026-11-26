@@ -237,7 +237,7 @@ fn sample_recording() -> Recording {
 fn recordings_round_trip_exactly() {
     let r = sample_recording();
     let text = r.write();
-    assert!(text.starts_with("solis recording 5\nseed 42\nlevel levels/harbour.sollevel\n"));
+    assert!(text.starts_with("solis recording 6\nseed 42\nlevel levels/harbour.sollevel\n"));
     assert_eq!(Recording::read(&text).unwrap(), r);
     // Playing back the same: no difference; a changed checksum is found.
     assert_eq!(r.first_difference(&r.ticks), None);
@@ -254,7 +254,7 @@ fn damaged_recordings_are_refused_never_crashing() {
     let good = sample_recording().write();
     assert_eq!(Recording::read("hello"), Err(RecordingError::NotARecording));
     // A newer one is refused before it's read on, with why.
-    let newer = Recording::read("solis recording 6\nseed 1\nstart 0\n").unwrap_err();
+    let newer = Recording::read("solis recording 7\nseed 1\nstart 0\n").unwrap_err();
     assert!(newer.to_string().contains("newer version"), "{newer}");
     assert!(matches!(
         Recording::read("solis recording 0\nseed 1\nstart 0\n"),
@@ -741,7 +741,7 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     );
     // Version 1 had no level line: it reads, with none.
     let one: String = text
-        .replacen("solis recording 5", "solis recording 1", 1)
+        .replacen("solis recording 6", "solis recording 1", 1)
         .replacen("level levels/harbour.sollevel\n", "", 1)
         .replacen("tables 0000000000000000\n", "", 1)
         .lines()
@@ -790,7 +790,7 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
         ("notes/readme.txt", "notes/readme.txt"),
     ] {
         let three = text
-            .replacen("solis recording 5", "solis recording 3", 1)
+            .replacen("solis recording 6", "solis recording 3", 1)
             .replacen("tables 0000000000000000\n", "", 1)
             .replacen("level levels/harbour.sollevel", &format!("area {old}"), 1);
         assert_eq!(
@@ -803,7 +803,7 @@ fn a_recording_names_its_level_and_older_ones_don_t() {
     let wrong = text.replacen("\nlevel ", "\narea ", 1);
     assert_eq!(Recording::read(&wrong), Err(RecordingError::Damaged(3)));
     let wrong = text
-        .replacen("solis recording 5", "solis recording 3", 1)
+        .replacen("solis recording 6", "solis recording 3", 1)
         .replacen("tables 0000000000000000\n", "", 1);
     assert_eq!(Recording::read(&wrong), Err(RecordingError::Damaged(3)));
 }
@@ -844,6 +844,7 @@ fn only_what_a_recording_reads_back_the_same_is_recordable() {
             frame: Frame {
                 actions: Default::default(),
                 sent: vec![kept.clone()],
+                pointer: None,
             },
             world: 3,
             game: None,
@@ -864,7 +865,7 @@ fn the_version_3_example_is_written_as_the_version_4_one() {
     let read = Recording::read(three).unwrap();
     assert_eq!(read.level.as_deref(), Some("areas/turret.sollevel"));
     let as_five = four
-        .replacen("solis recording 4", "solis recording 5", 1)
+        .replacen("solis recording 4", "solis recording 6", 1)
         .replacen(
             "start 0000000000000abc\n",
             "start 0000000000000abc\ntables 0000000000000000\n",
@@ -885,9 +886,104 @@ fn a_recording_keeps_its_tables_and_older_ones_know_none() {
     assert!(text.contains("\ntables 7d026c11aa000013\n"));
     assert_eq!(Recording::read(&text).unwrap().tables, recording.tables);
     let older = text
-        .replacen("solis recording 5", "solis recording 4", 1)
+        .replacen("solis recording 6", "solis recording 4", 1)
         .replacen("tables 7d026c11aa000013\n", "", 1);
     assert_eq!(Recording::read(&older).unwrap().tables, None);
     let damaged = text.replacen("tables 7d02", "tables zz02", 1);
     assert!(Recording::read(&damaged).is_err());
+}
+
+#[test]
+fn the_pointer_is_recorded_when_it_moves_and_kept_until_it_moves_again() {
+    let mut recording = sample_recording();
+    let at = |x: f32, y: f32| Some(Vec2::new(x, y));
+    let n = recording.ticks.len();
+    assert!(n >= 3, "the sample has a few ticks");
+    recording.ticks[1].frame.pointer = at(0.5, 0.25);
+    for tick in &mut recording.ticks[2..] {
+        tick.frame.pointer = at(0.5, 0.25);
+    }
+    recording.ticks[n - 1].frame.pointer = at(-0.5, 1.75);
+    let text = recording.write();
+    assert_eq!(text.matches("\np ").count(), 2, "written only as it moves");
+    let back = Recording::read(&text).unwrap();
+    assert_eq!(back, recording);
+    assert_eq!(back.ticks[0].frame.pointer, None);
+}
+
+#[test]
+fn the_version_6_example_reads_with_its_pointer() {
+    let six = include_str!("../../../tests/fixtures/recording/v6/play.solrec");
+    let read = Recording::read(six).unwrap();
+    let pointers: Vec<Option<Vec2>> = read.ticks.iter().map(|t| t.frame.pointer).collect();
+    assert_eq!(
+        pointers,
+        vec![
+            None,
+            Some(Vec2::new(0.5, 0.25)),
+            Some(Vec2::new(0.5, 0.25)),
+            Some(Vec2::new(0.75, 0.5)),
+        ]
+    );
+    assert_eq!(read.write(), six);
+}
+
+#[test]
+fn a_damaged_pointer_line_is_refused() {
+    let six = include_str!("../../../tests/fixtures/recording/v6/play.solrec");
+    for bad in [
+        "p 3f000000\n",
+        "p 3f000000 zz\n",
+        "p 3f000000 3f000000 3f000000\n",
+        // Not a number, and far outside the picture.
+        "p 7fc00000 3f000000\n",
+        "p 4f000000 3f000000\n",
+    ] {
+        let text = six.replacen("p 3f000000 3e800000\n", bad, 1);
+        assert!(Recording::read(&text).is_err(), "{bad}");
+    }
+    // Before any tick there's no tick to move it in.
+    let first = six.replacen("0 w 0000000000001000", "p 0 0\n0 w 0000000000001000", 1);
+    assert!(Recording::read(&first).is_err());
+    // Before version 6 a `p` line isn't a pointer.
+    let five = six.replacen("solis recording 6", "solis recording 5", 1);
+    assert!(Recording::read(&five).is_err());
+}
+
+#[test]
+fn the_pointer_reaches_every_frame_once_seen_and_changes_the_checksum() {
+    let bindings = Bindings::default();
+    let mut devices = Devices::new();
+    assert_eq!(devices.sample(&bindings, 1.0 / 60.0).pointer, None);
+    devices.pointer_at(Vec2::new(0.25, 0.75));
+    let first = devices.sample(&bindings, 1.0 / 60.0);
+    assert_eq!(first.pointer, Some(Vec2::new(0.25, 0.75)));
+    assert_eq!(
+        devices.sample(&bindings, 1.0 / 60.0).pointer,
+        first.pointer,
+        "kept while it's away"
+    );
+    // Nonsense is left out.
+    devices.pointer_at(Vec2::new(f32::NAN, 0.0));
+    devices.pointer_at(Vec2::new(1.0e6, 0.0));
+    assert_eq!(devices.sample(&bindings, 1.0 / 60.0).pointer, first.pointer);
+    let sum = |f: &Frame| {
+        let mut sum = reflect::Checksum::new();
+        f.checksum(&mut sum);
+        sum.finish()
+    };
+    let mut moved = first.clone();
+    moved.pointer = Some(Vec2::new(0.5, 0.75));
+    assert_ne!(sum(&first), sum(&moved));
+    // A frame with no pointer sums as it did before there was one.
+    let mut none = first.clone();
+    none.pointer = None;
+    assert_eq!(
+        sum(&none),
+        sum(&Frame {
+            actions: first.actions.clone(),
+            sent: Vec::new(),
+            pointer: None
+        })
+    );
 }

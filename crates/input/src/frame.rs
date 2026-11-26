@@ -83,6 +83,12 @@ pub struct Frame {
     pub actions: BTreeMap<String, ActionState>,
     /// What the screens' buttons sent since the last tick (decision 0088).
     pub sent: Vec<Sent>,
+    /// Where the pointer is over the game's picture, once it has been
+    /// over it: a fraction of the picture across and down (0 to 1 inside
+    /// it, its top left 0, 0), kept as it last was while it's away (the
+    /// action game, A1). `Input:pointer()` turns it into a place in the
+    /// world.
+    pub pointer: Option<Vec2>,
 }
 
 impl Frame {
@@ -112,6 +118,12 @@ impl Frame {
                 }
                 sum.data(&data);
             }
+        }
+        // Only once the pointer has been over the game, as above.
+        if let Some(p) = self.pointer {
+            sum.u64(0x0070_6f69_6e74_6572);
+            sum.f32(p.x);
+            sum.f32(p.y);
         }
     }
 }

@@ -5,7 +5,7 @@
 //! The file is text, a line per tick:
 //!
 //! ```text
-//! solis recording 5
+//! solis recording 6
 //! seed 12345
 //! level levels/farm.sollevel
 //! start 0f3a…
@@ -25,7 +25,9 @@
 //! released, and an axis's two numbers as their exact bits (hex), so
 //! playing back is exact. A line starting `s` after a tick is an event a
 //! screen's button sent in it (version 3): the entity, the event and its
-//! values.
+//! values. A line starting `p` after a tick (version 6) says where the
+//! pointer moved to over the game's picture in it, as its two numbers'
+//! exact bits; it stays there in the ticks after until another says.
 
 use crate::{ActionState, Frame};
 use glam::Vec2;
@@ -95,7 +97,7 @@ impl std::fmt::Display for RecordingError {
 }
 
 /// The format version this build writes.
-pub(crate) const VERSION: u32 = 5;
+pub(crate) const VERSION: u32 = 6;
 /// The level line's word from version 4, and before it (versions 2 and 3).
 const LEVEL_WORD: &str = "level";
 const OLD_LEVEL_WORD: &str = "area";
@@ -117,8 +119,15 @@ pub static FORMAT: reflect::upgrade::Format<Recording> = reflect::upgrade::Forma
         nothing_was_sent,
         areas_are_levels,
         tables_not_known,
+        no_pointer_yet,
     ],
 };
+
+/// Version 5 to 6 (the action game, A1): game code couldn't read the
+/// pointer before version 6, so there's nothing to add.
+fn no_pointer_yet(_: &mut Recording) -> Result<(), String> {
+    Ok(())
+}
 
 /// Version 4 to 5 (stage 1, data tables): a recording from before says
 /// nothing of the tables, so nothing is warned of when they differ.
@@ -182,6 +191,7 @@ impl Tick {
                 .iter()
                 .map(|s| 20 + s.name.len() + s.values.iter().map(value_len).sum::<usize>())
                 .sum::<usize>()
+            + 20
     }
 }
 
@@ -201,6 +211,7 @@ impl Recording {
             self.start,
             self.tables.unwrap_or(0)
         );
+        let mut pointer = None;
         for (n, tick) in self.ticks.iter().enumerate() {
             text.push_str(&format!("{n} w {:016x}", tick.world));
             if let Some(game) = tick.game {
@@ -233,6 +244,13 @@ impl Recording {
                 }
                 text.push('\n');
             }
+            // Where the pointer moved to (format 6), only when it moved.
+            if tick.frame.pointer != pointer
+                && let Some(p) = tick.frame.pointer
+            {
+                text.push_str(&format!("p {:x} {:x}\n", p.x.to_bits(), p.y.to_bits()));
+            }
+            pointer = tick.frame.pointer;
         }
         text
     }
@@ -315,6 +333,25 @@ impl Recording {
                 return Err(RecordingError::TooBig);
             }
             let damaged = RecordingError::Damaged(n + 1);
+            // Where the pointer moved to in the tick before (format 6).
+            if let Some(rest) = line.strip_prefix("p ").filter(|_| version >= 6) {
+                let tick: &mut Tick = ticks.last_mut().ok_or(damaged.clone())?;
+                let mut words = rest.split_ascii_whitespace();
+                let bits = |w: Option<&str>| {
+                    w.and_then(|w| u32::from_str_radix(w, 16).ok())
+                        .map(f32::from_bits)
+                        .filter(|v| v.is_finite() && v.abs() <= crate::MAX_POINTER)
+                };
+                let at = Vec2::new(
+                    bits(words.next()).ok_or(damaged.clone())?,
+                    bits(words.next()).ok_or(damaged.clone())?,
+                );
+                if words.next().is_some() {
+                    return Err(damaged);
+                }
+                tick.frame.pointer = Some(at);
+                continue;
+            }
             // What a screen sent in the tick before (format 3).
             if let Some(rest) = line.strip_prefix("s ").filter(|_| version >= 3) {
                 let tick: &mut Tick = ticks.last_mut().ok_or(damaged.clone())?;
@@ -343,6 +380,8 @@ impl Recording {
                 world,
                 ..Tick::default()
             };
+            // The pointer stays where it was until a `p` line moves it.
+            tick.frame.pointer = ticks.last().and_then(|t: &Tick| t.frame.pointer);
             let mut rest: Vec<&str> = words.collect();
             if rest.first() == Some(&"g") {
                 tick.game = Some(hex(rest.get(1).copied()).ok_or(damaged.clone())?);

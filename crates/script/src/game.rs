@@ -95,6 +95,10 @@ pub enum Change {
     Setting(crate::settings::Setting),
     /// `Window:quit()`: close the game (decision 0093).
     Quit,
+    /// `Input.pointerShown = …`: the pointer shown and free over the game
+    /// (true), or hidden and held while the game has the mouse (the
+    /// action game, A1).
+    PointerShown(bool),
     /// `Audio:setVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
@@ -142,6 +146,18 @@ pub enum Change {
 /// Values for a spawned entity's components, by component (Fixes 2b,
 /// `World:spawnWith`).
 pub type SpawnValues = Vec<(String, ComponentData)>;
+
+/// The place in the world under the pointer (`Input:pointer()`): `at`, a
+/// fraction of the game's picture across and down, in a 2D camera's view
+/// of `size` metres whose middle is at `centre`; the middle itself before
+/// the pointer has been over the game. On the camera's level.
+pub fn pointer_in_world(at: Option<glam::Vec2>, centre: Vec3, size: Vec3) -> Vec3 {
+    let Some(at) = at.filter(|a| a.is_finite()) else {
+        return centre;
+    };
+    let place = centre + Vec3::new((at.x - 0.5) * size.x, (0.5 - at.y) * size.y, 0.0);
+    if place.is_finite() { place } else { centre }
+}
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
 /// their order and their names are.
@@ -212,6 +228,12 @@ pub struct WorldView {
     pub map_bounds: Arc<std::collections::HashMap<EntityId, (Vec3, Vec3)>>,
     /// How much of the world a 2D camera shows, in metres (x across, y up).
     pub view_size: Vec3,
+    /// Where the camera looked through is, as the tick started: the
+    /// middle of what a 2D camera shows (`Input:pointer()`).
+    pub view_centre: Vec3,
+    /// Whether game code asked for the pointer shown and free
+    /// (`Input.pointerShown`), as the tick started.
+    pub pointer_shown: bool,
     /// The screen each entity's Screen shows as the tick started, for
     /// those shown (`screenShown`).
     pub screens: Arc<std::collections::HashMap<EntityId, String>>,
@@ -732,6 +754,25 @@ impl Host for ViewHost {
 
     fn action(&self, name: &str) -> input::ActionState {
         self.view.input.get(name)
+    }
+
+    fn pointer(&self) -> Vec3 {
+        pointer_in_world(
+            self.view.input.pointer,
+            self.view.view_centre,
+            self.view.view_size,
+        )
+    }
+
+    fn pointer_shown(&self) -> bool {
+        self.view.pointer_shown
+    }
+
+    fn set_pointer_shown(&mut self, shown: bool) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::PointerShown(shown)));
+        }
     }
 
     fn binding(&self, action: &str) -> Option<String> {

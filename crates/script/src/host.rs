@@ -242,6 +242,22 @@ pub trait Host {
         let _ = name;
         input::ActionState::default()
     }
+    /// The place in the world under the pointer, over a 2D game's picture
+    /// (the action game, A1); the middle of the view before it's been
+    /// over it. Nowhere in particular for a host without input.
+    fn pointer(&self) -> Vec3 {
+        Vec3::ZERO
+    }
+    /// Whether game code asked for the pointer shown and free over the
+    /// game (`Input.pointerShown`), as the tick started.
+    fn pointer_shown(&self) -> bool {
+        false
+    }
+    /// Shows the pointer and frees it (true), or hides it and holds it
+    /// while the game has the mouse, at the end of the tick.
+    fn set_pointer_shown(&mut self, shown: bool) {
+        let _ = shown;
+    }
     /// The input that sets an action off (a key first, then the mouse,
     /// then the pad), for telling a player which to press.
     fn binding(&self, action: &str) -> Option<String> {

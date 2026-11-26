@@ -1154,7 +1154,7 @@ footer p { color: var(--muted); }
 <tr><td>Health, getting hurt and knockback</td><td>Recipe</td><td><a href="#combat-recipes--getting-hurt-health-and-knockback">Getting hurt</a></td></tr>
 <tr><td>Hit-stop</td><td>Recipe</td><td><a href="#platformer-recipes--hit-stop-the-game-stops-for-a-blink-on-a-big-hit">Hit-stop</a></td></tr>
 <tr><td>Aiming with a stick</td><td>Works</td><td><code>Input:axis</code> (<a href="#combat-recipes--bullets-that-hit">Bullets that hit</a>)</td></tr>
-<tr><td>Aiming with the mouse, in the world</td><td>Not yet</td><td>The action game's first update</td></tr>
+<tr><td>Aiming with the mouse, in the world</td><td>Works</td><td><code>Input:pointer()</code> and <code>Input.pointerShown</code> (<a href="#input">Input</a>)</td></tr>
 <tr><td>Bullets that hit, as game state</td><td>Recipe</td><td>A small module made with <code>new</code> (<a href="#combat-recipes--bullets-that-hit">Bullets that hit</a>)</td></tr>
 <tr><td>Hundreds of bullets at once (pools)</td><td>Not yet</td><td>Only if a game finds <code>new</code> too slow; dozens at once are no work</td></tr>
 <tr><td>Lasers and tracers by the thousand, drawn only</td><td>Works</td><td><a href="#game-code--projectiles">Projectiles</a></td></tr>
@@ -1198,7 +1198,7 @@ footer p { color: var(--muted); }
 <h4 id="can-i-make-this--what-comes-when">What comes when<a class="anchor" href="#can-i-make-this--what-comes-when" aria-label="Link to this section">#</a></h4>
 <p>In order, each a small update:</p>
 <ol class="steps">
-<li><strong>The action game:</strong> aiming with the mouse, rays in 2D.</li>
+<li><strong>The action game:</strong> rays in 2D (aiming with the mouse is in).</li>
 <li><strong>Rust and Lua stop being game languages:</strong> Lust is the language games are written in.</li>
 <li><strong>Dialogue,</strong> in full: conversations, the dialogue box and the conversation editor.</li>
 <li><strong>The farming game's pieces:</strong> separate levels and moving between them, walking round solid tiles, tips on screens, a music crossfade, and rain and snow.</li>
@@ -1564,7 +1564,7 @@ footer p { color: var(--muted); }
 
 <span class="tk-k">pass</span> <span class="tk-n">Bullet</span><span class="tk-p">;</span>
 <span class="tk-k">end</span></code></pre>
-<p>Save an entity with the bullet's sprite and <code>Bullet</code> as a module called <code>bolt</code> (right-click it in the Level panel, <strong>Make module…</strong>). The gun makes one and tells it which way to fly:</p>
+<p>The gun aims with the right stick when it's pushed, and at the mouse otherwise (<a href="#input">Aiming with the mouse</a>). Save an entity with the bullet's sprite and <code>Bullet</code> as a module called <code>bolt</code> (right-click it in the Level panel, <strong>Make module…</strong>). The gun makes one and tells it which way to fly:</p>
 <pre data-lang="lust"><code><span class="tk-c">-- gun.lst: fires a bullet on Fire, the way the player aims, with a muzzle flash.</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/world&quot;</span><span class="tk-p">:</span><span class="tk-n">World</span><span class="tk-p">;</span>
 <span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/input&quot;</span><span class="tk-p">:</span><span class="tk-n">Input</span><span class="tk-p">;</span>
@@ -1579,10 +1579,17 @@ footer p { color: var(--muted); }
     <span class="tk-p">}</span>
 
     <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-c">-- Show the pointer to aim with.</span>
+        <span class="tk-f">is not</span> <span class="tk-o">Input</span><span class="tk-p">.</span>pointerShown<span class="tk-f">? then</span> <span class="tk-p">{</span>
+            <span class="tk-o">Input</span><span class="tk-p">.</span>pointerShown = <span class="tk-v">true</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
         cooldown = cooldown - <span class="tk-v">1</span><span class="tk-p">;</span>
-        <span class="tk-c">-- Aim with the right stick, or straight ahead when it's still.</span>
+        <span class="tk-c">-- Aim with the right stick, or else at the mouse.</span>
         <span class="tk-t">vec3</span> aim = <span class="tk-o">Input</span><span class="tk-p">:</span>axis<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Look</span><span class="tk-p">);</span>
         <span class="tk-f">is</span> aim<span class="tk-p">:</span>length<span class="tk-p">()</span> &lt; <span class="tk-v">0.2</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            aim = <span class="tk-o">Input</span><span class="tk-p">:</span>pointer<span class="tk-p">()</span> - position<span class="tk-p">();</span>
+        <span class="tk-p">}</span>
+        <span class="tk-f">is</span> aim<span class="tk-p">:</span>length<span class="tk-p">()</span> &lt; <span class="tk-v">0.01</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
             aim = <span class="tk-p">[</span><span class="tk-v">1</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">,</span> <span class="tk-v">0</span><span class="tk-p">];</span>
         <span class="tk-p">}</span>
         <span class="tk-f">is</span> <span class="tk-o">Input</span><span class="tk-p">:</span>held<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Fire</span><span class="tk-p">)</span> &amp;&amp; cooldown &lt;= <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
@@ -5905,6 +5912,8 @@ After 121 ticks:
 <tr><td><code>solis/input</code></td><td><code>vec3 Input:axis(Action action)</code></td><td>An axis action's x and y.</td></tr>
 <tr><td><code>solis/input</code></td><td><code>string Input:binding(Action action)</code></td><td>The key that sets an action off, for &quot;Press F&quot;.</td></tr>
 <tr><td><code>solis/input</code></td><td><code>Input:rebind(Action action, string input)</code></td><td>Binds a new input to an action, from the next tick.</td></tr>
+<tr><td><code>solis/input</code></td><td><code>vec3 Input:pointer()</code></td><td>The place in the world under the pointer, over a 2D game's picture (<a href="#input">Input</a>).</td></tr>
+<tr><td><code>solis/input</code></td><td><code>bool Input.pointerShown</code></td><td>Whether the pointer is shown and free while the game has the mouse; <code>Input.pointerShown = true;</code> shows it from the end of the tick.</td></tr>
 <tr><td><code>solis/project</code></td><td><code>state Action</code></td><td>The project's input actions (<code>Action.Jump</code>), from File › Project settings › Input.</td></tr>
 <tr><td><code>solis/physics</code></td><td><code>RayHit Physics:castRay(vec3 from, vec3 direction, float reach)</code></td><td>What a line meets first: <code>found</code>, <code>distance</code>, <code>entity</code> and <code>normal</code> (<a href="#physics">Physics</a>).</td></tr>
 <tr><td>any entity</td><td><code>vec3 position()</code></td><td>Where the entity is in the world, in metres.</td></tr>
@@ -6344,9 +6353,45 @@ After 121 ticks:
 <tr><td><code>vec3 Input:axis(Action action)</code></td><td>An axis's two numbers as x and y (z is 0).</td></tr>
 <tr><td><code>string Input:binding(Action action)</code></td><td>The key that sets it off, such as <span class="keys"><kbd>F</kbd></span>, for showing &quot;Press F&quot; to the player.</td></tr>
 <tr><td><code>Input:rebind(Action action, string input)</code></td><td>Binds a new input (<code>&quot;E&quot;</code>, <code>&quot;Mouse Right&quot;</code>, <code>&quot;Pad Y&quot;</code>) in place of its others of the same kind, from the next tick: what a controls menu does. Lasts while the game plays.</td></tr>
+<tr><td><code>vec3 Input:pointer()</code></td><td>The place in the world under the pointer, over a 2D game's picture (see Aiming with the mouse, below).</td></tr>
+<tr><td><code>bool Input.pointerShown</code></td><td>Whether the pointer is shown and free while the game has the mouse; set it with <code>=</code>.</td></tr>
 </tbody>
 </table></div>
 <p>Input is read <strong>once per <a href="#concepts--game-code">tick</a></strong>, so every component, on every core, sees the same input for that tick.</p>
+<p><strong>Aiming with the mouse</strong> (2D games). A shooter aims where the player points. <code>Input:pointer()</code> is the place in the world under the pointer, over the game's picture: aim from the player towards it. While the game has the mouse, the pointer is hidden and held in the window (so moving the mouse turns a 3D camera); set <code>Input.pointerShown = true</code> to show it and leave it free, and <code>false</code> to hide and hold it again. It starts hidden, and a change lands at the end of the tick.</p>
+<pre data-lang="lust"><code><span class="tk-c">-- aim.lst: points the player's sprite at the mouse, and fires there.</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/input&quot;</span><span class="tk-p">:</span><span class="tk-n">Input</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/project&quot;</span><span class="tk-p">:</span><span class="tk-n">Action</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/made&quot;</span><span class="tk-p">:</span><span class="tk-n">Shot</span><span class="tk-p">;</span>
+<span class="tk-k">fetch</span> <span class="tk-v">&quot;solis/animation&quot;</span><span class="tk-p">:</span><span class="tk-n">Flip</span><span class="tk-p">;</span>
+
+<span class="tk-k">component</span> <span class="tk-n">Aim</span> <span class="tk-p">{</span>
+    <span class="tk-k">has</span> <span class="tk-p">{</span>
+        <span class="tk-n">Flip</span> flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
+        <span class="tk-t">bool</span> started = <span class="tk-v">false</span><span class="tk-p">;</span> <span class="tk-c">-- [hidden]</span>
+    <span class="tk-p">}</span>
+
+    <span class="tk-k">method</span> update<span class="tk-p">(</span><span class="tk-t">float</span> dt<span class="tk-p">) {</span>
+        <span class="tk-f">is not</span> started<span class="tk-f">? then</span> <span class="tk-p">{</span>
+            <span class="tk-o">Input</span><span class="tk-p">.</span>pointerShown = <span class="tk-v">true</span><span class="tk-p">;</span>
+            started = <span class="tk-v">true</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+        <span class="tk-t">vec3</span> way = <span class="tk-o">Input</span><span class="tk-p">:</span>pointer<span class="tk-p">()</span> - position<span class="tk-p">();</span>
+        <span class="tk-c">-- Face the side the pointer is on.</span>
+        <span class="tk-f">is</span> way<span class="tk-p">.</span>x &lt; <span class="tk-v">0</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">Across</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span> <span class="tk-f">or</span> <span class="tk-p">{</span>
+            flip = <span class="tk-o">Flip</span><span class="tk-p">.</span><span class="tk-s">None</span><span class="tk-p">;</span>
+        <span class="tk-p">}</span>
+        <span class="tk-f">is</span> <span class="tk-o">Input</span><span class="tk-p">:</span>pressed<span class="tk-p">(</span><span class="tk-o">Action</span><span class="tk-p">.</span><span class="tk-s">Fire</span><span class="tk-p">)</span> &amp;&amp; way<span class="tk-p">:</span>length<span class="tk-p">()</span> &gt; <span class="tk-v">0.01</span><span class="tk-f">? then</span> <span class="tk-p">{</span>
+            <span class="tk-k">new</span> <span class="tk-n">Shot</span> <span class="tk-p">{</span> from = position<span class="tk-p">(),</span> direction = way<span class="tk-p">,</span> speed = <span class="tk-v">30</span> <span class="tk-p">};</span>
+        <span class="tk-p">}</span>
+    <span class="tk-p">}</span>
+<span class="tk-p">}</span>
+
+<span class="tk-k">pass</span> <span class="tk-n">Aim</span><span class="tk-p">;</span>
+<span class="tk-k">end</span></code></pre>
+<p>The place is worked out from the camera looked through and the project's 2D settings, at the camera's height (so it's a 2D game's place; in a 3D game it isn't where the pointer points). Before the pointer has been over the game it's the middle of the view, and when it leaves the game's picture it stays where it last was. Where it is goes into <a href="#input--how-to-use-it">recordings</a>, so a replay aims the same. A crosshair is a sprite your code moves to <code>Input:pointer()</code> each tick.</p>
 <p><strong>Recording and playing back</strong> (the <strong>Play</strong> menu)</p>
 <ol class="steps">
 <li>With a <a href="#projects-and-the-library">project</a> open, choose <strong>Debug › Play and record inputs</strong>. Play as usual.</li>
@@ -6399,6 +6444,8 @@ After 121 ticks:
 <section id="input--tips-and-common-problems">
 <h3>Tips and common problems<a class="anchor" href="#input--tips-and-common-problems" aria-label="Link to this section">#</a></h3>
 <ul>
+<li><strong>Problem:</strong> <code>Input:pointer()</code> is a little off from where the pointer is. <strong>Why:</strong> it's where the pointer was over the game's picture as the tick started, at most a sixtieth of a second ago. <strong>Fix:</strong> nothing needed for aiming; a crosshair drawn from it lags the pointer by that much.</li>
+<li><strong>Problem:</strong> the pointer vanishes when the game has the mouse. <strong>Why:</strong> that's how a game that turns a camera with the mouse wants it. <strong>Fix:</strong> set <code>Input.pointerShown = true</code> in your game's code.</li>
 <li><strong>Problem:</strong> my character doesn't move when I press W. <strong>Why:</strong> the editor has the keys. <strong>Fix:</strong> click the Game panel first; its corner says when the game has the mouse and keys.</li>
 <li><strong>Problem:</strong> pressing W while playing picked the move tool. <strong>Why:</strong> the same: the game didn't have the keys. <strong>Fix:</strong> click the Game panel.</li>
 <li><strong>Problem:</strong> <code>Input:pressed(Action.Jump)</code> is never true. <strong>Why:</strong> the action has no inputs. <strong>Fix:</strong> check File › Project settings › Input.</li>

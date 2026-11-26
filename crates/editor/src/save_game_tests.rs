@@ -1552,7 +1552,7 @@ fn a_recording_made_with_other_tables_warns_once_as_it_plays_back() {
     w.replay(&recording(Some(now)), "same.solrec");
     // One from before version 5 says nothing of the tables.
     let older = recording(None)
-        .replacen("solis recording 5", "solis recording 4", 1)
+        .replacen("solis recording 6", "solis recording 4", 1)
         .replacen("tables 0000000000000000\n", "", 1);
     w.replay(&older, "older.solrec");
     assert_eq!(tables_warnings(&w), 0);

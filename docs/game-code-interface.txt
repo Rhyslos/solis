@@ -62,6 +62,7 @@ input: object Input: method bool released(Action action) native;
 input: object Input: method vec3 axis(Action action) native;
 input: object Input: method string binding(Action action) native;
 input: object Input: method rebind(Action action, string input) native;
+input: object Input: method vec3 pointer() native;
 physics: method entity:setSolid(bool solid) native;
 physics: method entity:push(vec3 impulse) native;
 physics: method vec3 entity:velocity() native;
@@ -121,6 +122,7 @@ Screens.captions: bool
 Screens.captionSize: float
 Screens.captionBackground: float
 Window.fullscreen: bool
+Input.pointerShown: bool
 
 ## Fields the engine reads from a Lust component (set with =)
 
@@ -148,9 +150,12 @@ solis.Audio:setVolume
 solis.Input:axis
 solis.Input:binding
 solis.Input:held
+solis.Input:pointer
+solis.Input:pointerShown
 solis.Input:pressed
 solis.Input:rebind
 solis.Input:released
+solis.Input:setPointerShown
 solis.Maps:cellAt
 solis.Maps:choice
 solis.Maps:height
@@ -310,6 +315,9 @@ Host: fn set_started_in(&mut self, option: Option<std::sync::Arc<str>>)
 Host: fn state_changed(&mut self, which: EntityId, component: &str, from: &str, to: &str)
 Host: fn save_game(&mut self, slot: &str, load: bool)
 Host: fn action(&self, name: &str) -> input::ActionState
+Host: fn pointer(&self) -> Vec3
+Host: fn pointer_shown(&self) -> bool
+Host: fn set_pointer_shown(&mut self, shown: bool)
 Host: fn binding(&self, action: &str) -> Option<String>
 Host: fn rebind(&mut self, action: &str, input: &str)
 Host: fn play_sound(&mut self, event: &str, at: SoundAt)

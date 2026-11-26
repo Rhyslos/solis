@@ -17,7 +17,8 @@ pub(super) fn lend<'s>(
     Ok(())
 }
 
-/// `Input:held`, `pressed`, `released`, `axis`, `binding` and `rebind`.
+/// `Input:held`, `pressed`, `released`, `axis`, `binding`, `rebind`,
+/// `pointer` and `Input.pointerShown`.
 fn lend_actions<'s>(
     scope: &'s Scope<'s, '_>,
     natives: &Table,
@@ -71,6 +72,25 @@ fn lend_actions<'s>(
             "Input_binding",
             move |_, (_input, name): (LuaValue, mlua::LuaString)| {
                 Ok(h.borrow().binding(&name.to_str()?).unwrap_or_default())
+            },
+        )?,
+    )?;
+    natives.raw_set(
+        "Input_pointer",
+        scope.create_function(move |_, _input: LuaValue| Ok(vec3_value(h.borrow().pointer())))?,
+    )?;
+    natives.raw_set(
+        "Input_pointerShown",
+        scope.create_function(move |_, _input: LuaValue| Ok(h.borrow().pointer_shown()))?,
+    )?;
+    natives.raw_set(
+        "Input_setPointerShown",
+        native(
+            scope,
+            "Input_setPointerShown",
+            move |_, (_input, shown): (LuaValue, bool)| {
+                h.borrow_mut().set_pointer_shown(shown);
+                Ok(())
             },
         )?,
     )?;
