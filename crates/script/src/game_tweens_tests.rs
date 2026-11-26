@@ -187,25 +187,29 @@ fn a_tween_can_t_move_an_object_and_says_so_once() {
 /// A sprite with a vec2 and two colours, one see-through, that it changes.
 const SPRITE: &str = "event Flash(colour glow, vec2 at);\n\
     component Sprite {\n\
-        has {\n\
-            vec2 speed = [2, -1];\n\
-            vec2 place = [0, 0];\n\
-            colour tint = [1, 0.5, 0];\n\
-            colour shadow = [0, 0, 0, 0.5];\n\
-            int flashes = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            place = place + speed;\n\
-            shadow = shadow:fade(shadow.a * 0.5);\n\
-            send Flash(tint, place) to me;\n\
-        }\n\
-        on Flash(colour glow, vec2 at) {\n\
-            is glow == tint? then {\n\
-                flashes += 1;\n\
-            }\n\
-        }\n\
+    has {\n\
+    vec2 speed = [2, -1];\n\
+    vec2 place = [0, 0];\n\
+    colour tint = [1, 0.5, 0];\n\
+    colour shadow = [0, 0, 0, 0.5];\n\
+    int flashes = 0;\n\
     }\n\
-    pass Sprite;\nend\n";
+    method update(float dt) {\n\
+    place = place + speed;\n\
+    shadow = shadow:fade(shadow.a * 0.5);\n\
+    send Flash(tint, place) to me;\n\
+    }\n\
+    on {\n\
+    \x20   Flash(colour glow, vec2 at) {\n\
+    \x20   is glow == tint? then {\n\
+    \x20   flashes += 1;\n\
+    \x20   }\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Sprite;\n\
+    end\n\
+    ";
 
 #[test]
 fn vec2_and_colour_fields_are_solis_s_own_kinds_and_cross_both_ways() {

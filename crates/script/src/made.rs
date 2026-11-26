@@ -33,6 +33,10 @@ pub const FILE: &str = "made";
 /// The class every made class is like.
 pub const BASE: &str = "Made";
 
+/// Lust's own states (alpha 83 and 88): no class of Solis's can be called
+/// one of these, so a sound called `run` is made as `RunSound`.
+const LUST_STATES: [&str; 6] = ["Icon", "Problem", "Day", "Request", "Answer", "Run"];
+
 /// The class of a shot, written once.
 pub const SHOT: &str = "Shot";
 
@@ -127,7 +131,7 @@ pub(crate) fn write_with(
     sources: &BTreeMap<String, String>,
 ) -> Written {
     let path = format!("{folder}/{FILE}.lst");
-    let mut taken: BTreeSet<String> = BTreeSet::new();
+    let mut taken: BTreeSet<String> = LUST_STATES.iter().map(|s| (*s).to_owned()).collect();
     for (file, text) in files {
         if *file == path {
             continue;
@@ -347,18 +351,26 @@ fn running_entity(lua: &Lua) -> Option<EntityId> {
 
 /// The made class a thing is of, and what it makes.
 fn class_of(lua: &Lua, thing: &Table) -> mlua::Result<(String, MadeClass)> {
-    let class = thing
-        .metatable()
-        .and_then(|m| m.raw_get::<Table>("__parent").ok())
-        .and_then(|c| c.raw_get::<String>("__name").ok())
-        .unwrap_or_default();
+    // The thing's class, or the class it's like, whichever Solis made:
+    // Lust has kept a thing's class as its metatable or the one above.
     let list = lua.app_data_ref::<std::sync::Arc<MadeList>>();
-    match list.as_ref().and_then(|l| l.classes.get(&class)) {
-        Some(made) => Ok((class, made.clone())),
-        None => Err(mlua::Error::runtime(format!(
-            "new {class} isn't one Solis makes any more: check the code again."
-        ))),
+    let mut class = thing.metatable();
+    let mut first = None;
+    for _ in 0..4 {
+        let Some(c) = class else { break };
+        let name = c.raw_get::<String>("__name").unwrap_or_default();
+        if let Some(made) = list.as_ref().and_then(|l| l.classes.get(&name)) {
+            return Ok((name, made.clone()));
+        }
+        if name != BASE {
+            first.get_or_insert(name);
+        }
+        class = c.raw_get::<Table>("__parent").ok();
     }
+    let class = first.unwrap_or_default();
+    Err(mlua::Error::runtime(format!(
+        "new {class} isn't one Solis makes any more: check the code again."
+    )))
 }
 
 /// A field written in a thing's `new` (Solis's `new` keeps only those on

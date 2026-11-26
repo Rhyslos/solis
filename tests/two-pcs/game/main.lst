@@ -123,20 +123,22 @@ component Hive {
         }
     }
 
-    on TimerFinished(Timer which) {
-        is which == Timer.Pulse? then {
-            pulses = pulses + 1;
+    on {
+        TimerFinished(Timer which) {
+            is which == Timer.Pulse? then {
+                pulses = pulses + 1;
+            }
+            is which == Timer.Bell? then {
+                bells = bells + 1;
+            }
+            is which == Timer.Sting? then {
+                stings = stings + 1;
+            }
         }
-        is which == Timer.Bell? then {
-            bells = bells + 1;
-        }
-        is which == Timer.Sting? then {
-            stings = stings + 1;
-        }
-    }
 
-    on SwarmChanged(Swarm from, Swarm to) {
-        changes = changes + 1;
+        SwarmChanged(Swarm from, Swarm to) {
+            changes = changes + 1;
+        }
     }
 }
 
@@ -165,9 +167,11 @@ component Drone {
         }
     }
 
-    on TimerFinished(Timer which) {
-        blinked = true;
-        push([0, 0, 1.5]);
+    on {
+        TimerFinished(Timer which) {
+            blinked = true;
+            push([0, 0, 1.5]);
+        }
     }
 }
 
@@ -203,14 +207,16 @@ component Health {
         glow = glow * Maths:power(0.5, dt * 4);
     }
 
-    on Hit(entity by, float damage) {
-        hp = Maths:max(hp - damage, 0);
-        glow = 1;
-        tween glow to 0 over 0.3 [ease OutCubic];
-    }
+    on {
+        Hit(entity by, float damage) {
+            hp = Maths:max(hp - damage, 0);
+            glow = 1;
+            tween glow to 0 over 0.3 [ease OutCubic];
+        }
 
-    on Dented(int platesLeft) {
-        dents = dents + 1;
+        Dented(int platesLeft) {
+            dents = dents + 1;
+        }
     }
 }
 
@@ -221,13 +227,15 @@ component Gate {
         int inside = 0;
     }
 
-    on Entered(entity who) {
-        visits = visits + 1;
-        inside = #inside();
-    }
+    on {
+        Entered(entity who) {
+            visits = visits + 1;
+            inside = #inside();
+        }
 
-    on Exited(entity who) {
-        inside = #inside();
+        Exited(entity who) {
+            inside = #inside();
+        }
     }
 }
 
@@ -246,12 +254,14 @@ component Visitor {
         was = now;
     }
 
-    on EnteredZone(entity zone) {
-        zones = zones + 1;
-    }
+    on {
+        EnteredZone(entity zone) {
+            zones = zones + 1;
+        }
 
-    on LeftZone(entity zone) {
-        zones = zones - 1;
+        LeftZone(entity zone) {
+            zones = zones - 1;
+        }
     }
 }
 

@@ -1166,10 +1166,26 @@ mod tests {
     #[test]
     fn damaged_code_never_crashes_the_checker() {
         // Thousands of randomly damaged programs (CONTRIBUTING rule 9).
-        let base = "state Mode = [Single, Burst];\nevent Hit(entity by, float damage);\n\
-                    component Gun {\n    has {\n        int ammo = 30;\n        Mode mode = Mode.Single;\n    }\n\
-                    \x20   method update(float dt) {\n        ammo = ammo - 1;\n        send Hit(me, 2.5) to me;\n    }\n\
-                    \x20   on Hit(entity by, float damage) {\n        ammo = ammo + 1;\n    }\n}\npass Gun;\nend\n";
+        let base = "state Mode = [Single, Burst];\n\
+            event Hit(entity by, float damage);\n\
+            component Gun {\n\
+            \x20   has {\n\
+            \x20       int ammo = 30;\n\
+            \x20       Mode mode = Mode.Single;\n\
+            \x20   }\n\
+            \x20   method update(float dt) {\n\
+            \x20       ammo = ammo - 1;\n\
+            \x20       send Hit(me, 2.5) to me;\n\
+            \x20   }\n\
+            \x20   on {\n\
+            \x20       Hit(entity by, float damage) {\n\
+            \x20           ammo = ammo + 1;\n\
+            \x20       }\n\
+            \x20   }\n\
+            }\n\
+            pass Gun;\n\
+            end\n\
+            ";
         let mut seed: u64 = 0x5eed;
         let mut next = || {
             seed ^= seed << 13;

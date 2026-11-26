@@ -31,26 +31,28 @@ component Hero {
         float flash = 0;
     }
 
-    -- A hit stuns: everything started here belongs to Stunned.
-    on Hit(float damage) {
-        state = Mood.Stunned;
-        new Recover { after = 1.5 };
-        tween flash to 1 over 1.5;
-        new Dizzy {};
-    }
-
-    -- The stun is over: setting the state ends the rest.
-    on TimerFinished(Timer which) {
-        is which == Timer.Recover? then {
-            state = Mood.Calm;
+    on {
+        -- A hit stuns: everything started here belongs to Stunned.
+        Hit(float damage) {
+            state = Mood.Stunned;
+            new Recover { after = 1.5 };
+            tween flash to 1 over 1.5;
+            new Dizzy {};
         }
-    }
 
-    -- Leaving work in one place, whoever changed the state.
-    on MoodChanged(Mood from, Mood to) {
-        is from == Mood.Stunned? then {
-            flash = 0;
-            World:say("Back on my feet.");
+        -- The stun is over: setting the state ends the rest.
+        TimerFinished(Timer which) {
+            is which == Timer.Recover? then {
+                state = Mood.Calm;
+            }
+        }
+
+        -- Leaving work in one place, whoever changed the state.
+        MoodChanged(Mood from, Mood to) {
+            is from == Mood.Stunned? then {
+                flash = 0;
+                World:say("Back on my feet.");
+            }
         }
     }
 }
@@ -250,8 +252,10 @@ component Guard {
         new Lock { after = 1.0 };
     }
 
-    on TimerFinished(Timer which) {
-        state = Gate.Locked;
+    on {
+        TimerFinished(Timer which) {
+            state = Gate.Locked;
+        }
     }
 }
 pass Guard;

@@ -577,7 +577,7 @@ pub const MOVED: &[Moved] = &[
     },
     Moved {
         old: "AnimationCue",
-        lust: "on CueReached(Cue cue), with fetch \"solis/animation\":CueReached; and fetch \"solis/project\":Cue;",
+        lust: "on { CueReached(Cue cue) { … } }, with fetch \"solis/animation\":CueReached; and fetch \"solis/project\":Cue;",
         lua: "function C:on_CueReached(cue)",
     },
 ];
@@ -1697,106 +1697,116 @@ mod tests {
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag];\n\
-             fetch \"solis/input\":Input;\n\
-             get \"solis/entity\":facingAlong;\n\
-             fetch \"solis/physics\":[Physics, RayHit];\n\
-             fetch \"solis/sound\":Audio;\n\
-             fetch \"solis/made\":Shot;\n\
-             fetch \"solis/animation\":[CueReached, ClipFinished];\n\
-             fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\
-             -- A game's own class may share a name with a data file's class.\n\
-             class Layer {\n\
-                 has {\n\
-                     int depth = 0;\n\
-                 }\n\
-             }\n\
-             component Walker {\n\
-                 has {\n\
-                     int steps = 0;\n\
-                 }\n\
-                 on CueReached(Cue cue) {\n\
-                     is cue != Cue.None? then {\n\
-                         steps = steps + 1;\n\
-                     }\n\
-                 }\n\
-                 on ClipFinished(Clip clip) {\n\
-                     is clip == Clip.None? then {\n\
-                         animate(Clip.None);\n\
-                         animateFromStart(clip);\n\
-                     }\n\
-                     stopAnimation();\n\
-                 }\n\
-             }\n\
-             component Door {\n\
-                 has {\n\
-                     int visits = 0;\n\
-                 }\n\
-                 on Entered(entity who) {\n\
-                     entity array here = inside();\n\
-                     visits = visits + #here;\n\
-                     World:say(who:name());\n\
-                 }\n\
-                 on Exited(entity who) {\n\
-                     World:say(who:name());\n\
-                 }\n\
-             }\n\
-             component Visitor {\n\
-                 has {\n\
-                     int zones = 0;\n\
-                 }\n\
-                 on EnteredZone(entity zone) {\n\
-                     zones = zones + #zone:inside();\n\
-                 }\n\
-                 on LeftZone(entity zone) {\n\
-                     zones = zones - 1;\n\
-                 }\n\
-             }\n\
-             component Mover {\n\
-                 has {\n\
-                     float speed = 2;\n\
-                 }\n\
-                 method update(float dt) {\n\
-                     vec3 step = [1, 0, 0];\n\
-                     moveTo(position() + step * speed * dt);\n\
-                     turnTo(rotation());\n\
-                     face(step);\n\
-                     turnTo(facingAlong(step));\n\
-                     is World:time() > 10 && World:frameTime() > 0? then {\n\
-                         World:say(name() + \" has gone far\");\n\
-                         Saves:saveTo(\"quick\");\n\
-                         Saves:loadFrom(\"quick\");\n\
-                     }\n\
-                     entity other = World:find(\"Crate\");\n\
-                     entity made = World:find(\"Drone\");\n\
-                     made:moveTo(other:position() + [0, 0, 1]);\n\
-                     made:turnTo(other:rotation());\n\
-                     World:say(made:name());\n\
-                     made:despawn();\n\
-                     World:setSeed(World:randomInt(1, 6));\n\
-                     float r = World:random() + World:randomRange(1, 2);\n\
-                     new Shot { from = position(), direction = step, speed = 10, life = 1, colour = [1, 0, 0] };\n\
-                     other:stopSounds();\n\
-                     setSoundPlaying(true);\n\
-                     Audio:setVolume(Bus.Music, 0.5);\n\
-                     is Input:held(Action.Jump) && Input:pressed(Action.Jump) || Input:released(Action.Jump)? then {\n\
-                         Input:rebind(Action.Jump, \"Space\");\n\
-                         World:say(Input:binding(Action.Jump) + Input:axis(Action.Move).x.text());\n\
-                     }\n\
-                     RayHit hit = Physics:castRay(position(), step, 10);\n\
-                     other:push(velocity() + hit.normal);\n\
-                     is hit.found && hit.distance > 0 && hit.entity == other? then {\n\
-                         other:setVelocity(step);\n\
-                         setVelocity(other:velocity());\n\
-                         walk(step);\n\
-                         is grounded() || other:grounded()? then {\n\
-                             other:walk(step);\n\
-                         }\n\
-                     }\n\
-                 }\n\
-             }\n\
-             pass Mover, Walker;\n\
-             end\n"
+                fetch \"solis/project\":[Module, Action, Sound, Bus, Clip, Cue, Screen, Picture, Tag];\n\
+                fetch \"solis/input\":Input;\n\
+                get \"solis/entity\":facingAlong;\n\
+                fetch \"solis/physics\":[Physics, RayHit];\n\
+                fetch \"solis/sound\":Audio;\n\
+                fetch \"solis/made\":Shot;\n\
+                fetch \"solis/animation\":[CueReached, ClipFinished];\n\
+                fetch \"solis/zones\":[Entered, Exited, EnteredZone, LeftZone];\n\
+                -- A game's own class may share a name with a data file's class.\n\
+                class Layer {\n\
+                has {\n\
+                int depth = 0;\n\
+                }\n\
+                }\n\
+                component Walker {\n\
+                has {\n\
+                int steps = 0;\n\
+                }\n\
+                on {\n\
+                \x20   CueReached(Cue cue) {\n\
+                \x20   is cue != Cue.None? then {\n\
+                \x20   steps = steps + 1;\n\
+                \x20   }\n\
+                \x20   }\n\
+                \n\
+                \x20   ClipFinished(Clip clip) {\n\
+                \x20   is clip == Clip.None? then {\n\
+                \x20   animate(Clip.None);\n\
+                \x20   animateFromStart(clip);\n\
+                \x20   }\n\
+                \x20   stopAnimation();\n\
+                \x20   }\n\
+                }\n\
+                }\n\
+                component Door {\n\
+                has {\n\
+                int visits = 0;\n\
+                }\n\
+                on {\n\
+                \x20   Entered(entity who) {\n\
+                \x20   entity array here = inside();\n\
+                \x20   visits = visits + #here;\n\
+                \x20   World:say(who:name());\n\
+                \x20   }\n\
+                \n\
+                \x20   Exited(entity who) {\n\
+                \x20   World:say(who:name());\n\
+                \x20   }\n\
+                }\n\
+                }\n\
+                component Visitor {\n\
+                has {\n\
+                int zones = 0;\n\
+                }\n\
+                on {\n\
+                \x20   EnteredZone(entity zone) {\n\
+                \x20   zones = zones + #zone:inside();\n\
+                \x20   }\n\
+                \n\
+                \x20   LeftZone(entity zone) {\n\
+                \x20   zones = zones - 1;\n\
+                \x20   }\n\
+                }\n\
+                }\n\
+                component Mover {\n\
+                has {\n\
+                float speed = 2;\n\
+                }\n\
+                method update(float dt) {\n\
+                vec3 step = [1, 0, 0];\n\
+                moveTo(position() + step * speed * dt);\n\
+                turnTo(rotation());\n\
+                face(step);\n\
+                turnTo(facingAlong(step));\n\
+                is World:time() > 10 && World:frameTime() > 0? then {\n\
+                World:say(name() + \" has gone far\");\n\
+                Saves:saveTo(\"quick\");\n\
+                Saves:loadFrom(\"quick\");\n\
+                }\n\
+                entity other = World:find(\"Crate\");\n\
+                entity made = World:find(\"Drone\");\n\
+                made:moveTo(other:position() + [0, 0, 1]);\n\
+                made:turnTo(other:rotation());\n\
+                World:say(made:name());\n\
+                made:despawn();\n\
+                World:setSeed(World:randomInt(1, 6));\n\
+                float r = World:random() + World:randomRange(1, 2);\n\
+                new Shot { from = position(), direction = step, speed = 10, life = 1, colour = [1, 0, 0] };\n\
+                other:stopSounds();\n\
+                setSoundPlaying(true);\n\
+                Audio:setVolume(Bus.Music, 0.5);\n\
+                is Input:held(Action.Jump) && Input:pressed(Action.Jump) || Input:released(Action.Jump)? then {\n\
+                Input:rebind(Action.Jump, \"Space\");\n\
+                World:say(Input:binding(Action.Jump) + Input:axis(Action.Move).x.text());\n\
+                }\n\
+                RayHit hit = Physics:castRay(position(), step, 10);\n\
+                other:push(velocity() + hit.normal);\n\
+                is hit.found && hit.distance > 0 && hit.entity == other? then {\n\
+                other:setVelocity(step);\n\
+                setVelocity(other:velocity());\n\
+                walk(step);\n\
+                is grounded() || other:grounded()? then {\n\
+                other:walk(step);\n\
+                }\n\
+                }\n\
+                }\n\
+                }\n\
+                pass Mover, Walker;\n\
+                end\n\
+                "
                 .into(),
         ));
         // What the game makes with new, as the code's check writes it.

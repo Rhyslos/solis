@@ -301,7 +301,7 @@ end
 
 Keep the game playing, change your Lust, and save. In about a third of a second the running game has the new code, and nothing starts over:
 
-- **Every running component keeps its values,** field by field, by name: a turret keeps the ammo it has left, a mover stays where it got to. Only `update` and the `on` reactions are new.
+- **Every running component keeps its values,** field by field, by name: a turret keeps the ammo it has left, a mover stays where it got to. Only `update` and the handlers in `on { }` are new.
 - **A field whose kind changed** (an `int` that's now a `float`), **or a new field,** takes its starting value. The Console says which: "Gun's ammo is float now, not int, so it starts at 10."
 - **A removed field** is dropped; **a removed component** stops.
 - **A component new in the code** starts on every entity that has it.
@@ -312,7 +312,7 @@ The Console says what changed each time: "The running game took the new code (Gu
 
 ## Events
 
-Components tell each other things with [events](concepts.md#game-code): a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it with `on`, and anything sends it to an entity with `send`:
+Components tell each other things with [events](concepts.md#game-code): a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it in its **`on { }` block**, which holds one handler for each event it hears (like `has { }` holds its fields), and anything sends it to an entity with `send`:
 
 ```lust
 fetch "solis/world":World;
@@ -325,17 +325,19 @@ component Health {
         float hp = 10;
     }
 
-    on Hit(entity by, float damage) {
-        is hp > 0? then {
-            hp = hp - damage;
-            is hp <= 0? then {
-                send Died() to this;
+    on {
+        Hit(entity by, float damage) {
+            is hp > 0? then {
+                hp = hp - damage;
+                is hp <= 0? then {
+                    send Died() to this;
+                }
             }
         }
-    }
 
-    on Died() {
-        World:say("down!");
+        Died() {
+            World:say("down!");
+        }
     }
 }
 
@@ -432,14 +434,15 @@ function Gun:update(dt)
 end
 ```
 
-- **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
+- **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with a handler for it in its `on { }` reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
 - **From the engine:** some events are Solis's own, such as a [trigger zone](trigger-zones.md)'s `Entered` or a [timer](timers.md)'s `TimerFinished` (a screen's [`TypingFinished`](text-effects.md) comes with the tick's input instead, as a button's event does). They arrive first, in the tick's first round. `TimerFinished` is the one event that reaches a single component: the one that started the timer.
 - **To something you just spawned:** an event sent to an entity spawned in the same tick (`entity shot = new Bolt { … }; send Launch(dir) to shot;`) arrives at the start of the next tick's events, once its components exist. Its first `update` runs just before, so set it moving in the `on`, not in `update`'s first run.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
-- **An event sent while starting** goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (`int id = register();`, where `register` has a `send` in it): nothing is running yet to take the event. Send from `update` or an `on`.
+- **An event sent while starting** goes nowhere too. The lines outside components run before anything plays, and a field's starting value is worked out as its component is made (`int id = register();`, where `register` has a `send` in it): nothing is running yet to take the event. Send from `update` or a handler.
+- **Events only Lust hears:** `send Saved();` with no `to`, or sent to one of your own classes' things or a [game-wide object](#game-wide-objects), stays inside Lust: it reaches the `on { }` blocks of classes and objects, never a component, and arrives as the call that sent it ends (after the `update` or handler). An object's own events, sent from its `update`, can change it; one sent from a component can't, as only an object's update changes it.
 - **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
 - **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console (once, until the code changes), so the game can't freeze. At most 10,000 events can wait at once, holding at most 16 MB of text: past that, the `send` itself fails, so the Console points at the component sending too much.
-- **A component whose reaction keeps failing** (an `on` that divides by zero, every time) is said once in the Console; it keeps running, and its later failures with events aren't said again until the code changes.
+- **A component whose reaction keeps failing** (a handler that divides by zero, every time) is said once in the Console; it keeps running, and its later failures with events aren't said again until the code changes.
 
 **In Lua**, `solis.send(to, "Hit", by, 2.5)` sends an event, and a function called `on_` and the event's name reacts to it. When the Lust declares the event, what Lua sends is checked against what it carries: a wrong value means the event isn't sent, and the Console names the Lua component that sent it. Lua can also send events no Lust declares; their numbers arrive as floats (Lua has one kind of number, so `2` and `2.5` arrive alike).
 
@@ -713,8 +716,10 @@ component Orc {
         bool solid = true;
     }
 
-    on Died() {
-        solid = false;
+    on {
+        Died() {
+            solid = false;
+        }
     }
 }
 
@@ -784,6 +789,53 @@ end
 
 Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed. Lust's own `Random` (`Random[1, 6]`, `Random:chance`, an array's `pick` and `shuffle`) doesn't yet: its first roll starts it from the computer's clock, and with it the game's seed, so the same game can't be played again. Use `World:random` and the rest above. The numbers carry on while the game is paused with `World.gameSpeed = 0`: every tick still rolls new ones, so a pause menu can shuffle or roll like any other code.
 
+## Waiting
+
+A door that opens, waits two seconds, then closes; an enemy that winds up for half a second before it strikes: game code can **wait** in the middle of what it's doing, and carry on later, while the rest of the game plays on.
+
+```lust
+fetch "solis/input":Input;
+fetch "solis/project":Action;
+
+event Opened();
+
+component Door {
+    has {
+        bool open = false;
+    }
+
+    method update(float dt) {
+        is Input:pressed(Action.Fire) && not open? then {
+            start swing();
+        }
+    }
+
+    method swing() {
+        open = true;
+        wait 2;
+        open = false;
+    }
+
+    on {
+        Opened() {
+            wait 0.5;
+            open = true;
+        }
+    }
+}
+
+pass Door;
+end
+```
+
+- **`wait seconds;`** pauses only the piece of work it's in: a handler in `on { }`, a tween's done block, or a method started with **`start`** (`start swing();`). The game, and every other component, keeps going; the work carries on at the first tick once that much time has passed.
+- **`update` can't wait,** since Solis calls it every tick: a `wait` in it would hold up the whole game. Put the waiting in a method of its own and `start` it, as `Door` does. A `wait` written in `update` is a mistake in Problems; one reached through a method `update` calls stops that call with a message saying to start it instead.
+- **Game time, not the clock on the wall:** waits count the game's own time, so a paused game (`World.gameSpeed = 0`) moves no waits, and a slowed one moves them slower. `wait { is open? }` waits until a question is true, looking once a tick.
+- **Named work:** `start closing = swing();` gives the work a name; `cancel closing;` stops it, and `closing.state` says how it's going (`Run.Waiting`, `Run.Going`, `Run.Done` or `Run.Cancelled`).
+- **When a component goes,** taken off its entity, its entity removed, or stopped after a failure, everything it started that's still waiting is cancelled and never runs again.
+- **What doesn't last:** work still waiting isn't kept in a [save game](save-games.md), and stops when the code changes while the game runs. Keep what matters in fields (a `float closeAt` checked in `update`, or a [timer](timers.md)) when it must survive those.
+- **A failure after a wait** is said in the Console with the line it happened on, and stops only that piece of work.
+
 ## Tweens
 
 A door that swings open over half a second, a health bar that slides down, a light that fades: a **[tween](concepts.md#game-code)** glides a field to a new value over time, so you don't write the in-between steps yourself.
@@ -796,9 +848,11 @@ component Door {
         float open = 0;
     }
 
-    on Opened() {
-        tween open to 1 over 0.5 [ease OutCubic] {
-            World:say("the door is open");
+    on {
+        Opened() {
+            tween open to 1 over 0.5 [ease OutCubic] {
+                World:say("the door is open");
+            }
         }
     }
 }

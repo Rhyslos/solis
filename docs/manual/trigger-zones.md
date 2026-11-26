@@ -53,15 +53,17 @@ fetch "solis/world":World;
 fetch "solis/zones":[Entered, Exited];
 
 component Door {
-    -- Someone walked in: say who, and how many are inside now.
-    on Entered(entity who) {
-        int count = #inside();
-        World:say(who:name() + " came in; " + count.text() + " inside");
-    }
+    on {
+        -- Someone walked in: say who, and how many are inside now.
+        Entered(entity who) {
+            int count = #inside();
+            World:say(who:name() + " came in; " + count.text() + " inside");
+        }
 
-    -- Someone walked out.
-    on Exited(entity who) {
-        World:say(who:name() + " left");
+        -- Someone walked out.
+        Exited(entity who) {
+            World:say(who:name() + " left");
+        }
     }
 }
 pass Door;
@@ -122,14 +124,16 @@ fetch "solis/world":World;
 fetch "solis/zones":[EnteredZone, LeftZone];
 
 component Player {
-    -- Walked into a zone: which one.
-    on EnteredZone(entity zone) {
-        World:say("Now in " + zone:name());
-    }
+    on {
+        -- Walked into a zone: which one.
+        EnteredZone(entity zone) {
+            World:say("Now in " + zone:name());
+        }
 
-    -- Walked out of it again.
-    on LeftZone(entity zone) {
-        World:say("Left " + zone:name());
+        -- Walked out of it again.
+        LeftZone(entity zone) {
+            World:say("Left " + zone:name());
+        }
     }
 }
 pass Player;

@@ -13,38 +13,43 @@ use std::sync::Arc;
 const MAIN: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":Timer;\n\
     fetch \"solis/made\":[Opens, Dawn];\n\
-    fetch \"solis/timers\":TimerFinished;\n\n\
+    fetch \"solis/timers\":TimerFinished;\n\
+    \n\
     component Door {\n\
-        has {\n\
-            int ticks = 0;\n\
-            float speed = 1;\n\
-            bool vanish = false;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                World.gameSpeed = speed;\n\
-                new Opens { after = 2.0 };\n\
-                new Dawn { atHour = 6.0 };\n\
-                World.timeOfDay = 5.0;\n\
-            }\n\
-            is ticks == 3? then {\n\
-                World.timeOfDay = 7.0;\n\
-            }\n\
-            is ticks == 2 && vanish? then {\n\
-                despawn();\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            is which == Timer.Opens? then {\n\
-                World:say(\"opened on \" + ticks.text());\n\
-            }\n\
-            is which == Timer.Dawn? then {\n\
-                World:say(\"dawn on \" + ticks.text());\n\
-            }\n\
-        }\n\
+    has {\n\
+    int ticks = 0;\n\
+    float speed = 1;\n\
+    bool vanish = false;\n\
     }\n\
-    pass Door;\nend\n";
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    World.gameSpeed = speed;\n\
+    new Opens { after = 2.0 };\n\
+    new Dawn { atHour = 6.0 };\n\
+    World.timeOfDay = 5.0;\n\
+    }\n\
+    is ticks == 3? then {\n\
+    World.timeOfDay = 7.0;\n\
+    }\n\
+    is ticks == 2 && vanish? then {\n\
+    despawn();\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   is which == Timer.Opens? then {\n\
+    \x20   World:say(\"opened on \" + ticks.text());\n\
+    \x20   }\n\
+    \x20   is which == Timer.Dawn? then {\n\
+    \x20   World:say(\"dawn on \" + ticks.text());\n\
+    \x20   }\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Door;\n\
+    end\n\
+    ";
 
 fn program() -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(

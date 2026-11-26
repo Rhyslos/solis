@@ -96,7 +96,7 @@ File names are camelCase and state options are PascalCase, so the editor turns `
 6. **One question, one call.** When the engine works out several answers at once, it gives back one thing holding them all. `RayHit hit = Physics:castRay(from, direction, 10);` then `hit.found`, `hit.distance`, `hit.entity`, `hit.normal`. Never three calls for one ray.
 7. **Variants put the difference at the end of the name.** Lust has no optional arguments, so a variant is its own method, named base word first: `animate` / `animateFromStart`, `Audio:play` / `Audio:playAt` / `playSound`. Not `replayClip` next to `playClip`.
 8. **Safe to call every frame.** Asking for what is already happening does nothing: `animation = Clip.FarmerWalk;` every tick keeps walking, it does not restart. Restarting is its own call, `restartAnimation()`.
-9. **Events say what happened, and carry states.** Past tense, PascalCase, sent to the entity it happened to: `on ClipFinished(Clip clip)`, `on CueReached(Cue cue)`, `on Landed(float speed)`. Payloads use the project's states, never a string name.
+9. **Events say what happened, and carry states.** Past tense, PascalCase, sent to the entity it happened to, and heard in a component's `on { }` block: `ClipFinished(Clip clip)`, `CueReached(Cue cue)`, `Landed(float speed)`. Payloads use the project's states, never a string name.
 10. **The same words in every language.** Lust `moveTo(p)`, Lua `this:moveTo(p)`, Rust `this.move_to(p)`. One table in `describe.rs` names each call once; the Rust name is the same words in snake\_case. The `Host` trait uses those names too (today `position` and `positionOf` differ).
 11. **Mistakes are loud and point at the line.** A wrong name is caught before the game runs. A dead entity, a missing component, or a clip the entity's animation file doesn't have stops with a message naming the line, never a silent nothing.
 12. **One way to do each job.** When a better call replaces an old one, the old name goes in `RENAMED` with a warning that names the new call, and is removed at the next phase.
@@ -256,7 +256,7 @@ Four Lust changes make all of this possible. I tested the rest against Lust alph
 | --- | --- | --- |
 | Engine objects with native methods (`Input:pressed(...)`) | Yes | none |
 | A native method giving back a class with fields (`RayHit`) | Yes | none |
-| Events carrying a state (`on ClipFinished(Clip clip)`) | Yes | none |
+| Events carrying a state (`ClipFinished(Clip clip)`) | Yes | none |
 | A native method taking or giving back a state (`animate(Clip.FarmerWalk)`) | **No**: "a native method takes ints, floats, text…" | Lust lets natives take and give back states. Rust gets the option as a number plus its full name (`"Farmer.Walk"`); Lua gets the option as it already has it. |
 | Abilities on `entity` (`target:position()`) | **No**: `entity` has only `==` and `.text()` | An engine file can give `entity` native methods, checked like any other method. The syntax is open question 1 below. |
 | Abilities called bare inside a component, and `this` | **No**: today it's `me:position()` | Inside a component, the thing's abilities are called bare; a variable may share a name with one; `this` names the whole thing. `me` keeps working for a while with a message pointing to the new way. |

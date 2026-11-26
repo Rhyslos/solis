@@ -133,34 +133,40 @@ fn armour() -> RustKind {
     }
 }
 
-const GAME: &str = "fetch \"solis/world\":World;\nevent Hit(entity by, float damage);\n\
+const GAME: &str = "fetch \"solis/world\":World;\n\
+    event Hit(entity by, float damage);\n\
     event Broken(int pieces);\n\
     component Gun {\n\
-        has {\n\
-            entity target = nothing;\n\
-            int shots = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            is shots < 2? then {\n\
-                shots = shots + 1;\n\
-                World:say(\"bang\");\n\
-                send Hit(me, 2.5) to target;\n\
-            }\n\
-        }\n\
+    has {\n\
+    entity target = nothing;\n\
+    int shots = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    is shots < 2? then {\n\
+    shots = shots + 1;\n\
+    World:say(\"bang\");\n\
+    send Hit(me, 2.5) to target;\n\
+    }\n\
+    }\n\
     }\n\
     component Health {\n\
-        has {\n\
-            float hp = 10;\n\
-        }\n\
-        on Hit(entity by, float damage) {\n\
-            hp = hp - damage;\n\
-            World:say(\"hp \" + hp.text());\n\
-        }\n\
-        on Broken(int pieces) {\n\
-            World:say(\"broken into \" + pieces.text());\n\
-        }\n\
+    has {\n\
+    float hp = 10;\n\
     }\n\
-    pass Gun, Health;\nend\n";
+    on {\n\
+    \x20   Hit(entity by, float damage) {\n\
+    \x20   hp = hp - damage;\n\
+    \x20   World:say(\"hp \" + hp.text());\n\
+    \x20   }\n\
+    \n\
+    \x20   Broken(int pieces) {\n\
+    \x20   World:say(\"broken into \" + pieces.text());\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Gun, Health;\n\
+    end\n\
+    ";
 
 #[test]
 fn events_reach_every_component_on_the_entity_in_name_order_lust_and_rust_alike() {
@@ -239,23 +245,27 @@ fn a_failing_rust_component_stops_alone_and_wrong_values_leave_the_handler_runni
 fn components_that_keep_sending_to_each_other_are_cut_off() {
     let mut runtime = loaded(
         "event Ping();\n\
-         component Echo {\n\
-             has {\n\
-                 int heard = 0;\n\
-                 bool started = false;\n\
-             }\n\
-             method update(float dt) {\n\
-                 is not started? then {\n\
-                     started = true;\n\
-                     send Ping() to me;\n\
-                 }\n\
-             }\n\
-             on Ping() {\n\
-                 heard = heard + 1;\n\
-                 send Ping() to me;\n\
-             }\n\
-         }\n\
-         pass Echo;\nend\n",
+            component Echo {\n\
+            has {\n\
+            int heard = 0;\n\
+            bool started = false;\n\
+            }\n\
+            method update(float dt) {\n\
+            is not started? then {\n\
+            started = true;\n\
+            send Ping() to me;\n\
+            }\n\
+            }\n\
+            on {\n\
+            \x20   Ping() {\n\
+            \x20   heard = heard + 1;\n\
+            \x20   send Ping() to me;\n\
+            \x20   }\n\
+            }\n\
+            }\n\
+            pass Echo;\n\
+            end\n\
+            ",
     );
     run(&mut runtime, id(3), "Echo");
     let ticked = runtime.tick(0.1, &mut NoHost);

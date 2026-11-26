@@ -143,12 +143,14 @@ component Knight {
         }
     }
 
-    -- Charged: the same clips, in the other look.
-    on ManaChanged(bool charged) {
-        is charged? then {
-            setLook(Look.Sprites.Knight.Mana);
-        } or {
-            setLook(Look.Sprites.Knight.Normal);
+    on {
+        -- Charged: the same clips, in the other look.
+        ManaChanged(bool charged) {
+            is charged? then {
+                setLook(Look.Sprites.Knight.Mana);
+            } or {
+                setLook(Look.Sprites.Knight.Normal);
+            }
         }
     }
 }

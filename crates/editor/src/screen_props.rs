@@ -221,7 +221,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                 RichText::new(if events.is_empty() {
                     "Declare an event in your game's code (event Pause();) to choose it here."
                 } else {
-                    "The game's events. The entity's code reacts with on Pause() { }."
+                    "The game's events. The entity's code reacts in its on block: on { Pause() { } }."
                 })
                 .color(theme::text_weak())
                 .small(),

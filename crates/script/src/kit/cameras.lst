@@ -140,14 +140,16 @@ component FollowCamera2D {
         vec3 shaken = [0, 0, 0]; -- [hidden]
     }
 
-    -- Shakes the view: strength is how far it throws it at first, in
-    -- metres (0.2 is a thump, 0.5 an explosion), fading to nothing over
-    -- seconds. A stronger shake takes over a weaker one.
-    on ShakeCamera(float strength, float seconds) {
-        is strength >= shakeStrength * shakeLeft / Maths:max(shakeTime, 0.001)? then {
-            shakeStrength = Maths:max(strength, 0);
-            shakeTime = Maths:max(seconds, 0);
-            shakeLeft = shakeTime;
+    on {
+        -- Shakes the view: strength is how far it throws it at first, in
+        -- metres (0.2 is a thump, 0.5 an explosion), fading to nothing over
+        -- seconds. A stronger shake takes over a weaker one.
+        ShakeCamera(float strength, float seconds) {
+            is strength >= shakeStrength * shakeLeft / Maths:max(shakeTime, 0.001)? then {
+                shakeStrength = Maths:max(strength, 0);
+                shakeTime = Maths:max(seconds, 0);
+                shakeLeft = shakeTime;
+            }
         }
     }
 

@@ -294,7 +294,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          -- The sprites' clips, their sheet's name and their own: animation = Clip.FarmerWalk;\n\
          -- in a component holding Clip animation (Clip.None stops it).\n\
          {clip}\n\n\
-         -- The clips' events: on CueReached(Cue cue) {{ is cue == Cue.Footstep? … }}.\n\
+         -- The clips' events: on {{ CueReached(Cue cue) {{ is cue == Cue.Footstep? … }} }}.\n\
          {cue}\n\n\
          -- The game's screens (files in ui/): screen = Screen.PauseMenu; for ui/pauseMenu.lst, in a\n\
          -- component holding Screen screen (Screen.None shows none).\n\

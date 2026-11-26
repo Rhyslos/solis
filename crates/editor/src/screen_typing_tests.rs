@@ -186,25 +186,29 @@ fn mistakes_in_text_worked_out_as_the_game_runs_are_said() {
 fn talker(skip_at: i64) -> String {
     format!(
         "fetch \"solis/project\":Screen;\n\
-         fetch \"solis/screens\":TypingFinished;\n\
-         component Talker {{\n\
-             has {{\n\
-                 int ticks = 0;\n\
-                 int finished = 0;\n\
-                 int finishedAt = 0;\n\
-             }}\n\
-             method update(float dt) {{\n\
-                 ticks = ticks + 1;\n\
-                 is ticks == {skip_at}? then {{ finishTyping(Screen.Talk); }}\n\
-             }}\n\
-             on TypingFinished(Screen which) {{\n\
-                 is which == Screen.Talk? then {{\n\
-                     finished = finished + 1;\n\
-                     finishedAt = ticks;\n\
-                 }}\n\
-             }}\n\
-         }}\n\
-         pass Talker;\nend\n"
+            fetch \"solis/screens\":TypingFinished;\n\
+            component Talker {{\n\
+            has {{\n\
+            int ticks = 0;\n\
+            int finished = 0;\n\
+            int finishedAt = 0;\n\
+            }}\n\
+            method update(float dt) {{\n\
+            ticks = ticks + 1;\n\
+            is ticks == {skip_at}? then {{ finishTyping(Screen.Talk); }}\n\
+            }}\n\
+            on {{\n\
+            \x20   TypingFinished(Screen which) {{\n\
+            \x20   is which == Screen.Talk? then {{\n\
+            \x20   finished = finished + 1;\n\
+            \x20   finishedAt = ticks;\n\
+            \x20   }}\n\
+            \x20   }}\n\
+            }}\n\
+            }}\n\
+            pass Talker;\n\
+            end\n\
+            "
     )
 }
 

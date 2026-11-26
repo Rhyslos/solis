@@ -43,11 +43,13 @@ component Health {
         float hp = 20;
     }
 
-    on Hit(entity by, float damage) {
-        is hp > 0? then {
-            hp = hp - damage;
-            is hp <= 0? then {
-                send Destroyed() to this;
+    on {
+        Hit(entity by, float damage) {
+            is hp > 0? then {
+                hp = hp - damage;
+                is hp <= 0? then {
+                    send Destroyed() to this;
+                }
             }
         }
     }
@@ -71,15 +73,17 @@ component Pauser {
         }
     }
 
-    on Resumed() {
-        screen = Screen.None;
-        World.gameSpeed = 1;
-    }
+    on {
+        Resumed() {
+            screen = Screen.None;
+            World.gameSpeed = 1;
+        }
 
-    -- Quitting leaves the game stopped, with a note saying so.
-    on Quit() {
-        screen = Screen.QuitNote;
-        World:say("You quit the game: press Stop to go back to editing.");
+        -- Quitting leaves the game stopped, with a note saying so.
+        Quit() {
+            screen = Screen.QuitNote;
+            World:say("You quit the game: press Stop to go back to editing.");
+        }
     }
 }
 

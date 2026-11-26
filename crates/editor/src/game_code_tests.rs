@@ -515,23 +515,28 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
         "in Properties"
     );
     w.set_program(Some(program(
-        "fetch \"solis/world\":World;\nevent Ping();\n\
-         event Rang(int times);\n\
-         component Ringer {\n\
-             has {\n\
-                 int asked = 0;\n\
-             }\n\
-             method update(float dt) {\n\
-                 is asked < 2? then {\n\
-                     asked = asked + 1;\n\
-                     send Ping() to me;\n\
-                 }\n\
-             }\n\
-             on Rang(int times) {\n\
-                 World:say(\"the bell rang \" + times.text());\n\
-             }\n\
-         }\n\
-         pass Ringer;\nend\n",
+        "fetch \"solis/world\":World;\n\
+            event Ping();\n\
+            event Rang(int times);\n\
+            component Ringer {\n\
+            has {\n\
+            int asked = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+            is asked < 2? then {\n\
+            asked = asked + 1;\n\
+            send Ping() to me;\n\
+            }\n\
+            }\n\
+            on {\n\
+            \x20   Rang(int times) {\n\
+            \x20   World:say(\"the bell rang \" + times.text());\n\
+            \x20   }\n\
+            }\n\
+            }\n\
+            pass Ringer;\n\
+            end\n\
+            ",
     )));
     let id = EntityId::random();
     let mut data = EntityData::new("Tower");
@@ -1612,30 +1617,36 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
 
 /// A hive that spawns a drone and, in the same tick, sends it where to
 /// go; the drone moves there when the event arrives.
-const LAUNCHER: &str = "fetch \"solis/world\":World;\nfetch \"solis/made\":DroneModule;\n\n\
+const LAUNCHER: &str = "fetch \"solis/world\":World;\n\
+    fetch \"solis/made\":DroneModule;\n\
+    \n\
     event Launch(float height);\n\
     component Hive {\n\
-        has {\n\
-            int made = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            is made == 0? then {\n\
-                entity a = new DroneModule { position = [0, 0, 0] };\n\
-                send Launch(7) to a;\n\
-                made = 1;\n\
-            }\n\
-        }\n\
+    has {\n\
+    int made = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    is made == 0? then {\n\
+    entity a = new DroneModule { position = [0, 0, 0] };\n\
+    send Launch(7) to a;\n\
+    made = 1;\n\
+    }\n\
+    }\n\
     }\n\
     component Drone {\n\
-        has {\n\
-            float got = 0;\n\
-        }\n\
-        on Launch(float height) {\n\
-            got = height;\n\
-            moveTo([0, 0, height]);\n\
-        }\n\
+    has {\n\
+    float got = 0;\n\
     }\n\
-    pass Hive, Drone;\nend\n";
+    on {\n\
+    \x20   Launch(float height) {\n\
+    \x20   got = height;\n\
+    \x20   moveTo([0, 0, height]);\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Hive, Drone;\n\
+    end\n\
+    ";
 
 #[test]
 fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {

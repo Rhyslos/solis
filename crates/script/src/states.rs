@@ -220,15 +220,16 @@ const PATCHES: [(&str, &str); 6] = [
     ),
     // A tween that reached its end.
     (
-        "        tweens[i] = false\n",
-        "        L.solis_drop(tw); tweens[i] = false\n",
+        "        tweens[i] = false\n        places[tw.owner][tw.name] = nil\n",
+        "        L.solis_drop(tw); tweens[i] = false\n        places[tw.owner][tw.name] = nil\n",
     ),
     // A done block runs as its tween's owner's code: what it makes with
     // new is that entity's (the uniformity pass, U6), though it belongs
-    // to no option of its state.
+    // to no option of its state. It's a run of its own (Lust alpha 89):
+    // up to its first wait, if it has one.
     (
-        "        if tw.done then tw.done() end\n",
-        "        if tw.done then local S = __solis; if S then S.doneBy = tw.owner end; tw.done(); if S then S.doneBy = nil end end\n",
+        "        if tw.done then L.spawn(tw.done) end\n",
+        "        if tw.done then local S = __solis; if S then S.doneBy = tw.owner end; L.spawn(tw.done); if S then S.doneBy = nil end end\n",
     ),
     // The functions those call, beside the tweens' own list.
     ("local stepping, viewing = false, 0\n", RUNTIME_ADDED),

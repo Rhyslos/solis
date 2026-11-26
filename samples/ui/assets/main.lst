@@ -64,11 +64,13 @@ component Health {
         float maxHp = 20;
     }
 
-    on Hit(entity by, float damage) {
-        hp = hp - damage;
-        is hp <= 0? then {
-            World:say("The drone is down. It mends itself.");
-            hp = maxHp;
+    on {
+        Hit(entity by, float damage) {
+            hp = hp - damage;
+            is hp <= 0? then {
+                World:say("The drone is down. It mends itself.");
+                hp = maxHp;
+            }
         }
     }
 }
@@ -92,31 +94,33 @@ component Pauser {
         }
     }
 
-    on Resumed() {
-        screen = Screen.None;
-        World.gameSpeed = 1;
-    }
-
-    -- Text a quarter bigger each time, back to as designed after 200%.
-    on BiggerText() {
-        float size = Screens.textSize + 0.25;
-        is size > 2? then {
-            size = 1;
+    on {
+        Resumed() {
+            screen = Screen.None;
+            World.gameSpeed = 1;
         }
-        Screens.textSize = size;
-    }
 
-    on Fullscreen() {
-        Window.fullscreen = not Window.fullscreen;
-    }
+        -- Text a quarter bigger each time, back to as designed after 200%.
+        BiggerText() {
+            float size = Screens.textSize + 0.25;
+            is size > 2? then {
+                size = 1;
+            }
+            Screens.textSize = size;
+        }
 
-    on NextResolution() {
-        Window:useNextResolution();
-    }
+        Fullscreen() {
+            Window.fullscreen = not Window.fullscreen;
+        }
 
-    -- Quit closes the game (in the editor, play stops).
-    on Quit() {
-        Window:quit();
+        NextResolution() {
+            Window:useNextResolution();
+        }
+
+        -- Quit closes the game (in the editor, play stops).
+        Quit() {
+            Window:quit();
+        }
     }
 }
 

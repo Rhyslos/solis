@@ -746,14 +746,34 @@ impl Runtime {
             .map(|(key, _)| key.clone())
             .collect();
         for key in gone {
-            self.running.remove(&key);
+            if let Some(component) = self.running.remove(&key) {
+                self.removed(&component);
+            }
         }
     }
 
     /// Stops every running component `keep` says no to (its entity or
     /// component is gone from the level).
     pub fn retain(&mut self, mut keep: impl FnMut(EntityId, &str) -> bool) {
-        self.running.retain(|(entity, name), _| keep(*entity, name));
+        let gone: Vec<(EntityId, String)> = self
+            .running
+            .keys()
+            .filter(|(entity, name)| !keep(*entity, name))
+            .cloned()
+            .collect();
+        for key in gone {
+            if let Some(component) = self.running.remove(&key) {
+                self.removed(&component);
+            }
+        }
+    }
+
+    /// Tells Lust a component stopped for good, so the work it started
+    /// that's still waiting never goes on (Lust alpha 89).
+    fn removed(&self, component: &crate::ticking::Running) {
+        if let Some(program) = &self.lust {
+            program.removed(&self.luau, &component.instance);
+        }
     }
 
     /// The fields of `entity`'s running component `name`, as they are now.

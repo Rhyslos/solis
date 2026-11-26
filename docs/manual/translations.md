@@ -52,10 +52,12 @@ fetch "solis/texts":ShopText;
 fetch "solis/zones":Entered;
 
 component Shopkeeper {
-    -- Someone walked in: welcome them, and say how many apples are left.
-    on Entered(entity who) {
-        World:say(World:text(Text.ShopWelcome));
-        World:say(ShopText:apples(3, "Mira"));
+    on {
+        -- Someone walked in: welcome them, and say how many apples are left.
+        Entered(entity who) {
+            World:say(World:text(Text.ShopWelcome));
+            World:say(ShopText:apples(3, "Mira"));
+        }
     }
 }
 pass Shopkeeper;

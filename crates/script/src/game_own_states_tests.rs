@@ -25,152 +25,169 @@ const TIMERS: &[&str] = &[
 const GAME: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":[Timer, Sound, Module];\n\
     fetch \"solis/made\":[Recover, Pulse, Outer, Inner, Kept, Lost, Quiet, Ping, Engine, Boom, Drone];\n\
-    fetch \"solis/timers\":TimerFinished;\n\n\
+    fetch \"solis/timers\":TimerFinished;\n\
+    \n\
     state Mood = [Calm, Stunned, Combat [Melee, Ranged]];\n\
-    event MoodChanged(Mood from, Mood to);\n\n\
+    event MoodChanged(Mood from, Mood to);\n\
+    \n\
     component Stun {\n\
-        has {\n\
-            state = Mood.Calm;\n\
-            int ticks = 0;\n\
-            float glow = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                state = Mood.Stunned;\n\
-                new Recover { after = 0.05 };\n\
-                new Pulse { every = 1.0 / 60.0 };\n\
-                tween glow to 1 over 0.5 {\n\
-                    World:say(\"A glow done\");\n\
-                }\n\
-                new Engine {};\n\
-                entity drone = new Drone { position = position() };\n\
-            }\n\
-            is ticks == 2? then {\n\
-                state = Mood.Calm;\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(\"A \" + which.text());\n\
-        }\n\
-        on MoodChanged(Mood from, Mood to) {\n\
-            World:say(\"A heard \" + from.text() + \" to \" + to.text());\n\
-        }\n\
+    has {\n\
+    state = Mood.Calm;\n\
+    int ticks = 0;\n\
+    float glow = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    state = Mood.Stunned;\n\
+    new Recover { after = 0.05 };\n\
+    new Pulse { every = 1.0 / 60.0 };\n\
+    tween glow to 1 over 0.5 {\n\
+    World:say(\"A glow done\");\n\
+    }\n\
+    new Engine {};\n\
+    entity drone = new Drone { position = position() };\n\
+    }\n\
+    is ticks == 2? then {\n\
+    state = Mood.Calm;\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(\"A \" + which.text());\n\
+    \x20   }\n\
+    \n\
+    \x20   MoodChanged(Mood from, Mood to) {\n\
+    \x20   World:say(\"A heard \" + from.text() + \" to \" + to.text());\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Fighter {\n\
-        has {\n\
-            state = Mood.Calm;\n\
-            int ticks = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                state = Mood.Combat;\n\
-                new Outer { after = 0.1 };\n\
-                state = Mood.Combat.Melee;\n\
-                new Inner { after = 0.1 };\n\
-            }\n\
-            is ticks == 2? then {\n\
-                state = Mood.Combat.Ranged;\n\
-            }\n\
-            is ticks == 8? then {\n\
-                state = Mood.Calm;\n\
-            }\n\
-            is ticks == 9? then {\n\
-                state = Mood.Combat.Melee;\n\
-                new Inner { after = 0.05 };\n\
-            }\n\
-            is ticks == 10? then {\n\
-                state = Mood.Combat;\n\
-            }\n\
-            is ticks == 11? then {\n\
-                state = Mood.Calm;\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(\"B \" + which.text() + \" on \" + ticks.text());\n\
-        }\n\
-        on MoodChanged(Mood from, Mood to) {\n\
-            World:say(\"B heard \" + from.text() + \" to \" + to.text() + \" on \" + ticks.text());\n\
-        }\n\
+    has {\n\
+    state = Mood.Calm;\n\
+    int ticks = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    state = Mood.Combat;\n\
+    new Outer { after = 0.1 };\n\
+    state = Mood.Combat.Melee;\n\
+    new Inner { after = 0.1 };\n\
+    }\n\
+    is ticks == 2? then {\n\
+    state = Mood.Combat.Ranged;\n\
+    }\n\
+    is ticks == 8? then {\n\
+    state = Mood.Calm;\n\
+    }\n\
+    is ticks == 9? then {\n\
+    state = Mood.Combat.Melee;\n\
+    new Inner { after = 0.05 };\n\
+    }\n\
+    is ticks == 10? then {\n\
+    state = Mood.Combat;\n\
+    }\n\
+    is ticks == 11? then {\n\
+    state = Mood.Calm;\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(\"B \" + which.text() + \" on \" + ticks.text());\n\
+    \x20   }\n\
+    \n\
+    \x20   MoodChanged(Mood from, Mood to) {\n\
+    \x20   World:say(\"B heard \" + from.text() + \" to \" + to.text() + \" on \" + ticks.text());\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Keeper {\n\
-        has {\n\
-            state = Mood.Calm;\n\
-            int ticks = 0;\n\
-            float kept = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                state = Mood.Stunned;\n\
-                new Kept { after = 0.05 };\n\
-                tween kept to 1 over 0.05 {\n\
-                    World:say(\"C kept done\");\n\
-                    new Boom {};\n\
-                }\n\
-                new Engine {};\n\
-                keepStarted();\n\
-                new Lost { after = 0.05 };\n\
-            }\n\
-            is ticks == 2? then {\n\
-                state = Mood.Calm;\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(\"C \" + which.text());\n\
-        }\n\
+    has {\n\
+    state = Mood.Calm;\n\
+    int ticks = 0;\n\
+    float kept = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    state = Mood.Stunned;\n\
+    new Kept { after = 0.05 };\n\
+    tween kept to 1 over 0.05 {\n\
+    World:say(\"C kept done\");\n\
+    new Boom {};\n\
+    }\n\
+    new Engine {};\n\
+    keepStarted();\n\
+    new Lost { after = 0.05 };\n\
+    }\n\
+    is ticks == 2? then {\n\
+    state = Mood.Calm;\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(\"C \" + which.text());\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Plain {\n\
-        has {\n\
-            Mood mood = Mood.Calm;\n\
-            int ticks = 0;\n\
-            float glow = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                mood = Mood.Stunned;\n\
-                new Quiet { after = 0.05 };\n\
-                tween glow to 1 over 0.05 {\n\
-                    World:say(\"D glow done\");\n\
-                }\n\
-            }\n\
-            is ticks == 2? then {\n\
-                mood = Mood.Calm;\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(\"D \" + which.text());\n\
-        }\n\
+    has {\n\
+    Mood mood = Mood.Calm;\n\
+    int ticks = 0;\n\
+    float glow = 0;\n\
+    }\n\
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    mood = Mood.Stunned;\n\
+    new Quiet { after = 0.05 };\n\
+    tween glow to 1 over 0.05 {\n\
+    World:say(\"D glow done\");\n\
+    }\n\
+    }\n\
+    is ticks == 2? then {\n\
+    mood = Mood.Calm;\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(\"D \" + which.text());\n\
+    \x20   }\n\
+    }\n\
     }\n\
     component Echo {\n\
-        has {\n\
-            state = Mood.Calm;\n\
-            int ticks = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            ticks = ticks + 1;\n\
-            is ticks == 1? then {\n\
-                state = Mood.Stunned;\n\
-                state = Mood.Calm;\n\
-                new Ping { after = 0.05 };\n\
-                keepStarted();\n\
-            }\n\
-            is ticks == 3? then {\n\
-                state = Mood.Stunned;\n\
-                state = Mood.Combat;\n\
-                state = Mood.Combat.Ranged;\n\
-            }\n\
-        }\n\
-        on TimerFinished(Timer which) {\n\
-            World:say(\"E \" + which.text());\n\
-        }\n\
-        on MoodChanged(Mood from, Mood to) {\n\
-            World:say(\"E heard \" + from.text() + \" to \" + to.text());\n\
-        }\n\
+    has {\n\
+    state = Mood.Calm;\n\
+    int ticks = 0;\n\
     }\n\
-    pass Stun, Fighter, Keeper, Plain, Echo;\nend\n";
+    method update(float dt) {\n\
+    ticks = ticks + 1;\n\
+    is ticks == 1? then {\n\
+    state = Mood.Stunned;\n\
+    state = Mood.Calm;\n\
+    new Ping { after = 0.05 };\n\
+    keepStarted();\n\
+    }\n\
+    is ticks == 3? then {\n\
+    state = Mood.Stunned;\n\
+    state = Mood.Combat;\n\
+    state = Mood.Combat.Ranged;\n\
+    }\n\
+    }\n\
+    on {\n\
+    \x20   TimerFinished(Timer which) {\n\
+    \x20   World:say(\"E \" + which.text());\n\
+    \x20   }\n\
+    \n\
+    \x20   MoodChanged(Mood from, Mood to) {\n\
+    \x20   World:say(\"E heard \" + from.text() + \" to \" + to.text());\n\
+    \x20   }\n\
+    }\n\
+    }\n\
+    pass Stun, Fighter, Keeper, Plain, Echo;\n\
+    end\n\
+    ";
 
 /// A bell in Lua with a `state` field: Lua has no state of its own, so
 /// its timer rings whatever the field says.
@@ -607,7 +624,11 @@ fn changing(own: bool, heard: bool, every: u32) -> String {
         ("Mood mood = Mood.Calm;", "mood")
     };
     let handler = if heard {
-        "on MoodChanged(Mood from, Mood to) {\n}\n"
+        "on {\n\
+            \x20   MoodChanged(Mood from, Mood to) {\n\
+            \x20   }\n\
+            }\n\
+            "
     } else {
         ""
     };

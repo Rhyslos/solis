@@ -182,8 +182,10 @@ component Pauser {
         Screen screen = Screen.PauseMenu;
     }
 
-    on Resumed() {
-        screen = Screen.None;
+    on {
+        Resumed() {
+            screen = Screen.None;
+        }
     }
 }
 
@@ -270,9 +272,11 @@ component Pauser {
         }
     }
 
-    on Resumed() {
-        screen = Screen.None;
-        World.gameSpeed = 1;
+    on {
+        Resumed() {
+            screen = Screen.None;
+            World.gameSpeed = 1;
+        }
     }
 }
 
@@ -335,18 +339,22 @@ event Fullscreen();
 event NextResolution();
 
 component Pauser {
-    on BiggerText() {
-        float size = Screens.textSize + 0.25;
-        is size > 2? then {
-            size = 1;
+    on {
+        BiggerText() {
+            float size = Screens.textSize + 0.25;
+            is size > 2? then {
+                size = 1;
+            }
+            Screens.textSize = size;
         }
-        Screens.textSize = size;
-    }
-    on Fullscreen() {
-        Window.fullscreen = not Window.fullscreen;
-    }
-    on NextResolution() {
-        Window:useNextResolution();
+
+        Fullscreen() {
+            Window.fullscreen = not Window.fullscreen;
+        }
+
+        NextResolution() {
+            Window:useNextResolution();
+        }
     }
 }
 

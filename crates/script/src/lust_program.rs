@@ -34,6 +34,14 @@ pub(crate) struct LustProgram {
     /// Its `tickTweens(dt)`, which moves the tweens game code started
     /// (LUST.md §21, "Tweens in an engine"; decision 0106).
     pub(crate) tick_tweens: Option<Function>,
+    /// Its `removed(component)` (Lust alpha 89): a component stopped for
+    /// good has the work it started, and its handlers still waiting,
+    /// cancelled.
+    pub(crate) removed: Option<Function>,
+    /// Its `settle()`: delivers the events game code sent that only Lust
+    /// hears (Lust alpha 81), for an object's update, which Solis calls
+    /// itself.
+    pub(crate) settle: Option<Function>,
     /// Whether a tween's failure has been said: one that fails keeps
     /// failing each tick until it ends, so it's said once until the code
     /// changes.
@@ -111,6 +119,8 @@ pub(crate) fn prepare(
         });
     }
     let tick_tweens = api.raw_get("tickTweens").map_err(failed)?;
+    let removed = api.raw_get("removed").map_err(failed)?;
+    let settle = api.raw_get("settle").map_err(failed)?;
     // Reading the components makes one of each, which works out their
     // fields' starting values: game code, so the natives are lent too.
     let ((fields, schemas, methods), events, objects) =
@@ -132,8 +142,22 @@ pub(crate) fn prepare(
         methods,
         objects,
         tick_tweens,
+        removed,
+        settle,
         tween_told: std::cell::Cell::new(false),
     })
+}
+
+impl LustProgram {
+    /// Tells Lust that `instance` stopped for good (its entity is gone,
+    /// it was taken off, or it failed): what it started that's still
+    /// waiting is cancelled and never runs again (Lust alpha 89). Its own
+    /// failure, if any, is nobody's to see: the component is gone.
+    pub(crate) fn removed(&self, luau: &crate::luau::Luau, instance: &crate::ticking::Instance) {
+        if let (crate::ticking::Instance::Lust(table), Some(removed)) = (instance, &self.removed) {
+            let _ = luau.clock.limited(|| removed.call::<()>(table.clone()));
+        }
+    }
 }
 
 /// A failure while the program started.

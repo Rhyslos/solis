@@ -32,17 +32,19 @@ component Door {
         bool open = false;
     }
 
-    -- The switch sends this; the door waits two seconds.
-    on SwitchPulled() {
-        new DoorOpens { after = 2.0 };
-        World:say("The door rumbles...");
-    }
+    on {
+        -- The switch sends this; the door waits two seconds.
+        SwitchPulled() {
+            new DoorOpens { after = 2.0 };
+            World:say("The door rumbles...");
+        }
 
-    -- Two seconds of game time later.
-    on TimerFinished(Timer which) {
-        is which == Timer.DoorOpens? then {
-            open = true;
-            World:say("The door opens.");
+        -- Two seconds of game time later.
+        TimerFinished(Timer which) {
+            is which == Timer.DoorOpens? then {
+                open = true;
+                World:say("The door opens.");
+            }
         }
     }
 }
@@ -142,13 +144,15 @@ component Spawner {
         }
     }
 
-    on TimerFinished(Timer which) {
-        waves = waves + 1;
-        entity drone = new Drone { position = position() + [0, 0, 2] };
+    on {
+        TimerFinished(Timer which) {
+            waves = waves + 1;
+            entity drone = new Drone { position = position() + [0, 0, 2] };
 
-        -- Ten waves, then no more.
-        is waves >= 10? then {
-            stopTimer(Timer.Wave);
+            -- Ten waves, then no more.
+            is waves >= 10? then {
+                stopTimer(Timer.Wave);
+            }
         }
     }
 }
@@ -246,8 +250,10 @@ component Rooster {
         }
     }
 
-    on TimerFinished(Timer which) {
-        World:say("Cock-a-doodle-doo!");
+    on {
+        TimerFinished(Timer which) {
+            World:say("Cock-a-doodle-doo!");
+        }
     }
 }
 
@@ -322,7 +328,7 @@ end
 | `stopTimer(Timer.DoorOpens)` | Stops it, so it doesn't finish. One that isn't running changes nothing. |
 | `timerRunning(Timer.DoorOpens)` | Whether it's running: `is timerRunning(Timer.DoorOpens)? then { … }`. |
 | `timeLeft(Timer.DoorOpens)` | The seconds of game time left; 0 when it isn't running. |
-| `on TimerFinished(Timer which)` | Heard when one of this component's timers finishes. |
+| `TimerFinished(Timer which)`, in the component's `on { }` | Heard when one of this component's timers finishes. |
 
 A `new` takes exactly one of `after`, `every` and `atHour`: none, or two, stops with its line. Starting and stopping land at the **end of the tick**, as moves do, and `timerRunning` and `timeLeft` answer as the tick started: a timer started this tick is running from the next. In Lua they're `solis.entity.startTimer(self.me, "DoorOpens", 2.0)` and so on; in Rust, through the component's host: `start_timer`, `stop_timer` and `timer_left` (which gives `None` when the timer isn't running).
 
@@ -366,14 +372,16 @@ component Messenger {
         }
     }
 
-    -- Each wait ends here, and the next step begins.
-    on TimerFinished(Timer which) {
-        is step == Step.WaitThere? then {
-            World:say("Hello!");
-            step = Step.WaitAfterHello;
-            new NextStep { after = 2.0 };
-        } or is step == Step.WaitAfterHello? then {
-            step = Step.WalkHome;
+    on {
+        -- Each wait ends here, and the next step begins.
+        TimerFinished(Timer which) {
+            is step == Step.WaitThere? then {
+                World:say("Hello!");
+                step = Step.WaitAfterHello;
+                new NextStep { after = 2.0 };
+            } or is step == Step.WaitAfterHello? then {
+                step = Step.WalkHome;
+            }
         }
     }
 
