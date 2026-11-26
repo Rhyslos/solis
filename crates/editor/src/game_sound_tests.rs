@@ -260,9 +260,7 @@ const WALKER: &str = "fetch \"solis/world\":World;\n\
     fetch \"solis/project\":[Clip, Cue];\n\
     fetch \"solis/animation\":[CueReached, ClipFinished];\n\
     component Walker {\n\
-        method update(float dt) {\n\
-            animate(Clip.WalkerWalk);\n\
-        }\n\
+        has { Clip animation = Clip.WalkerWalk; }\n\
         on CueReached(Cue cue) {\n\
             is cue == Cue.Footstep? then {\n\
                 World:say(\"cue footstep\");\n\

@@ -42,6 +42,7 @@ sound: object Audio: method setVolume(Bus bus, float volume) native;
 animation: method entity:animate(Clip clip) native;
 animation: method entity:animateFromStart(Clip clip) native;
 animation: method entity:stopAnimation() native;
+animation: method entity:restartAnimation() native;
 animation: method entity:setVisible(bool shown) native;
 animation: method entity:setFlip(bool across, bool down) native;
 animation: method Facing nearestFacing(vec2 way) native;
@@ -134,6 +135,12 @@ screens: event TypingFinished(Screen which);
 
 Facing facing
 Look look
+Clip animation
+Flip flip
+bool visible
+bool solid
+bool soundPlaying
+Screen screen
 
 ## Lua (solis.<name>)
 
@@ -228,6 +235,7 @@ solis.entity.playSound
 solis.entity.position
 solis.entity.push
 solis.entity.removeTag
+solis.entity.restartAnimation
 solis.entity.rotation
 solis.entity.screenShown
 solis.entity.setFlip

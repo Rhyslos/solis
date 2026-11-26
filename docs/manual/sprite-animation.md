@@ -83,7 +83,7 @@ An Aseprite file needs no cutting: its frames are its cells, numbered from 0 as 
 Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over the clips undo and redo changes to the file. If the file changes on disk (edited by hand, or by Git), the tabs show it as it is now, as a step **Ctrl+Z** undoes; if it's deleted or moved, they close. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### In game code
-Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.FarmerWalk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
+Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.FarmerWalk`), with `Clip.None` for no clip, and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Which clip plays is a field of the component, `Clip animation`, set with `=`: a field says what the sprite *is* doing, so the component can read it back, and there's no call to make every tick. Bring in the names and the events at the top of a file:
 
 ```lust
 fetch "solis/project":[Clip, Cue];
@@ -91,6 +91,7 @@ fetch "solis/animation":[CueReached, ClipFinished];
 
 component Farmer {
     has {
+        Clip animation = Clip.FarmerIdle;
         int steps = 0;
     }
 
@@ -104,7 +105,7 @@ component Farmer {
     -- Back to standing once the hoe swing is done.
     on ClipFinished(Clip clip) {
         is clip == Clip.FarmerHoe? then {
-            animate(Clip.FarmerIdle);
+            animation = Clip.FarmerIdle;
         }
     }
 }
@@ -165,21 +166,30 @@ function Farmer:on_ClipFinished(clip)
 end
 ```
 
-- `animate(Clip.FarmerWalk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
-- `animateFromStart(Clip.FarmerHoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
-- `stopAnimation()` stops it where it is; `animate` with the same clip carries on from there.
-- `setFlip(across, down)` mirrors the sprite (its **Flip across** and **Flip up** settings): `setFlip(true, false)` faces it the other way. So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well:
+- **`Clip animation`** in the component's `has` is the clip its entity's sprite plays: `animation = Clip.FarmerWalk;`. As each tick ends, the engine plays it if it has changed (or the component has just started): set to the clip already playing, or one it has finished, it carries on as it is; another clip starts from its beginning. Its starting value is the sprite's clip from the game's first tick.
+- **`restartAnimation()`** plays the clip the sprite is playing again from its beginning, whatever it was doing: a second swing after the first.
+- **`animation = Clip.None;`** stops the sprite where it is; setting a clip again carries on from there.
+- **Another entity's sprite:** `orc:animate(Clip.OrcWalk)`, `orc:animateFromStart(…)` and `orc:stopAnimation()`.
+- **`Flip flip`** mirrors the sprite (its **Flip across** and **Flip up** settings): `flip = Flip.Across;` faces it the other way, `Flip.Down` turns it upside down, `Flip.Both` does both and `Flip.None` neither (`Flip` is in `solis/animation`; on another entity, `orc:setFlip(true, false)`). So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well:
 
   ```lust
   fetch "solis/input":Input;
   fetch "solis/project":[Action, Clip];
+  fetch "solis/animation":Flip;
 
   component Runner {
+      has {
+          Clip animation = Clip.HeroRun;
+          Flip flip = Flip.None;
+      }
+
       method update(float dt) {
           -- Face the way the player pushes.
-          bool walkingLeft = Input:axis(Action.Move).x < 0;
-          setFlip(walkingLeft, false);
-          animate(Clip.HeroRun);
+          is Input:axis(Action.Move).x < 0? then {
+              flip = Flip.Across;
+          } or {
+              flip = Flip.None;
+          }
       }
   }
 
@@ -216,7 +226,7 @@ end
   end
   ```
 
-  It's safe to call every tick, and like the other calls it lands at the end of the tick.
+  The fields land at the end of the tick, like a move. Give each to one component of an entity: two would each set it their own way.
 - In Lua: `solis.entity.animate(e, "FarmerWalk")`, `solis.entity.animateFromStart(e, …)`, `solis.entity.stopAnimation(e)` and `solis.entity.setFlip(e, true, false)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again), `stop_clip` and `set_flip(entity, true, false)`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
 
 #### Facing and looks
@@ -235,6 +245,7 @@ component Knight {
     has {
         Facing facing = Facing.South;
         Look look = Look.KnightMain;
+        Clip animation = Clip.KnightIdle;
         bool charged = false;
     }
 
@@ -243,9 +254,9 @@ component Knight {
         is push:length() > 0? then {
             -- Turn the way the player pushes: the walk plays that row.
             facing = nearestFacing([push.x, push.y]);
-            animate(Clip.KnightWalk);
+            animation = Clip.KnightWalk;
         } or {
-            animate(Clip.KnightIdle);
+            animation = Clip.KnightIdle;
         }
         -- Mana armour while charged.
         is charged? then {
@@ -267,8 +278,8 @@ The component's field is the sprite's facing and look from the game's first tick
 ```text
 -- Before: a clip for every action, direction and look.
 check facing {
-    when North { animate(Clip.KnightWalkNorthMain); }
-    when NorthEast { animate(Clip.KnightWalkNorthEastMain); }
+    when North { animation = Clip.KnightWalkNorthMain; }
+    when NorthEast { animation = Clip.KnightWalkNorthEastMain; }
     -- … six more directions, then all eight again for the mana look,
     -- then the same for idle, swing, hurt and the other actions.
 }
@@ -279,7 +290,7 @@ Now the clip is named once and the facing and the look are values beside it, so 
 ```text
 -- After: one clip; the facing and the look choose its frames.
 facing = nearestFacing([push.x, push.y]);
-animate(Clip.KnightWalk);
+animation = Clip.KnightWalk;
 ```
 
 Two mistakes are said in the Console, once a play for each entity, and change nothing:
@@ -297,7 +308,7 @@ The Sprite component's clip settings:
 | Clip | The clip it plays. Empty: the clips file's clip marked **Plays first**, or with none, the still **Frame**. |
 | Look | Which of its clips file's looks it shows: the main one (empty), or another picture cut the same way, such as the knight in mana armour. Every clip plays in it. A look's picture should be the main one's size, or its cells won't line up (the Clip slot says so). A component's `look` field sets it while the game runs ([Facing and looks](#facing-and-looks)). |
 | Facing | Which way it faces: North, NorthEast, East, SouthEast, South, SouthWest, West or NorthWest. A clip with directions plays the row nearest it: with four directions, a diagonal keeps showing north or south if that's what it showed, and otherwise turns east or west; a mirrored west side plays its east row flipped. Turning mid-clip keeps its place in the clip. A component's `facing` field, or an animator that faces by a parameter, sets it while the game runs. |
-| Playing | Whether the clip moves on while the game runs. Game code's `animate` and `stopAnimation` turn it on and off. |
+| Playing | Whether the clip moves on while the game runs. A component's `animation` field turns it on (a clip) and off (`Clip.None`). |
 | Speed | 1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed. |
 | Clip time | How far into the clip it is, in seconds. Give a crowd of copies different times so they don't all step in step. |
 | Frame | The frame shown when no clip plays. |

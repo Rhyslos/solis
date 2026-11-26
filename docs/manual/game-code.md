@@ -703,7 +703,7 @@ Everything game code does in one tick happens in this order, the same on every c
 
 ## Hiding entities and turning colliders off
 
-A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. Two calls switch those off and on again, on any entity:
+A fallen orc shouldn't block the path to the key it dropped, and a mana glow should come and go. A component switches those off and on for its own entity with two fields, set with `=` like any value:
 
 ```lust
 -- orc.lst: an orc that falls and stops blocking the way.
@@ -713,22 +713,22 @@ event Died();
 
 component Orc {
     has {
-        bool fallen = false;
+        bool solid = true;
     }
 
     on Died() {
-        fallen = true;
-        setSolid(false);
+        solid = false;
     }
 }
 
 component Glow {
     has {
+        bool visible = true;
         bool lit = true;
     }
 
     method update(float dt) {
-        setVisible(lit);
+        visible = lit;
     }
 }
 
@@ -736,8 +736,11 @@ pass Died, Orc, Glow;
 end
 ```
 
-- **`setSolid(false)`** takes the entity's collider out of the way: nothing bumps into it, [rays](physics.md) pass through it, and [trigger zones](trigger-zones.md) don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). `setSolid(true)` turns it back on.
-- **`setVisible(false)`** hides the entity **and everything under it**, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. `setVisible(true)` shows it again; a child of a hidden entity can't show on its own.
+- **Why fields?** A field says what the thing *is*, so reading it back (`is solid? then …`) tells you, and there's no call to forget. The engine looks at these fields as each tick ends, and changes the entity when one has changed, or when the component has just started.
+- **`bool solid`**: `false` takes the entity's collider out of the way: nothing bumps into it, [rays](physics.md) pass through it, and [trigger zones](trigger-zones.md) don't count it. In 2D it leaves 2D physics; in 3D its body keeps moving as it was (a falling crate keeps falling, now through the floor). `true` turns it back on.
+- **`bool visible`**: `false` hides the entity **and everything under it**, so hiding a character hides its weapon too. Only its drawing: it still collides, its code still runs, and its sounds still play. `true` shows it again; a child of a hidden entity can't show on its own.
+- **The field's name and type** are how the engine knows it: `bool visible` and `bool solid`, in the component's `has`. A field of another name is the component's own. Give each such field to one component of an entity: two would each set it their own way.
+- **Another entity:** `orc:setSolid(false)` and `orc:setVisible(false)` set them on an entity whose code you aren't in.
 - **When:** like a move, both happen at the end of the tick.
 - **They last:** both are saved in [save games](save-games.md), kept when you edit the level while playing, and gone when you press **Stop**, like everything else the game did. Your level's files never change for them.
 
@@ -1026,8 +1029,8 @@ end
 
 - `Audio:play(Sound.Theme)` plays it the same everywhere: music, the interface.
 - `Audio:playAt(Sound.Footstep, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
-- `playSound(Sound.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use `setSoundPlaying` for that).
-- `setSoundPlaying(playing)` turns the entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
+- `playSound(Sound.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (set `soundPlaying` for that).
+- A field `bool soundPlaying` in the component's `has` turns its entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off: `soundPlaying = true;`. On another entity, `target:setSoundPlaying(true)`.
 - `Audio:setVolume(Bus.Music, volume)` sets a [bus](mixer.md) for the rest of the play (the buses are the Mixer's, as `state Bus` in `solis/project.lst`; the UI bus is `Bus.Ui`, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
 In Lua they're `solis.Audio:playAt("Footstep", solis.entity.position(self.me))` and so on (the option's name as text; `"sfx/footstep"` works too). In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
@@ -1082,19 +1085,17 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/sound` | `Audio:setVolume(Bus bus, float volume)` | Sets a bus's volume for the rest of the play, 0 to 1. |
 | any entity | `playSound(Sound event)` | Plays a sound event on the entity, following it. |
 | any entity | `stopSounds()` | Stops the sounds on the entity, with a short fade. |
-| any entity | `setSoundPlaying(bool playing)` | Turns the entity's AudioSource on or off. |
+| a component | field `bool soundPlaying` | Turns its entity's AudioSource on or off (`target:setSoundPlaying(bool playing)` on another). |
 | `solis/project` | `state Sound`, `state Bus` | The project's sound events (`Sound.Footstep`) and the Mixer's buses (`Bus.Music`). |
-| any entity | `animate(Clip clip)` | Plays a clip on the entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
-| any entity | `animateFromStart(Clip clip)` | Plays a clip from its beginning, whatever it was doing. |
-| any entity | `stopAnimation()` | Stops the entity's Sprite where it is in its clip. |
-| any entity | `setFlip(bool across, bool down)` | Mirrors the entity's Sprite: across faces it the other way, down turns it upside down. |
-| any entity | `setVisible(bool shown)` | Hides the entity and everything under it, or shows them again ([Hiding entities and turning colliders off](#hiding-entities-and-turning-colliders-off)). |
-| any entity | `setSolid(bool solid)` | Turns the entity's collider off, or on again ([Hiding entities and turning colliders off](#hiding-entities-and-turning-colliders-off)). |
+| a component | field `Clip animation` | The clip its entity's Sprite plays; set to the one playing or finished, it carries on as it is; `Clip.None` stops it where it is ([Animating sprites](sprite-animation.md)). On another entity: `target:animate(Clip clip)`, `target:animateFromStart(Clip clip)`, `target:stopAnimation()`. |
+| any entity | `restartAnimation()` | Plays the clip its Sprite is playing again from its beginning. |
+| a component | field `Flip flip` | Mirrors its entity's Sprite: `Flip.Across` faces it the other way, `Flip.Down` turns it upside down, `Flip.Both`, `Flip.None` (`fetch "solis/animation":Flip;`). On another entity: `target:setFlip(bool across, bool down)`. |
+| a component | field `bool visible` | Hides its entity and everything under it (`false`), or shows them again ([Hiding entities and turning colliders off](#hiding-entities-and-turning-colliders-off)). On another entity: `target:setVisible(bool shown)`. |
+| a component | field `bool solid` | Turns its entity's collider off (`false`), or on again. On another entity: `target:setSolid(bool solid)`. |
 | `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
 | `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
 | `solis/project` | `state Clip`, `state Cue` | The sprites' clips, their sheet's name and the clip's (`Clip.FarmerWalk`), and their frame events (`Cue.Footstep`). |
-| any entity | `showScreen(Screen which)` | Shows one of the game's screens on the entity, at the end of the tick ([Game screens](screens.md)). |
-| any entity | `hideScreen(Screen which)` | Hides it, if the entity shows it. |
+| a component | field `Screen screen` | The screen its entity shows, at the end of the tick; `Screen.None` shows none ([Game screens](screens.md)). On another entity: `target:showScreen(Screen which)`, `target:hideScreen(Screen which)`. |
 | any entity | `screenShown(Screen which)` | Whether the entity shows that screen, as the tick started. |
 | any entity | `finishTyping(Screen which)` | Shows all the text that screen is typing out, at the end of the tick; `TypingFinished` follows ([Text effects](text-effects.md)). |
 | `solis/screens` | event `TypingFinished(Screen which)` | Sent to the entity showing a screen once its text has typed out (its Screen's Typing speed), with the next tick's input. |

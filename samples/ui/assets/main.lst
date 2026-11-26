@@ -77,19 +77,23 @@ component Health {
 -- send the events below, and the player's settings are changed here,
 -- since screens only read the game.
 component Pauser {
+    has {
+        Screen screen = Screen.None;
+    }
+
     method update(float dt) {
         is Input:pressed(Action.Pause) || Input:pressed(Action.MenuBack)? then {
-            is screenShown(Screen.PauseMenu)? then {
+            is screen == Screen.PauseMenu? then {
                 send Resumed() to this;
             } or {
-                showScreen(Screen.PauseMenu);
+                screen = Screen.PauseMenu;
                 World:setGameSpeed(0);
             }
         }
     }
 
     on Resumed() {
-        hideScreen(Screen.PauseMenu);
+        screen = Screen.None;
         World:setGameSpeed(1);
     }
 

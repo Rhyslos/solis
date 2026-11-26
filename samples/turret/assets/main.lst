@@ -56,25 +56,29 @@ component Health {
 -- The pause menu (ui/pauseMenu.lst): P (or Start) opens it and stops the
 -- game; its buttons send Resumed or Quit back here.
 component Pauser {
+    has {
+        Screen screen = Screen.None;
+    }
+
     method update(float dt) {
         is Input:pressed(Action.Pause) || Input:pressed(Action.MenuBack)? then {
-            is screenShown(Screen.PauseMenu)? then {
+            is screen == Screen.PauseMenu? then {
                 send Resumed() to this;
-            } or is not screenShown(Screen.QuitNote)? then {
-                showScreen(Screen.PauseMenu);
+            } or is screen != Screen.QuitNote? then {
+                screen = Screen.PauseMenu;
                 World:setGameSpeed(0);
             }
         }
     }
 
     on Resumed() {
-        hideScreen(Screen.PauseMenu);
+        screen = Screen.None;
         World:setGameSpeed(1);
     }
 
     -- Quitting leaves the game stopped, with a note saying so.
     on Quit() {
-        showScreen(Screen.QuitNote);
+        screen = Screen.QuitNote;
         World:say("You quit the game: press Stop to go back to editing.");
     }
 }

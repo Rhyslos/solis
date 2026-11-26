@@ -11,15 +11,15 @@
 //!
 //! | What | Where | Game code's calls |
 //! | --- | --- | --- |
-//! | The clip a sprite plays, and how far in | `Sprite`: clip, playing, time | `animate`, `animateFromStart`, `stopAnimation`, an animator, the clip moving on |
+//! | The clip a sprite plays, and how far in | `Sprite`: clip, playing, time | a component's `animation` field, `restartAnimation`, `animate`, `animateFromStart`, `stopAnimation`, an animator, the clip moving on |
 //! | How fast a sprite's clip plays | `Sprite`: speed | an animator, each tick |
-//! | A sprite mirrored | `Sprite`: flip_x, flip_y | `setFlip` |
+//! | A sprite mirrored | `Sprite`: flip_x, flip_y | a component's `flip` field, `setFlip` |
 //! | Which way a sprite faces | `Sprite`: facing | a component's `facing` field, an animator facing by a parameter |
 //! | The look a sprite wears | `Sprite`: look | a component's `look` field |
-//! | A sound on or off | `AudioSource`: playing | `setSoundPlaying` |
+//! | A sound on or off | `AudioSource`: playing | a component's `soundPlaying` field, `setSoundPlaying` |
 //! | The state an animator is in, by name | `Animator`: state | an animator, each tick; `Animators:jumpTo` |
 //! | How fast an animator plays | `Animator`: speed | `Animators:setPlaybackSpeed` |
-//! | The screen an entity shows | `Screen`: screen, shown | `showScreen`, `hideScreen` |
+//! | The screen an entity shows | `Screen`: screen, shown | a component's `screen` field, `showScreen`, `hideScreen` |
 //! | An animator's state and parameters | its run, beside its components | `Animators:setNumber`, `setSwitch`, `fire`, `setDirection`, `jumpTo` |
 //! | The tags an entity carries | `Tags`: tags | `addTag`, `removeTag` |
 //! | A tile map's cells and values | its map, beside its components | `Maps:setTerrain`, `setNumber`, `setSwitch`, `setChoice` |
@@ -34,7 +34,8 @@
 //! last two are kept as long as the entity keeps the component they
 //! belong to.
 //!
-//! What game code switches off (`setVisible`, `setSolid`) isn't in the
+//! What game code switches off (a component's `visible` and `solid`, or
+//! `setVisible` and `setSolid` on another entity) isn't in the
 //! table: the world keeps it in lists of its own by entity ID
 //! (`crate::switches`), which an edit never touches.
 //!

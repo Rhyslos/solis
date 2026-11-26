@@ -71,7 +71,7 @@ The manual is also the **user guide**: all its pages as one page to read in your
 
 - [2D: the pixel-perfect view, a project's 2D settings, and 2D cameras](2d-pixel-perfect.md)
 - [Sprites from Aseprite: sprite sheets, placing sprites, pivots, front and behind](sprites.md)
-- [Animating sprites: clips from Aseprite tags and your own, the Clips and Frames tabs, events that play sounds, animate](sprite-animation.md)
+- [Animating sprites: clips from Aseprite tags and your own, the Clips and Frames tabs, events that play sounds, choosing a clip in game code](sprite-animation.md)
 - [Animators: states, transitions and parameters that choose a sprite's clip, the Animator tab](animators.md)
 - [Tile maps: a grid of terrains in layers under and over sprites, values every cell has, the Map tab](tile-maps.md)
 - [Atlas Crop: pictures cut out of a sprite sheet](atlas-crop.md)

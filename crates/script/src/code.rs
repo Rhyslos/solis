@@ -489,6 +489,9 @@ fn compile_here(
         // The project's names from before decision 0118: said as what
         // they are now, before Lust only says they aren't there.
         missing.extend(crate::old_names::old_names(&code.files));
+        // The setters a component sets with = on its own entity now
+        // (decision 0137): said as the field, before Lust runs them.
+        missing.extend(crate::old_names::own_setters(&code.files));
         if missing.is_empty() {
             // The game's components told to the rest of its code (Fixes
             // 2): solis/components.lst, written for this code.

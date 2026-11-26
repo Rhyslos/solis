@@ -80,13 +80,22 @@ impl World {
     /// there; finished, it stays on its last frame (so calling it every
     /// tick is safe); another clip starts from its beginning. With
     /// `again` (`animateFromStart`), it starts from its beginning whatever it
-    /// was doing. Nothing happens for an entity without a Sprite.
+    /// was doing; an empty `clip` with `again` is the clip it plays
+    /// (`restartAnimation`). Nothing happens for an entity without a Sprite.
     pub fn play_clip(&mut self, id: EntityId, clip: &str, again: bool) {
         let Some(&entity) = self.by_id.get(&id) else {
             return;
         };
         let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity) else {
             return;
+        };
+        // No clip's name (game code's restartAnimation): the one it plays.
+        let playing;
+        let clip = if clip.is_empty() {
+            playing = sprite.clip.clone();
+            playing.as_str()
+        } else {
+            clip
         };
         // Game code names a clip as an option (`Clip.FarmerWalk`, which
         // asks for "Walk"): the sheet's own name for it, found ignoring

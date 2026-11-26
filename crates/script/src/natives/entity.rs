@@ -374,6 +374,16 @@ fn lend_clips<'s>(
         )?,
     )?;
     natives.raw_set(
+        "entity_restartAnimation",
+        scope.create_function(move |_, which: LuaValue| {
+            // No clip's name: the one the sprite plays, from its start.
+            if let Some(e) = entity_of(&which) {
+                h.borrow_mut().play_clip(e, "", true);
+            }
+            Ok(())
+        })?,
+    )?;
+    natives.raw_set(
         "entity_stopAnimation",
         scope.create_function(move |_, which: LuaValue| {
             if let Some(e) = entity_of(&which) {
