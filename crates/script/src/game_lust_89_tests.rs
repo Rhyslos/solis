@@ -290,7 +290,9 @@ fn a_wait_in_update_is_a_mistake_saying_to_start_it() {
     };
     let problems = crate::code::check(&code);
     assert!(
-        problems.iter().any(|p| p.line == 3 && p.message.contains("start")),
+        problems
+            .iter()
+            .any(|p| p.line == 3 && p.message.contains("start")),
         "{problems:?}"
     );
 }
